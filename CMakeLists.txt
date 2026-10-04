@@ -39,6 +39,8 @@ find_package(Qt6 6.11 REQUIRED COMPONENTS
 qt_standard_project_setup(
     REQUIRES 6.11
     I18N_SOURCE_LANGUAGE en
+    I18N_TRANSLATED_LANGUAGES
+        en_GB
 )
 
 include(CTest)
@@ -53,6 +55,18 @@ add_subdirectory(src)
 
 qt_add_executable(appReqDeck
     app/main.cpp
+    app/appcore.cpp
+    app/appcore.h
+    app/appengine.cpp
+    app/appengine.h
+    app/appinfo.cpp
+    app/appinfo.h
+    app/licensemodel.cpp
+    app/licensemodel.h
+    app/localecontroller.cpp
+    app/localecontroller.h
+    app/updatecontroller.cpp
+    app/updatecontroller.h
 )
 
 target_include_directories(appReqDeck
@@ -63,8 +77,16 @@ target_include_directories(appReqDeck
 
 target_link_libraries(appReqDeck
     PRIVATE
+        ReqDeckQmlApi
+        ReqDeckFramework
         Qt6::Core
         Qt6::Gui
+        Qt6::Network
+        Qt6::Qml
+        Qt6::Quick
+        Qt6::QuickControls2
+        Qt6::QuickDialogs2
+        Qt6::Svg
 )
 
 # The CMake target keeps the conventional app* name; the shipped executable is
@@ -83,6 +105,14 @@ set_target_properties(appReqDeck PROPERTIES
 # resources exist.
 reqdeck_add_windows_version_info(appReqDeck
     DESCRIPTION "${PRODUCT_DISPLAY_NAME}"
+)
+
+# The UI currently ships in English only; the catalog keeps the translation
+# plumbing (LocaleController, live retranslation) ready for further languages.
+qt_add_translations(appReqDeck
+    TS_FILES
+        translations/ReqDeck_en_GB.ts
+    RESOURCE_PREFIX "/translations"
 )
 
 if(BUILD_TESTING)

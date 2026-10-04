@@ -27,3 +27,6 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 - Workspace files (`.reqdeck`, JSON schema 1) with validated loading and atomic
   saving, and the workspace manager for create/open/save/save as/close and the
   recent-workspaces list, with unit tests.
+- Application layer: startup, settings store, application log (panel model and
+  rotating release log file), About metadata and license list, UI language
+  plumbing (English), and the update check (disabled until the first release).
