@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Qt Installer Framework configuration for the product installer.
+    This file is a template: @Tokens@ that name product-metadata fields are
+    substituted by packaging/release.ps1 from packaging/product.json. Tokens
+    that are Qt IFW predefined variables (e.g. @ApplicationsDirX64@, @TargetDir@,
+    @StartMenuDir@, @DesktopDir@) are intentionally left untouched.
+-->
+<Installer>
+    <Name>@ProductName@</Name>
+    <Version>@Version@</Version>
+    <Title>@ProductName@ @Version@ Setup</Title>
+    <Publisher>@Publisher@</Publisher>
+    <ProductUrl>@Homepage@</ProductUrl>
+
+    <!-- Default install location; the user can change it in the wizard. -->
+    <TargetDir>@ApplicationsDirX64@/@InstallDirName@</TargetDir>
+    <StartMenuDir>@ProductName@</StartMenuDir>
+    <AllowSpaceInPath>true</AllowSpaceInPath>
+
+    <!-- The Maintenance Tool handles updates, modification and uninstall. -->
+    <MaintenanceToolName>@MaintenanceToolName@</MaintenanceToolName>
+
+    <!-- Branding. installer.ico is the window/app icon of Setup.exe and of the
+         Maintenance Tool; release.ps1 copies it from MaintenanceTool.ico so it
+         differs from the application icon. The header uses a wide,
+         flat banner (banner.png) with the product name and a compact 64x64 logo
+         (logo.png); both are generated at package time so the Modern wizard's
+         header stays small and the page list remains fully visible. -->
+    <InstallerApplicationIcon>installer</InstallerApplicationIcon>
+    <InstallerWindowIcon>installer.ico</InstallerWindowIcon>
+    <Logo>logo.png</Logo>
+    <Banner>banner.png</Banner>
+
+    <!-- Modern, minimal wizard styled with the application accent. A slightly
+         larger default size keeps the left page list visible without scrolling. -->
+    <WizardStyle>Modern</WizardStyle>
+    <WizardDefaultWidth>800</WizardDefaultWidth>
+    <WizardDefaultHeight>560</WizardDefaultHeight>
+    <StyleSheet>style.qss</StyleSheet>
+
+    <!-- Hybrid installer: full offline payload now, online updates later via
+         the Maintenance Tool from this repository. -->
+    <RemoteRepositories>
+        <Repository>
+            <Url>@StableChannelUrl@</Url>
+            <Enabled>1</Enabled>
+            <DisplayName>@ProductName@ Stable Channel</DisplayName>
+        </Repository>
+    </RemoteRepositories>
+
+    <RunProgram>@TargetDir@/@ExeName@.exe</RunProgram>
+    <RunProgramDescription>Launch @ProductName@ now</RunProgramDescription>
+</Installer>

@@ -35,3 +35,6 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
   three-pane workspace layout, log panel, status bar, settings, About, and
   update dialogs; magenta accent theme for light and dark mode; placeholder
   application icon.
+- Windows release packaging: `packaging/release.ps1` builds a hybrid Qt IFW
+  installer, a portable ZIP, and an update repository from one verified
+  deployment; installer wizard styles in the magenta accent.

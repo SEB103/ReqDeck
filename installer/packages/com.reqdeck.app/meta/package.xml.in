@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Component metadata. The component identifier is the directory name
+    (com.reqdeck.app) and is STABLE: it must not change across a product
+    rename so the update path and existing installations keep working. @Tokens@
+    are substituted by packaging/release.ps1 from packaging/product.json.
+-->
+<Package>
+    <DisplayName>@ProductName@</DisplayName>
+    <Description>Desktop client for composing, sending, and saving HTTP/REST requests.</Description>
+    <Version>@Version@</Version>
+    <ReleaseDate>@ReleaseDate@</ReleaseDate>
+
+    <!-- Single mandatory component; cannot be deselected. -->
+    <Default>true</Default>
+    <ForcedInstallation>true</ForcedInstallation>
+
+    <Licenses>
+        <License name="GNU General Public License v3.0 or later" file="license-gpl.txt" />
+        <License name="Third-Party Notices" file="third-party.txt" />
+    </Licenses>
+
+    <UserInterfaces>
+        <UserInterface>desktopcheckbox.ui</UserInterface>
+    </UserInterfaces>
+
+    <Script>installscript.qs</Script>
+</Package>

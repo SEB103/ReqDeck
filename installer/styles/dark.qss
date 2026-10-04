@@ -1,0 +1,174 @@
+/*
+    Installer wizard style — Dark theme.
+    Modern, minimal look using the application's magenta accent. Colors are set
+    explicitly so the wizard renders consistently regardless of the OS theme.
+    Note: Qt IFW's Modern wizard is a fixed Qt Widgets layout; this is an
+    accent/branding pass, not a full re-skin. Per-user automatic switching to
+    this theme is not provided (an IFW limitation); select it at package time
+    via `release.ps1 -Theme dark`.
+*/
+
+QWidget {
+    background-color: #271f23;
+    color: #efe6ea;
+    font-size: 13px;
+}
+
+QLabel {
+    background: transparent;
+    color: #efe6ea;
+}
+
+QLabel#TitleLabel {
+    font-size: 18px;
+    font-weight: 600;
+    color: #f06292;
+}
+
+QLabel#SubTitleLabel {
+    color: #b59faa;
+}
+
+QPushButton {
+    background-color: #c2185b;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 16px;
+    min-height: 20px;
+}
+
+QPushButton:hover {
+    background-color: #d81b60;
+}
+
+QPushButton:pressed {
+    background-color: #ad1457;
+}
+
+QPushButton:disabled {
+    background-color: #4b3a43;
+    color: #907d87;
+}
+
+QLineEdit, QComboBox, QSpinBox, QPlainTextEdit, QTextEdit {
+    background-color: #33262d;
+    border: 1px solid #4a3740;
+    border-radius: 4px;
+    padding: 4px 6px;
+    color: #efe6ea;
+    selection-background-color: #c2185b;
+    selection-color: #ffffff;
+}
+
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus {
+    border: 1px solid #d81b60;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #33262d;
+    border: 1px solid #4a3740;
+    color: #efe6ea;
+    selection-background-color: #c2185b;
+    selection-color: #ffffff;
+}
+
+QCheckBox, QRadioButton {
+    background: transparent;
+    spacing: 8px;
+}
+
+QCheckBox::indicator, QRadioButton::indicator {
+    width: 16px;
+    height: 16px;
+}
+
+QCheckBox::indicator:unchecked, QRadioButton::indicator:unchecked {
+    border: 1px solid #7d6a74;
+    background: #33262d;
+    border-radius: 3px;
+}
+
+QRadioButton::indicator:unchecked {
+    border-radius: 8px;
+}
+
+QCheckBox::indicator:checked, QRadioButton::indicator:checked {
+    border: 1px solid #c2185b;
+    background: #c2185b;
+    border-radius: 3px;
+}
+
+QRadioButton::indicator:checked {
+    border-radius: 8px;
+}
+
+QTreeView, QListView, QTableView {
+    background-color: #33262d;
+    border: 1px solid #4a3740;
+    alternate-background-color: #3a2b33;
+    color: #efe6ea;
+    selection-background-color: #c2185b;
+    selection-color: #ffffff;
+}
+
+QGroupBox {
+    border: 1px solid #4a3740;
+    border-radius: 4px;
+    margin-top: 8px;
+    padding-top: 8px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 8px;
+    color: #b59faa;
+}
+
+QProgressBar {
+    background-color: #3a2b33;
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    color: #efe6ea;
+    height: 16px;
+}
+
+QProgressBar::chunk {
+    background-color: #c2185b;
+    border-radius: 4px;
+}
+
+QScrollBar:vertical {
+    background: #33262d;
+    width: 12px;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical {
+    background: #513f49;
+    border-radius: 6px;
+    min-height: 24px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #675260;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QMenuBar, QMenu {
+    background-color: #33262d;
+    color: #efe6ea;
+}
+
+QMenu::item:selected {
+    background-color: #c2185b;
+    color: #ffffff;
+}
+
+a, QLabel[openExternalLinks="true"] {
+    color: #f06292;
+}
