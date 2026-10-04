@@ -63,6 +63,9 @@ public:
     /** Removes every entry from the in-memory application log. */
     Q_INVOKABLE void clearLog();
 
+    /** Places the given text on the system clipboard. */
+    Q_INVOKABLE void copyToClipboard(const QString& text);
+
     /**
      * Opens the directory holding the log file in the system file manager.
      * \return \c false when no log file has been written in this session.

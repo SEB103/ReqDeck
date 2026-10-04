@@ -30,3 +30,8 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 - Application layer: startup, settings store, application log (panel model and
   rotating release log file), About metadata and license list, UI language
   plumbing (English), and the update check (disabled until the first release).
+- User interface: launcher with recent workspaces, main window with File,
+  Request, View, and Help menus (request actions are placeholders for now), a
+  three-pane workspace layout, log panel, status bar, settings, About, and
+  update dialogs; magenta accent theme for light and dark mode; placeholder
+  application icon.

@@ -8,6 +8,7 @@
 #include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QString>
+#include <QtQml/QQmlExtensionPlugin>
 
 #include "appcore.h"
 #include "appengine.h"
@@ -16,6 +17,9 @@
 #include "productinfo.h"
 #include "qmlapi/workspacemanager.h"
 #include "updatecontroller.h"
+
+Q_IMPORT_QML_PLUGIN(ReqDeckPlugin)
+Q_IMPORT_QML_PLUGIN(BasePlugin)
 
 int main(int argc, char *argv[])
 {

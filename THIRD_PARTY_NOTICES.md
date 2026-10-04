@@ -49,6 +49,14 @@ Outlined and are embedded in the application resources.
 The SVG path data was not modified; only the file names were normalized. See
 `resources/images/README.md`.
 
+## Country flag (UI-language selector)
+
+The SVG flag `resources/images/flags/gb.svg` is used by the UI-language selector.
+It carries a Creative Commons Public Domain dedication in its source markup.
+
+- **License:** Public Domain (national flags are not subject to copyright; the SVG
+  artwork is released into the public domain).
+
 ## Before distributing binaries
 
 Verify that the license texts and notices for every component you actually ship

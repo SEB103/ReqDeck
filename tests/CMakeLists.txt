@@ -81,3 +81,32 @@ target_link_libraries(tst_workspacemanager
 )
 
 add_test(NAME WorkspaceManager.Unit COMMAND tst_workspacemanager)
+
+find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
+
+qt_add_executable(tst_qml
+    qml/tst_qml.cpp
+)
+
+target_sources(tst_qml
+    PRIVATE
+        qml/tst_menubar.qml
+)
+
+target_compile_definitions(tst_qml
+    PRIVATE QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
+)
+
+target_link_libraries(tst_qml
+    PRIVATE
+        Baseplugin
+        ReqDeckFramework
+        Qt6::Qml
+        Qt6::Quick
+        Qt6::QuickTest
+)
+
+add_test(NAME ReqDeck.QmlSmoke COMMAND tst_qml)
+set_tests_properties(ReqDeck.QmlSmoke PROPERTIES
+    ENVIRONMENT "QML2_IMPORT_PATH=${QT_QML_OUTPUT_DIRECTORY}"
+)

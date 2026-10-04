@@ -1,0 +1,10 @@
+Google Material Symbols
+
+Source:
+https://github.com/google/material-design-icons
+
+License:
+Apache License 2.0
+
+The SVG icons in the svg/ directory are derived from
+Google Material Symbols Outlined.

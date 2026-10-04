@@ -50,8 +50,9 @@ include(cmake/WindowsVersionInfo.cmake)
 # Keep all generated QML module metadata under one predictable build-tree root.
 set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml")
 
-# Build the reusable C++ layers.
+# Build the reusable C++ layers and both QML modules.
 add_subdirectory(src)
+add_subdirectory(qml)
 
 qt_add_executable(appReqDeck
     app/main.cpp
@@ -69,6 +70,9 @@ qt_add_executable(appReqDeck
     app/updatecontroller.h
 )
 
+# Application-level style configuration, branding, icons, and license texts.
+add_subdirectory(resources)
+
 target_include_directories(appReqDeck
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/app"
@@ -79,6 +83,8 @@ target_link_libraries(appReqDeck
     PRIVATE
         ReqDeckQmlApi
         ReqDeckFramework
+        MainQmlplugin
+        Baseplugin
         Qt6::Core
         Qt6::Gui
         Qt6::Network
@@ -88,6 +94,9 @@ target_link_libraries(appReqDeck
         Qt6::QuickDialogs2
         Qt6::Svg
 )
+
+# Ensure statically linked QML plugins are retained and imported correctly.
+qt_import_qml_plugins(appReqDeck)
 
 # The CMake target keeps the conventional app* name; the shipped executable is
 # named after packaging/product.json (exeName), e.g. ReqDeck.exe.
@@ -99,12 +108,13 @@ set_target_properties(appReqDeck PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-# Embed version metadata into the Windows .exe (Explorer file properties). The
-# generated .rc takes its VERSIONINFO block from packaging/product.json; MSVC
-# compiles it automatically. The application icon is added once the branding
-# resources exist.
+# Embed the application icon and version metadata into the Windows .exe (used by
+# Explorer, the taskbar/Alt+Tab and Desktop/Start Menu shortcuts). The generated
+# .rc takes its VERSIONINFO block from packaging/product.json; MSVC compiles it
+# automatically.
 reqdeck_add_windows_version_info(appReqDeck
     DESCRIPTION "${PRODUCT_DISPLAY_NAME}"
+    ICON "${PRODUCT_ICON_PATH}"
 )
 
 # The UI currently ships in English only; the catalog keeps the translation
@@ -124,6 +134,13 @@ install(TARGETS appReqDeck
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 )
+
+qt_generate_deploy_qml_app_script(
+    TARGET appReqDeck
+    OUTPUT_SCRIPT deploy_script
+    NO_UNSUPPORTED_PLATFORM_ERROR
+)
+install(SCRIPT "${deploy_script}")
 
 # Ship the licensing materials required to distribute the binaries (own GPL
 # license plus third-party notices and license texts).

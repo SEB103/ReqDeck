@@ -3,6 +3,7 @@
 
 #include "appengine.h"
 
+#include <QClipboard>
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDebug>
@@ -10,6 +11,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QMetaObject>
 #include <QMutex>
 #include <QMutexLocker>
@@ -352,6 +354,15 @@ bool AppEngine::showLogFileLocation()
 
     return QDesktopServices::openUrl(
         QUrl::fromLocalFile(QFileInfo(path).absolutePath()));
+}
+
+/*!
+ * \brief Places \a text on the system clipboard.
+ */
+void AppEngine::copyToClipboard(const QString& text)
+{
+    if (QClipboard* clipboard = QGuiApplication::clipboard())
+        clipboard->setText(text);
 }
 
 /*!
