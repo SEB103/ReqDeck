@@ -1,0 +1,63 @@
+name: Set up MSVC and Ninja
+description: >-
+  Loads the Visual Studio 2022 x64 developer environment (vcvarsall.bat) into
+  the job environment and makes Ninja available. Replaces ilammy/msvc-dev-cmd
+  and seanmiddleditch/gha-setup-ninja, which still run on Node.js 20.
+
+inputs:
+  arch:
+    description: vcvarsall.bat architecture argument.
+    required: false
+    default: x64
+
+runs:
+  using: composite
+  steps:
+    - name: Load the MSVC developer environment
+      shell: pwsh
+      run: |
+        # Resolve the newest Visual Studio with the C++ x64 toolset, run
+        # vcvarsall.bat inside cmd.exe and export every variable it added or
+        # changed (PATH, INCLUDE, LIB, VCToolsInstallDir, ...) to GITHUB_ENV
+        # so the following steps see the same environment.
+        $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+        if (-not (Test-Path $vswhere)) { throw "vswhere.exe not found at $vswhere" }
+        $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        if (-not $vsPath) { throw 'No Visual Studio installation with the C++ x64 toolset found' }
+        $vcvars = Join-Path $vsPath 'VC\Auxiliary\Build\vcvarsall.bat'
+        if (-not (Test-Path $vcvars)) { throw "vcvarsall.bat not found at $vcvars" }
+        Write-Host "Using $vcvars ${{ inputs.arch }}"
+
+        $before = @{}
+        Get-ChildItem env: | ForEach-Object { $before[$_.Name] = $_.Value }
+        $lines = & cmd.exe /s /c "`"$vcvars`" ${{ inputs.arch }} >nul 2>&1 && set"
+        if ($LASTEXITCODE -ne 0) { throw "vcvarsall.bat ${{ inputs.arch }} failed with exit code $LASTEXITCODE" }
+
+        $exported = 0
+        foreach ($line in $lines) {
+          $i = $line.IndexOf('=')
+          if ($i -lt 1) { continue }
+          $name = $line.Substring(0, $i)
+          $value = $line.Substring($i + 1)
+          if ($before[$name] -ne $value) {
+            "$name=$value" | Out-File -FilePath $env:GITHUB_ENV -Append
+            $exported++
+          }
+        }
+        Write-Host "Exported $exported environment variables"
+
+    - name: Verify the compiler and set up Ninja
+      shell: pwsh
+      run: |
+        $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
+        if (-not $cl) { throw 'cl.exe is not on PATH after loading the MSVC environment' }
+        Write-Host "cl.exe : $($cl.Source)"
+        # Ninja ships with the Visual Studio "C++ CMake tools" component, which
+        # vcvarsall.bat puts on PATH; fall back to the PyPI package otherwise.
+        if (-not (Get-Command ninja.exe -ErrorAction SilentlyContinue)) {
+          Write-Host 'Ninja not on PATH, installing the PyPI package'
+          python -m pip install --disable-pip-version-check ninja
+          if ($LASTEXITCODE -ne 0) { throw 'pip install ninja failed' }
+        }
+        $ninja = Get-Command ninja.exe -ErrorAction Stop
+        Write-Host "ninja  : $($ninja.Source) ($(& $ninja.Source --version))"

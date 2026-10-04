@@ -38,3 +38,6 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 - Windows release packaging: `packaging/release.ps1` builds a hybrid Qt IFW
   installer, a portable ZIP, and an update repository from one verified
   deployment; installer wizard styles in the magenta accent.
+- GitHub Actions: CI (build, unit and QML tests, qmllint) on every push, and a
+  tag-driven release workflow that publishes the installer, the portable ZIP,
+  and the update repository (GitHub Release and Pages).

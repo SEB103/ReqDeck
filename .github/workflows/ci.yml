@@ -1,0 +1,69 @@
+name: Qt CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  QT_VERSION: '6.11.1'
+  # aqtinstall 3.3.0 (the newest PyPI release) cannot read the per-architecture
+  # repository layout Qt introduced with 6.11; the fix (miurahr/aqtinstall#1000)
+  # is only on master, so install-qt-action is pointed at a pinned commit.
+  # Drop AQTINSTALL_SOURCE once a release newer than 3.3.0 is published.
+  AQTINSTALL_SOURCE: 'git+https://github.com/miurahr/aqtinstall.git@076e1659807d0b362a3ed684d54c2e9c775eb9c7'
+  # Parallel extraction of the Qt 6.11.1 archives into one prefix fails (py7zr:
+  # "Bad7zFile: Specified path is bad"; 7-Zip: "Cannot create output directory").
+  # aqtinstall therefore extracts one archive at a time (.github/aqt-settings.ini,
+  # loaded through AQT_CONFIG) using the runner's 7-Zip.
+  AQT_CONFIG: ${{ github.workspace }}/.github/aqt-settings.ini
+  AQT_EXTRA_ARGS: '--external 7z'
+  QT_CACHE_KEY_PREFIX: 'install-qt-action-7z'
+
+jobs:
+  windows-msvc2022:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      CMAKE_GENERATOR: Ninja
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Every module ReqDeck uses (Core, Gui, Network, Qml, Quick, Quick Controls,
+      # Quick Dialogs, SVG, Linguist tools, Test) is part of the base Qt package,
+      # so no extra aqt modules are installed.
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          aqtsource: ${{ env.AQTINSTALL_SOURCE }}
+          extra: ${{ env.AQT_EXTRA_ARGS }}
+          cache: true
+          cache-key-prefix: ${{ env.QT_CACHE_KEY_PREFIX }}
+
+      - name: Set up MSVC and Ninja
+        uses: ./.github/actions/setup-msvc
+        with:
+          arch: x64
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build/ci -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build build/ci --parallel
+
+      - name: Run tests
+        run: ctest --test-dir build/ci --output-on-failure
+
+      - name: Run QML lint targets
+        run: cmake --build build/ci --target all_qmllint

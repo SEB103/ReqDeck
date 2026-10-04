@@ -209,3 +209,60 @@ generated placeholders until final artwork exists; replace `ReqDeck.ico`,
 `MaintenanceTool.ico`, `ReqDeckLogo.png`, and the sources in
 `resources/images/app/source/` together.
 
+---
+
+## 11. Continuous integration and publishing
+
+Two workflows run on `windows-2022` with Qt 6.11.1 installed by
+`jurplel/install-qt-action` (aqtinstall pinned to a commit that reads the Qt 6.11
+repository layout, archives extracted one at a time through
+`.github/aqt-settings.ini`), MSVC and Ninja from the local composite action
+`.github/actions/setup-msvc`:
+
+- **`.github/workflows/ci.yml`** — every push and pull request: configure
+  (Ninja, Release, `BUILD_TESTING=ON`), build, `ctest`, and the `all_qmllint`
+  target.
+- **`.github/workflows/release.yml`** — runs `packaging/release.ps1` with Qt
+  Installer Framework 4.10 (`tools_ifw,qt.tools.ifw.410`, verified by file
+  version before use). Nothing is published unless every earlier job succeeds.
+
+| Trigger | What happens |
+|---------|--------------|
+| push of a tag `vX.Y.Z` | `check` (tag must be `vX.Y.Z` **and** equal the `product.json` `version`) → `test` (configure, build, `ctest`, `qmllint`) ∥ `build` (release pipeline, artifact/version consistency check) → `pages` (publish the update repository) → `release` (GitHub Release with the installer and the ZIP). |
+| `workflow_dispatch` (Actions → Release → Run workflow) | Dry run: `check`, `test`, `build` only. Artifacts are attached to the workflow run; no Release, no Pages deployment. |
+
+Outputs:
+
+- **Workflow artifacts** (`installer`, `portable`, `repository`) on every run.
+- **GitHub Release assets** — `ReqDeck-<version>-Setup.exe` and
+  `ReqDeck-<version>-win64.zip`; the in-app update check reads the latest release
+  through the GitHub Releases API.
+- **GitHub Pages site** — `index.html` (from `packaging/pages/index.html`) plus the
+  complete `repogen` output under `updates/stable/`, from which installed copies
+  fetch updates (`update.channels.stable` in `product.json`). The site is deployed
+  from the workflow artifact; no `gh-pages` branch is used.
+
+Pages is deployed before the Release is created, so the update repository is
+online when the Releases API starts reporting the new version.
+
+### Releasing a new version
+
+1. Set the new version in `packaging/product.json` (`"version": "X.Y.Z"`; there is
+   no other source).
+2. Commit, tag the commit `vX.Y.Z`, and push the commit and the tag.
+3. Watch **Actions → Release**: all five jobs must be green. If `check` fails,
+   the tag and `product.json` disagree; fix `product.json`, commit, and recreate
+   the tag.
+4. Verify that the Release page shows both files and that
+   `https://seb103.github.io/ReqDeck/updates/stable/Updates.xml` declares the new
+   `<Version>`.
+
+### Manual GitHub settings (once, before the first tag)
+
+- **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+- **Settings → Environments → `github-pages`**: add a deployment rule for tags
+  `v*` (type *tag*); otherwise the `pages` job fails with "Tag vX.Y.Z is not
+  allowed to deploy".
+- **Settings → Actions → General**: Actions must be allowed to run; the workflows
+  declare minimal per-job permissions, so the default read-only token setting is
+  sufficient.

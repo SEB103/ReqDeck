@@ -1,0 +1,345 @@
+name: Release
+
+# Builds the Canonical Deployment with packaging/release.ps1 and produces the
+# hybrid installer, the portable ZIP and the Qt IFW update repository.
+#
+#   - push of a tag vX.Y.Z : the tag must equal packaging/product.json "version";
+#                            tests run, the pipeline runs, the repogen output is
+#                            published to GitHub Pages (updates/stable/), and a
+#                            GitHub Release with the installer + ZIP is created.
+#   - workflow_dispatch     : dry run. Same checks, tests and pipeline; the
+#                            artifacts are only uploaded to the workflow run.
+#                            No Release, no Pages deployment, no version change.
+#
+# Artifacts are not code-signed; the release notes carry the Windows
+# installation notice instead.
+#
+# Nothing is published unless every earlier job (check, test, build) succeeded.
+# The version is never derived from the tag; product.json is the only source.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  QT_VERSION: '6.11.1'
+  # Qt Installer Framework: exact tool variant installed by aqt (4.10.0) and the
+  # directory it lands in below $IQTA_TOOLS.
+  IFW_TOOL_VARIANT: 'qt.tools.ifw.410'
+  IFW_DIR_VERSION: '4.10'
+  # aqtinstall 3.3.0 (the newest PyPI release) cannot read the per-architecture
+  # repository layout Qt introduced with 6.11; the fix (miurahr/aqtinstall#1000)
+  # is only on master, so install-qt-action is pointed at a pinned commit.
+  # Drop AQTINSTALL_SOURCE once a release newer than 3.3.0 is published.
+  AQTINSTALL_SOURCE: 'git+https://github.com/miurahr/aqtinstall.git@076e1659807d0b362a3ed684d54c2e9c775eb9c7'
+  # Parallel extraction of the Qt 6.11.1 archives into one prefix fails (py7zr:
+  # "Bad7zFile: Specified path is bad"; 7-Zip: "Cannot create output directory").
+  # aqtinstall therefore extracts one archive at a time (.github/aqt-settings.ini,
+  # loaded through AQT_CONFIG) using the runner's 7-Zip.
+  AQT_CONFIG: ${{ github.workspace }}/.github/aqt-settings.ini
+  AQT_EXTRA_ARGS: '--external 7z'
+  QT_CACHE_KEY_PREFIX: 'install-qt-action-7z'
+  # On Windows, QCommandLineParser shows --help/--version/usage-error text in a
+  # message box when the process has no console window (the case for runner
+  # steps). The Qt IFW tools (devtool, binarycreator, repogen) would then block
+  # forever on the headless runner; this routes the text to stdout/stderr.
+  QT_COMMAND_LINE_PARSER_NO_GUI_MESSAGE_BOXES: '1'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Gate: the product version must be X.Y.Z and, for a tag build, equal the tag.
+  # Runs before any build so a mismatch fails in seconds and publishes nothing.
+  # ---------------------------------------------------------------------------
+  check:
+    name: Check version and tag
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      is_release: ${{ steps.meta.outputs.is_release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Read product.json and validate the tag
+        id: meta
+        shell: bash
+        run: |
+          version="$(jq -r '.version' packaging/product.json)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::packaging/product.json version '$version' is not MAJOR.MINOR.PATCH"
+            exit 1
+          fi
+          is_release=false
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_TYPE" == "tag" ]]; then
+            tag="$GITHUB_REF_NAME"
+            if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::tag '$tag' is not of the form vX.Y.Z"
+              exit 1
+            fi
+            if [[ "${tag#v}" != "$version" ]]; then
+              echo "::error::tag '$tag' does not match packaging/product.json version '$version'"
+              exit 1
+            fi
+            is_release=true
+          fi
+          echo "version=$version"       >> "$GITHUB_OUTPUT"
+          echo "is_release=$is_release" >> "$GITHUB_OUTPUT"
+          echo "version=$version is_release=$is_release"
+
+  # ---------------------------------------------------------------------------
+  # Tests: the same configure/build/ctest/qmllint run as ci.yml, in its own tree.
+  # ---------------------------------------------------------------------------
+  test:
+    name: Build and test
+    timeout-minutes: 60
+    needs: check
+    runs-on: windows-2022
+    permissions:
+      contents: read
+    env:
+      CMAKE_GENERATOR: Ninja
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          aqtsource: ${{ env.AQTINSTALL_SOURCE }}
+          extra: ${{ env.AQT_EXTRA_ARGS }}
+          cache: true
+          cache-key-prefix: ${{ env.QT_CACHE_KEY_PREFIX }}
+
+      - name: Set up MSVC and Ninja
+        uses: ./.github/actions/setup-msvc
+        with:
+          arch: x64
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build/ci -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build build/ci --parallel
+
+      - name: Run tests
+        run: ctest --test-dir build/ci --output-on-failure
+
+      - name: Run QML lint targets
+        run: cmake --build build/ci --target all_qmllint
+
+  # ---------------------------------------------------------------------------
+  # Release pipeline: packaging/release.ps1 -Stage All with a pinned Qt IFW.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Release pipeline
+    timeout-minutes: 60
+    needs: check
+    runs-on: windows-2022
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Qt ${{ env.QT_VERSION }} and Qt Installer Framework ${{ env.IFW_DIR_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          aqtsource: ${{ env.AQTINSTALL_SOURCE }}
+          extra: ${{ env.AQT_EXTRA_ARGS }}
+          tools: 'tools_ifw,${{ env.IFW_TOOL_VARIANT }}'
+          cache: true
+          cache-key-prefix: ${{ env.QT_CACHE_KEY_PREFIX }}
+
+      - name: Set up MSVC and Ninja
+        uses: ./.github/actions/setup-msvc
+        with:
+          arch: x64
+
+      - name: Verify Qt Installer Framework
+        id: ifw
+        shell: pwsh
+        run: |
+          # aqt installs the tool below $IQTA_TOOLS/QtInstallerFramework/<major.minor>;
+          # require the exact binaries and their 4.10.x file version instead of
+          # searching the disk.
+          $root = Join-Path $env:IQTA_TOOLS "QtInstallerFramework/$env:IFW_DIR_VERSION"
+          foreach ($tool in 'binarycreator.exe', 'repogen.exe', 'devtool.exe') {
+            $path = Join-Path $root "bin/$tool"
+            if (-not (Test-Path $path)) { throw "$tool not found at $path" }
+            $fileVersion = (Get-Item $path).VersionInfo.FileVersion
+            if (-not $fileVersion -or -not $fileVersion.StartsWith("$env:IFW_DIR_VERSION.")) {
+              throw "$tool has version '$fileVersion', expected $env:IFW_DIR_VERSION.x"
+            }
+            Write-Host "$tool : $fileVersion"
+          }
+          & (Join-Path $root 'bin/devtool.exe') --version
+          "root=$root" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Run the release pipeline
+        shell: pwsh
+        run: |
+          ./packaging/release.ps1 -Stage All `
+            -CMake cmake -Ninja ninja `
+            -QtPrefix "$env:QT_ROOT_DIR" `
+            -QtIfwRoot "${{ steps.ifw.outputs.root }}"
+          if ($LASTEXITCODE -ne 0) { throw 'release.ps1 failed' }
+
+      - name: Verify artifact versions
+        shell: pwsh
+        env:
+          EXPECTED_VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          # The executable, the IFW package and the artifact names must all carry
+          # the product.json version that the check job validated.
+          $meta = Get-Content packaging/product.json -Raw | ConvertFrom-Json
+          $v = $env:EXPECTED_VERSION
+          if ($meta.version -ne $v) { throw "product.json version $($meta.version) != checked version $v" }
+          $base = $meta.artifactBase
+          $setup = "release/$base-$v-Setup.exe"
+          $zip   = "release/$base-$v-win64.zip"
+          $exe   = "release/$base-$v/$($meta.exeName).exe"
+          $upd   = 'release/repository/Updates.xml'
+          foreach ($f in $setup, $zip, $exe, $upd) {
+            if (-not (Test-Path $f)) { throw "expected artifact missing: $f" }
+          }
+          $exeVersion = (Get-Item $exe).VersionInfo.ProductVersion
+          if (-not $exeVersion.StartsWith($v)) { throw "executable version '$exeVersion' != $v" }
+          if (-not (Select-String -Path $upd -Pattern "<Version>$([regex]::Escape($v))</Version>" -Quiet)) {
+            throw "Updates.xml does not declare package version $v"
+          }
+          Write-Host "Version $v consistent across executable, installer, ZIP and repository."
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: installer
+          path: release/*-Setup.exe
+          if-no-files-found: error
+
+      - name: Upload portable ZIP
+        uses: actions/upload-artifact@v7
+        with:
+          name: portable
+          path: release/*-win64.zip
+          if-no-files-found: error
+
+      - name: Upload update repository
+        uses: actions/upload-artifact@v7
+        with:
+          name: repository
+          path: release/repository/**
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # GitHub Pages: index.html + the complete repogen output under updates/stable/.
+  # Tag builds only. Deployed before the Release so the update repository is
+  # online by the time the GitHub Releases API reports the new version.
+  # ---------------------------------------------------------------------------
+  pages:
+    name: Publish update repository (GitHub Pages)
+    if: needs.check.outputs.is_release == 'true'
+    needs: [check, test, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download update repository
+        uses: actions/download-artifact@v8
+        with:
+          name: repository
+          path: site/updates/stable
+
+      - name: Assemble site
+        shell: bash
+        run: |
+          cp packaging/pages/index.html site/index.html
+          test -f site/updates/stable/Updates.xml
+          find site -type f | sort
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+  # ---------------------------------------------------------------------------
+  # GitHub Release for the pushed tag with the installer and the portable ZIP.
+  # ---------------------------------------------------------------------------
+  release:
+    name: Publish GitHub Release
+    if: needs.check.outputs.is_release == 'true'
+    needs: [check, test, build, pages]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download installer
+        uses: actions/download-artifact@v8
+        with:
+          name: installer
+          path: dist
+
+      - name: Download portable ZIP
+        uses: actions/download-artifact@v8
+        with:
+          name: portable
+          path: dist
+
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          ls -l dist
+          {
+            echo "ReqDeck ${VERSION} for Windows x64."
+            echo
+            echo '* `*-Setup.exe` - installer (creates the Maintenance Tool for in-place updates).'
+            echo '* `*-win64.zip` - portable package (unzip and run; update by replacing the folder).'
+            echo '* *Source code (zip / tar.gz)* - build it yourself with CMake or `packaging/release.ps1`.'
+            echo
+            echo '**Windows installation notice:** these binaries are not code-signed, so Microsoft Edge or Defender SmartScreen may warn about an unknown publisher; this is expected and does not by itself indicate malicious software. See [Installing the result](https://github.com/SEB103/ReqDeck/blob/HEAD/packaging/README.md#6-installing-the-result) for how to proceed; GitHub shows the SHA-256 digest next to each file.'
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --title "ReqDeck ${VERSION}" \
+            --notes-file notes.md \
+            --generate-notes \
+            dist/*-Setup.exe dist/*-win64.zip

@@ -1,0 +1,18 @@
+# Dependabot: keep the GitHub Actions used by the workflows and by the local
+# composite actions (.github/actions/*) up to date. C++ dependencies (Qt)
+# are not covered by Dependabot and are bumped by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - "/"
+      - "/.github/actions/*"
+    schedule:
+      interval: weekly
+    # One PR per run for all action bumps instead of one PR per action.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
