@@ -28,3 +28,32 @@ target_link_libraries(tst_logmodel
 )
 
 add_test(NAME LogModel.Unit COMMAND tst_logmodel)
+
+qt_add_executable(tst_workspaceserializer
+    unit/tst_workspaceserializer.cpp
+)
+
+target_link_libraries(tst_workspaceserializer
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME WorkspaceSerializer.Unit COMMAND tst_workspaceserializer)
+
+qt_add_executable(tst_workspacemanager
+    unit/tst_workspacemanager.cpp
+)
+
+target_include_directories(tst_workspacemanager
+    PRIVATE
+        "${REQDECK_GENERATED_DIR}"
+)
+
+target_link_libraries(tst_workspacemanager
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Test
+)
+
+add_test(NAME WorkspaceManager.Unit COMMAND tst_workspacemanager)

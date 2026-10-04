@@ -24,3 +24,6 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
   Windows version resource, MSVC 2022 presets); the executable is `ReqDeck.exe`.
 - `ReqDeckFramework` library: portable/installed data-location policy (`AppPaths`)
   and the in-application log models, with unit tests.
+- Workspace files (`.reqdeck`, JSON schema 1) with validated loading and atomic
+  saving, and the workspace manager for create/open/save/save as/close and the
+  recent-workspaces list, with unit tests.
