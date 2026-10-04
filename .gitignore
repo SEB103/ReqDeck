@@ -1,0 +1,79 @@
+# Build output
+/build/
+/build-*/
+/cmake-build-*/
+
+# Local AI assistants and skills
+/.claude/
+/.opencode/
+/.codex/
+/.agents/
+
+/CLAUDE.md
+/AGENTS.md
+/opencode.jsonc
+
+# Qt Creator user state
+*.user
+*.user.*
+.qtcreator/
+
+# VS Code workspace state (machine-specific paths)
+.vscode/
+
+# CMake-generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+
+# Generated Qt files
+*.qmlc
+*.jsc
+*.qm
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+
+# Compiler/linker output
+*.obj
+*.o
+*.a
+*.lib
+*.dll
+*.so
+*.so.*
+*.dylib
+*.exe
+*.pdb
+*.ilk
+
+# Editor/OS files
+*.autosave
+*.orig
+*.rej
+*~
+.DS_Store
+Thumbs.db
+
+# Local CMake preset overrides
+CMakeUserPresets.json
+
+# Runtime application data and logs
+/log/
+*.log
+
+# Release pipeline output and generated installer artifacts (see packaging/)
+/release/
+/installer/packages/*/data/
+/installer/packages/*/meta/package.xml
+/installer/packages/*/meta/license-gpl.txt
+/installer/packages/*/meta/third-party.txt
+/installer/config/config.xml
+/installer/config/style.qss
+/installer/config/installer.ico
+/installer/config/logo.png
+/installer/config/banner.png

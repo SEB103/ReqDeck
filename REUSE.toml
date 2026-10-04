@@ -1,0 +1,64 @@
+version = 1
+
+# REUSE (https://reuse.software) licensing metadata for ReqDeck.
+#
+# Files created from this point on carry their own SPDX headers
+# ("SPDX-License-Identifier" + "SPDX-FileCopyrightText"). The annotations below
+# declare the licensing of files that do not (yet) carry an in-file header, so
+# the whole tree has an unambiguous, machine-readable licensing statement without
+# a repository-wide header rewrite. In-file headers take precedence over these
+# annotations ("precedence = aggregate").
+
+SPDX-PackageName = "ReqDeck"
+SPDX-PackageSupplier = "ReqDeck Project"
+SPDX-PackageDownloadLocation = "https://github.com/SEB103/ReqDeck"
+
+# Own source code, build system, QML, tests, packaging and translations:
+# GPL-3.0-or-later.
+[[annotations]]
+path = [
+    "app/**",
+    "src/**",
+    "qml/**",
+    "tests/**",
+    "cmake/**",
+    "translations/**",
+    "packaging/**",
+    "installer/**",
+    ".github/**",
+    "CMakeLists.txt",
+    "CMakePresets.json",
+    ".gitattributes",
+    ".gitignore",
+    "resources/CMakeLists.txt",
+    "resources/qtquickcontrols2.conf",
+    "resources/images/app/**",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Copyright (C) 2026 ReqDeck Project"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Project documentation and notices.
+[[annotations]]
+path = [
+    "README.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "NOTICE",
+    "THIRD_PARTY_NOTICES.md",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Copyright (C) 2026 ReqDeck Project"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Third-party asset: Google Material Symbols Outlined SVG icons (unmodified path
+# data, renamed files). Licensed under Apache-2.0 by Google LLC.
+[[annotations]]
+path = [
+    "resources/images/svg/**",
+    "resources/images/README.md",
+    "resources/images/LICENSE-Material-Symbols.txt",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Copyright (C) Google LLC"
+SPDX-License-Identifier = "Apache-2.0"
