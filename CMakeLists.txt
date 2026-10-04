@@ -48,6 +48,9 @@ include(cmake/WindowsVersionInfo.cmake)
 # Keep all generated QML module metadata under one predictable build-tree root.
 set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml")
 
+# Build the reusable C++ layers.
+add_subdirectory(src)
+
 qt_add_executable(appReqDeck
     app/main.cpp
 )
@@ -81,6 +84,10 @@ set_target_properties(appReqDeck PROPERTIES
 reqdeck_add_windows_version_info(appReqDeck
     DESCRIPTION "${PRODUCT_DISPLAY_NAME}"
 )
+
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
 
 install(TARGETS appReqDeck
     BUNDLE DESTINATION .
