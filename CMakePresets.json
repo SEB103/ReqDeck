@@ -1,0 +1,72 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-msvc2022-base",
+      "hidden": true,
+      "displayName": "Windows MSVC 2022 base",
+      "generator": "Visual Studio 17 2022",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "$env{QTDIR}",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON"
+      }
+    },
+    {
+      "name": "windows-msvc2022-debug",
+      "displayName": "Windows MSVC 2022 Debug",
+      "inherits": "windows-msvc2022-base",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Debug"
+      }
+    },
+    {
+      "name": "windows-msvc2022-release",
+      "displayName": "Windows MSVC 2022 Release",
+      "inherits": "windows-msvc2022-base",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-msvc2022-debug",
+      "configurePreset": "windows-msvc2022-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-msvc2022-release",
+      "configurePreset": "windows-msvc2022-release",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "windows-msvc2022-debug",
+      "configurePreset": "windows-msvc2022-debug",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-msvc2022-release",
+      "configurePreset": "windows-msvc2022-release",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

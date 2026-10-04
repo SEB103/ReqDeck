@@ -20,3 +20,5 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 
 ### Added
 - Repository base: license texts, notices, REUSE metadata, and security policy.
+- CMake build skeleton driven by `packaging/product.json` (product metadata header,
+  Windows version resource, MSVC 2022 presets); the executable is `ReqDeck.exe`.

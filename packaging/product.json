@@ -1,0 +1,31 @@
+{
+  "$comment": "Single source of truth for product identity and packaging. Read by CMake (cmake/ProductMetadata.cmake) and by the release scripts (packaging/*.ps1). To rename the product, change only displayName and installDirName; the identifier, orgDomain, exeName and componentId are STABLE and must not change after the first release, so that data locations and the update path survive the rename.",
+
+  "displayName": "ReqDeck",
+  "identifier": "ReqDeck",
+  "orgDomain": "reqdeck.local",
+
+  "version": "0.0.1",
+
+  "publisher": "ReqDeck Project",
+  "copyright": "Copyright (C) 2026 ReqDeck Project",
+  "homepage": "https://github.com/SEB103/ReqDeck",
+
+  "exeName": "ReqDeck",
+  "installDirName": "ReqDeck",
+  "componentId": "com.reqdeck.app",
+  "maintenanceToolName": "ReqDeckMaintenanceTool",
+  "artifactBase": "ReqDeck",
+
+  "update": {
+    "enabled": false,
+    "releasesApiUrl": "https://api.github.com/repos/SEB103/ReqDeck/releases/latest",
+    "releasesPageUrl": "https://github.com/SEB103/ReqDeck/releases",
+    "defaultChannel": "stable",
+    "channels": {
+      "stable": "https://seb103.github.io/ReqDeck/updates/stable/",
+      "preview": "https://example.invalid/reqdeck/updates/preview",
+      "dev": "https://example.invalid/reqdeck/updates/dev"
+    }
+  }
+}
