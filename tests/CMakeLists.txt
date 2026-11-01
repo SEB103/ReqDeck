@@ -118,6 +118,35 @@ target_link_libraries(tst_requestbuilder
 
 add_test(NAME RequestBuilder.Unit COMMAND tst_requestbuilder)
 
+# Local HTTP/1.1 server for network tests; tests never contact external hosts.
+qt_add_library(ReqDeckTestSupport STATIC
+    support/mockhttpserver.cpp
+    support/mockhttpserver.h
+)
+
+target_include_directories(ReqDeckTestSupport
+    PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/support"
+)
+
+target_link_libraries(ReqDeckTestSupport
+    PUBLIC
+        Qt6::Network
+)
+
+qt_add_executable(tst_httpexecutor
+    unit/tst_httpexecutor.cpp
+)
+
+target_link_libraries(tst_httpexecutor
+    PRIVATE
+        ReqDeckCore
+        ReqDeckTestSupport
+        Qt6::Test
+)
+
+add_test(NAME HttpExecutor.Unit COMMAND tst_httpexecutor)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml

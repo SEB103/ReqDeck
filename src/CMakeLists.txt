@@ -33,6 +33,8 @@ target_sources(ReqDeckCore
     PRIVATE
         core/http/httpencoding.cpp
         core/http/httpencoding.h
+        core/http/httpexecutor.cpp
+        core/http/httpexecutor.h
         core/http/requestbuilder.cpp
         core/http/requestbuilder.h
         core/http/requestspec.cpp
