@@ -31,6 +31,10 @@ qt_add_library(ReqDeckCore STATIC)
 
 target_sources(ReqDeckCore
     PRIVATE
+        core/http/httpencoding.cpp
+        core/http/httpencoding.h
+        core/http/requestbuilder.cpp
+        core/http/requestbuilder.h
         core/http/requestspec.cpp
         core/http/requestspec.h
         core/http/responsedata.h
