@@ -31,6 +31,9 @@ qt_add_library(ReqDeckCore STATIC)
 
 target_sources(ReqDeckCore
     PRIVATE
+        core/http/requestspec.cpp
+        core/http/requestspec.h
+        core/http/responsedata.h
         core/workspace/workspacedata.h
         core/workspace/workspaceserializer.cpp
         core/workspace/workspaceserializer.h
@@ -44,6 +47,7 @@ target_include_directories(ReqDeckCore
 target_link_libraries(ReqDeckCore
     PUBLIC
         Qt6::Core
+        Qt6::Network
 )
 
 # QObject facades exposed to QML as context properties.

@@ -82,6 +82,18 @@ target_link_libraries(tst_workspacemanager
 
 add_test(NAME WorkspaceManager.Unit COMMAND tst_workspacemanager)
 
+qt_add_executable(tst_requestspec
+    unit/tst_requestspec.cpp
+)
+
+target_link_libraries(tst_requestspec
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME RequestSpec.Unit COMMAND tst_requestspec)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml
