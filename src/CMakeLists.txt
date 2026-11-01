@@ -31,6 +31,8 @@ qt_add_library(ReqDeckCore STATIC)
 
 target_sources(ReqDeckCore
     PRIVATE
+        core/http/curlconverter.cpp
+        core/http/curlconverter.h
         core/http/httpencoding.cpp
         core/http/httpencoding.h
         core/http/httpexecutor.cpp

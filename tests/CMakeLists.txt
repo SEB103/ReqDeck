@@ -147,6 +147,18 @@ target_link_libraries(tst_httpexecutor
 
 add_test(NAME HttpExecutor.Unit COMMAND tst_httpexecutor)
 
+qt_add_executable(tst_curlconverter
+    unit/tst_curlconverter.cpp
+)
+
+target_link_libraries(tst_curlconverter
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME CurlConverter.Unit COMMAND tst_curlconverter)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml
