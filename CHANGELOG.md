@@ -41,3 +41,8 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 - GitHub Actions: CI (build, unit and QML tests, qmllint) on every push, and a
   tag-driven release workflow that publishes the installer, the portable ZIP,
   and the update repository (GitHub Release and Pages).
+- HTTP core in `ReqDeckCore` (not yet wired to the UI): request model with
+  query parameters, headers, raw/form bodies, and Basic/Bearer/API-key auth;
+  `{{variable}}` resolution; request builder; asynchronous executor with
+  timeout, abort, redirect, and TLS-error handling; cURL import and export.
+  Unit tests run against a local mock HTTP server only.
