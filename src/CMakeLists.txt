@@ -34,6 +34,8 @@ target_sources(ReqDeckCore
         core/http/requestspec.cpp
         core/http/requestspec.h
         core/http/responsedata.h
+        core/http/variableresolver.cpp
+        core/http/variableresolver.h
         core/workspace/workspacedata.h
         core/workspace/workspaceserializer.cpp
         core/workspace/workspaceserializer.h

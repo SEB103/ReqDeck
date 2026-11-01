@@ -94,6 +94,18 @@ target_link_libraries(tst_requestspec
 
 add_test(NAME RequestSpec.Unit COMMAND tst_requestspec)
 
+qt_add_executable(tst_variableresolver
+    unit/tst_variableresolver.cpp
+)
+
+target_link_libraries(tst_variableresolver
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME VariableResolver.Unit COMMAND tst_variableresolver)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml
