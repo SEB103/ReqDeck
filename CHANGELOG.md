@@ -46,3 +46,8 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
   `{{variable}}` resolution; request builder; asynchronous executor with
   timeout, abort, redirect, and TLS-error handling; cURL import and export.
   Unit tests run against a local mock HTTP server only.
+- Workspace persistence (not yet wired to the UI): `.reqdeck` files hold a
+  validated collection of folders and requests and typed environments; values of
+  secret variables stay out of the file, in a per-user secrets file (not
+  encrypted); request history of 200 entries with literal credentials removed; a
+  samples workspace against public test APIs, seeded into the data directory.
