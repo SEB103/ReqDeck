@@ -159,6 +159,18 @@ target_link_libraries(tst_curlconverter
 
 add_test(NAME CurlConverter.Unit COMMAND tst_curlconverter)
 
+qt_add_executable(tst_requestjson
+    unit/tst_requestjson.cpp
+)
+
+target_link_libraries(tst_requestjson
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME RequestJson.Unit COMMAND tst_requestjson)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml
