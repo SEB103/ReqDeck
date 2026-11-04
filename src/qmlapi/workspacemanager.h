@@ -25,8 +25,10 @@ QT_END_NAMESPACE
  * Exposed to QML as the \c cppWorkspaceManager context property. The active
  * workspace's .reqdeck file is the single source of truth for workspace data;
  * this class holds that data in memory while the workspace is open and writes it
- * back on save. The recent-workspaces list is application-global metadata and is
- * stored in the injected QSettings store, never inside a workspace file.
+ * back on save. Values of secret variables stay out of that file and are joined
+ * from a SecretStore on open and written there on save. The recent-workspaces
+ * list is application-global metadata and is stored in the injected QSettings
+ * store, never inside a workspace file.
  */
 class WorkspaceManager : public QObject
 {
@@ -85,6 +87,12 @@ public:
      * Ownership stays with the caller; passing null disables persistence.
      */
     void setSettings(QSettings *settings);
+
+    /** Sets the directory of the secret values; an empty string restores the default. */
+    void setSecretsDir(const QString &directory);
+
+    /** Returns the configured directory of the secret values, or AppPaths::secretsDir(). */
+    QString secretsDir() const;
 
     /** Returns the in-memory data of the active workspace (empty when none is active). */
     const WorkspaceData &workspaceData() const;
@@ -229,6 +237,9 @@ protected:
 
     /** Recent-workspace entries in display order, newest first. */
     QList<RecentEntry> m_recent;
+
+    /** Configured directory of the secret values; empty selects the default. */
+    QString m_secretsDir;
 
     /** Absolute .reqdeck path of the active workspace; empty when none is active. */
     QString m_activePath;

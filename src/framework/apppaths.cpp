@@ -137,3 +137,8 @@ QString AppPaths::defaultWorkspacesDir() const
     ensureInitialized();
     return m_defaultWorkspacesDir;
 }
+
+QString AppPaths::secretsDir() const
+{
+    return QDir(dataDir()).filePath(QStringLiteral("secrets"));
+}

@@ -38,6 +38,9 @@ private slots:
     /*! Verifies that workspaces default to Documents/<product identifier>. */
     void workspacesDefaultToDocumentsFolder();
 
+    /*! Verifies that secret values are stored below the data directory. */
+    void secretsDirIsUnderDataDir();
+
     /*! Verifies that a second initialize() call does not change the result. */
     void initializeIsIdempotent();
 };
@@ -97,6 +100,12 @@ void AppPathsTest::initializeIsIdempotent()
     const QString before = AppPaths::instance().configDir();
     AppPaths::instance().initialize();
     QCOMPARE(AppPaths::instance().configDir(), before);
+}
+
+void AppPathsTest::secretsDirIsUnderDataDir()
+{
+    const AppPaths &paths = AppPaths::instance();
+    QCOMPARE(paths.secretsDir(), paths.dataDir() + QStringLiteral("/secrets"));
 }
 
 QTEST_GUILESS_MAIN(AppPathsTest)

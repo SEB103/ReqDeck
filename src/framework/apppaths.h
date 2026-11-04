@@ -53,6 +53,9 @@ public:
     /** Default directory for user workspace (.reqdeck) files. */
     QString defaultWorkspacesDir() const;
 
+    /** Directory for the values of secret environment variables. */
+    QString secretsDir() const;
+
 private:
     AppPaths() = default;
 

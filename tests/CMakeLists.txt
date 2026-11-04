@@ -171,6 +171,18 @@ target_link_libraries(tst_requestjson
 
 add_test(NAME RequestJson.Unit COMMAND tst_requestjson)
 
+qt_add_executable(tst_secretstore
+    unit/tst_secretstore.cpp
+)
+
+target_link_libraries(tst_secretstore
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME SecretStore.Unit COMMAND tst_secretstore)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml

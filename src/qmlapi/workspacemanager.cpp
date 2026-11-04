@@ -10,6 +10,7 @@
 #include <QUrl>
 #include <QVariantMap>
 
+#include "core/workspace/secretstore.h"
 #include "core/workspace/workspaceserializer.h"
 #include "framework/apppaths.h"
 
@@ -196,6 +197,23 @@ void WorkspaceManager::setDefaultWorkspacesDir(const QString &pathOrUrl)
 }
 
 /*!
+ * \brief Sets the directory of the secret values.
+ * \param directory The directory, or an empty string for the default.
+ */
+void WorkspaceManager::setSecretsDir(const QString &directory)
+{
+    m_secretsDir = directory;
+}
+
+/*!
+ * \brief Returns the configured directory of the secret values, or the default.
+ */
+QString WorkspaceManager::secretsDir() const
+{
+    return m_secretsDir.isEmpty() ? AppPaths::instance().secretsDir() : m_secretsDir;
+}
+
+/*!
  * \brief Injects the INI settings store and loads the recent-workspaces list.
  * \param settings Non-owning settings store, or null to disable persistence.
  */
@@ -246,6 +264,7 @@ bool WorkspaceManager::createWorkspaceAtPath(const QString &pathOrUrl)
     }
 
     WorkspaceData data;
+    data.id = newItemId();
     data.displayName = QFileInfo(path).completeBaseName();
 
     QString error;
@@ -265,7 +284,10 @@ bool WorkspaceManager::createWorkspaceAtPath(const QString &pathOrUrl)
 /*!
  * \brief Opens the workspace at \a pathOrUrl and makes it the active workspace.
  *
- * A file without a stored display name is shown under its file name.
+ * A file without a stored display name is shown under its file name. A file
+ * without an id gets one that is written with the next save, which does not
+ * count as an unsaved change. Secret values that cannot be read are reported as
+ * a warning: the workspace itself is intact, and the user can enter them again.
  */
 bool WorkspaceManager::openWorkspace(const QString &pathOrUrl)
 {
@@ -279,12 +301,22 @@ bool WorkspaceManager::openWorkspace(const QString &pathOrUrl)
     if (result.data.displayName.isEmpty())
         result.data.displayName = QFileInfo(path).completeBaseName();
 
+    if (result.data.id.isEmpty())
+        result.data.id = newItemId();
+
     const QString name = result.data.displayName;
+    const bool secretsRead = SecretStore(secretsDir()).applyTo(result.data);
+
     setActiveWorkspace(path, result.data);
     addOrUpdateRecent(path, name);
     notify(Diagnostics::Info, [=, this] {
         return tr("Opened workspace %1.").arg(name);
     });
+    if (!secretsRead) {
+        notify(Diagnostics::Warning, [=, this] {
+            return tr("The secret values of workspace %1 could not be read.").arg(name);
+        });
+    }
     return true;
 }
 
@@ -336,14 +368,22 @@ bool WorkspaceManager::saveWorkspaceAs(const QString &pathOrUrl)
  * On success the file becomes the active workspace under \a displayName and the
  * dirty flag is cleared; on failure workspaceError() is emitted and the active
  * workspace is left unchanged.
+ *
+ * A write to another file creates a separate workspace, which gets its own id
+ * and therefore its own secrets; the original keeps its secrets file. The
+ * secret values are written first, so a failure there leaves the workspace file
+ * untouched instead of saving a file whose secrets are lost.
  */
 bool WorkspaceManager::writeActiveWorkspaceTo(const QString &path, const QString &displayName)
 {
     WorkspaceData data = m_data;
     data.displayName = displayName;
+    if (canonicalKey(path) != canonicalKey(m_activePath))
+        data.id = newItemId();
 
     QString error;
-    if (!WorkspaceSerializer::save(path, data, &error)) {
+    if (!SecretStore(secretsDir()).save(data, &error)
+        || !WorkspaceSerializer::save(path, data, &error)) {
         emit workspaceError(error);
         return false;
     }

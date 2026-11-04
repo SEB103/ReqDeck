@@ -8,9 +8,11 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QUrl>
+#include <QUuid>
 #include <QVariantMap>
 #include <QtTest>
 
+#include "core/workspace/secretstore.h"
 #include "core/workspace/workspaceserializer.h"
 #include "productinfo.h"
 #include "qmlapi/workspacemanager.h"
@@ -27,6 +29,31 @@ public:
     using WorkspaceManager::setActiveWorkspace;
     using WorkspaceManager::setDirty;
 };
+
+/*!
+ * \internal
+ * \brief Returns \a data with one environment holding a plain and a secret variable.
+ */
+static WorkspaceData withSecret(WorkspaceData data, const QString &secretValue)
+{
+    Environment environment;
+    environment.id = QStringLiteral("e1");
+    environment.name = QStringLiteral("Env");
+    environment.variables = {{QStringLiteral("baseUrl"), QStringLiteral("https://h"), true, false},
+                             {QStringLiteral("token"), secretValue, true, true}};
+    data.environments = {environment};
+    return data;
+}
+
+/*!
+ * \internal
+ * \brief Returns the content of the file at \a path.
+ */
+static QByteArray readFile(const QString &path)
+{
+    QFile file(path);
+    return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
+}
 
 /*! Verifies WorkspaceManager recent-list, file, and active-workspace behavior. */
 class WorkspaceManagerTest : public QObject
@@ -96,6 +123,33 @@ private slots:
 
     /*! Verifies that setting the default workspaces directory persists across reload. */
     void defaultWorkspacesDirPersists();
+
+    /*! Verifies that a new workspace gets a UUID as id. */
+    void createAssignsWorkspaceId();
+
+    /*! Verifies that opening a file without id assigns one and stays clean. */
+    void openAssignsMissingIdWithoutDirty();
+
+    /*! Verifies that secret values live outside the file and survive reopening. */
+    void secretsSurviveReopen();
+
+    /*! Verifies that a failing secrets write leaves the workspace file untouched. */
+    void secretsFailureLeavesFileUntouched();
+
+    /*! Verifies that a corrupt secrets file warns but opens the workspace. */
+    void corruptSecretsKeepWorkspaceOpen();
+
+    /*! Verifies that clearing the secret flag moves the value into the file. */
+    void clearingSecretFlagMovesValueToFile();
+
+    /*! Verifies that removing the last secret removes its store file. */
+    void removedSecretLeavesStore();
+
+    /*! Verifies that Save As gives the copy its own id and secrets. */
+    void saveAsGetsOwnSecrets();
+
+    /*! Verifies that saving to the same file keeps the workspace id. */
+    void saveKeepsWorkspaceId();
 
 private:
     /*! Builds a settings store inside \a dir for one test. */
@@ -547,6 +601,228 @@ void WorkspaceManagerTest::defaultWorkspacesDirPersists()
     TestableWorkspaceManager reloaded;
     reloaded.setSettings(new QSettings(settingsPath, QSettings::IniFormat, &reloaded));
     QCOMPARE(reloaded.defaultWorkspacesDir(), QDir::cleanPath(chosen));
+}
+
+void WorkspaceManagerTest::createAssignsWorkspaceId()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    const QString path = dir.filePath(QStringLiteral("Id.reqdeck"));
+    QVERIFY(manager.createWorkspaceAtPath(path));
+
+    QVERIFY(!QUuid::fromString(manager.workspaceData().id).isNull());
+    QCOMPARE(WorkspaceSerializer::load(path).data.id, manager.workspaceData().id);
+}
+
+void WorkspaceManagerTest::openAssignsMissingIdWithoutDirty()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    const QString path = dir.filePath(QStringLiteral("Old.reqdeck"));
+    QVERIFY(WorkspaceSerializer::save(path, WorkspaceData {}));
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.openWorkspace(path));
+
+    QVERIFY(!QUuid::fromString(manager.workspaceData().id).isNull());
+    QVERIFY(!manager.dirty());
+
+    QVERIFY(manager.saveWorkspace());
+    QCOMPARE(WorkspaceSerializer::load(path).data.id, manager.workspaceData().id);
+}
+
+void WorkspaceManagerTest::secretsSurviveReopen()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("Secret.reqdeck"));
+
+    {
+        TestableWorkspaceManager manager;
+        manager.setSettings(makeSettings(dir, &manager));
+        manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+        QVERIFY(manager.createWorkspaceAtPath(path));
+        manager.updateWorkspaceData(
+            withSecret(manager.workspaceData(), QStringLiteral("s3cret-value")));
+        QVERIFY(manager.saveWorkspace());
+    }
+
+    QVERIFY(!readFile(path).contains("s3cret-value"));
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.openWorkspace(path));
+    QCOMPARE(manager.workspaceData().environments.at(0).variables.at(1).value,
+             QStringLiteral("s3cret-value"));
+    QVERIFY(!manager.dirty());
+}
+
+void WorkspaceManagerTest::secretsFailureLeavesFileUntouched()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("Blocked.reqdeck"));
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.createWorkspaceAtPath(path));
+    manager.updateWorkspaceData(withSecret(manager.workspaceData(), QStringLiteral("v")));
+    const QByteArray before = readFile(path);
+
+    const QString blocked = dir.filePath(QStringLiteral("blocked"));
+    QFile blocker(blocked);
+    QVERIFY(blocker.open(QIODevice::WriteOnly));
+    blocker.close();
+    manager.setSecretsDir(blocked);
+
+    QSignalSpy errorSpy(&manager, &WorkspaceManager::workspaceError);
+    QVERIFY(!manager.saveWorkspace());
+    QCOMPARE(errorSpy.count(), 1);
+    QCOMPARE(readFile(path), before);
+    QVERIFY(manager.dirty());
+}
+
+void WorkspaceManagerTest::corruptSecretsKeepWorkspaceOpen()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("Corrupt.reqdeck"));
+    const QString secretsDir = dir.filePath(QStringLiteral("secrets"));
+
+    QString id;
+    {
+        TestableWorkspaceManager manager;
+        manager.setSettings(makeSettings(dir, &manager));
+        manager.setSecretsDir(secretsDir);
+        QVERIFY(manager.createWorkspaceAtPath(path));
+        manager.updateWorkspaceData(withSecret(manager.workspaceData(), QStringLiteral("v")));
+        QVERIFY(manager.saveWorkspace());
+        id = manager.workspaceData().id;
+    }
+
+    QFile secrets(SecretStore(secretsDir).filePath(id));
+    QVERIFY(secrets.open(QIODevice::WriteOnly));
+    secrets.write("{oops");
+    secrets.close();
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(secretsDir);
+    QSignalSpy notifySpy(&manager, &WorkspaceManager::notification);
+    QVERIFY(manager.openWorkspace(path));
+
+    int warnings = 0;
+    for (const QList<QVariant> &arguments : std::as_const(notifySpy)) {
+        if (arguments.at(0).toInt() == Diagnostics::Warning)
+            ++warnings;
+    }
+    QCOMPARE(warnings, 1);
+    QVERIFY(manager.workspaceData().environments.at(0).variables.at(1).value.isEmpty());
+}
+
+void WorkspaceManagerTest::clearingSecretFlagMovesValueToFile()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("Flag.reqdeck"));
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.createWorkspaceAtPath(path));
+    manager.updateWorkspaceData(withSecret(manager.workspaceData(), QStringLiteral("now-public")));
+    QVERIFY(manager.saveWorkspace());
+    QVERIFY(!readFile(path).contains("now-public"));
+
+    WorkspaceData changed = manager.workspaceData();
+    changed.environments[0].variables[1].secret = false;
+    manager.updateWorkspaceData(changed);
+    QVERIFY(manager.saveWorkspace());
+
+    QVERIFY(readFile(path).contains("now-public"));
+    QVERIFY(!QFile::exists(SecretStore(manager.secretsDir()).filePath(changed.id)));
+}
+
+void WorkspaceManagerTest::removedSecretLeavesStore()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.createWorkspaceAtPath(dir.filePath(QStringLiteral("Gone.reqdeck"))));
+    manager.updateWorkspaceData(withSecret(manager.workspaceData(), QStringLiteral("v")));
+    QVERIFY(manager.saveWorkspace());
+
+    const QString secretsFile = SecretStore(manager.secretsDir()).filePath(manager.workspaceData().id);
+    QVERIFY(QFile::exists(secretsFile));
+
+    WorkspaceData changed = manager.workspaceData();
+    changed.environments[0].variables.removeAt(1);
+    manager.updateWorkspaceData(changed);
+    QVERIFY(manager.saveWorkspace());
+    QVERIFY(!QFile::exists(secretsFile));
+}
+
+void WorkspaceManagerTest::saveAsGetsOwnSecrets()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString firstPath = dir.filePath(QStringLiteral("First.reqdeck"));
+    const QString secretsDir = dir.filePath(QStringLiteral("secrets"));
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(secretsDir);
+    QVERIFY(manager.createWorkspaceAtPath(firstPath));
+    manager.updateWorkspaceData(withSecret(manager.workspaceData(), QStringLiteral("original")));
+    QVERIFY(manager.saveWorkspace());
+    const QString firstId = manager.workspaceData().id;
+
+    QVERIFY(manager.saveWorkspaceAs(dir.filePath(QStringLiteral("Copy.reqdeck"))));
+    const QString copyId = manager.workspaceData().id;
+    QVERIFY(copyId != firstId);
+    QVERIFY(!QUuid::fromString(copyId).isNull());
+
+    const SecretStore store(secretsDir);
+    QVERIFY(QFile::exists(store.filePath(firstId)));
+    QVERIFY(QFile::exists(store.filePath(copyId)));
+
+    WorkspaceData changed = manager.workspaceData();
+    changed.environments[0].variables[1].value = QStringLiteral("changed");
+    manager.updateWorkspaceData(changed);
+    QVERIFY(manager.saveWorkspace());
+
+    QVERIFY(manager.openWorkspace(firstPath));
+    QCOMPARE(manager.workspaceData().environments.at(0).variables.at(1).value,
+             QStringLiteral("original"));
+}
+
+void WorkspaceManagerTest::saveKeepsWorkspaceId()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("Same.reqdeck"));
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.createWorkspaceAtPath(path));
+    const QString id = manager.workspaceData().id;
+
+    QVERIFY(manager.saveWorkspace());
+    QVERIFY(manager.saveWorkspaceAs(path));
+    QCOMPARE(manager.workspaceData().id, id);
 }
 
 QTEST_GUILESS_MAIN(WorkspaceManagerTest)
