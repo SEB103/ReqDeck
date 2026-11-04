@@ -183,6 +183,18 @@ target_link_libraries(tst_secretstore
 
 add_test(NAME SecretStore.Unit COMMAND tst_secretstore)
 
+qt_add_executable(tst_historystore
+    unit/tst_historystore.cpp
+)
+
+target_link_libraries(tst_historystore
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME HistoryStore.Unit COMMAND tst_historystore)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml

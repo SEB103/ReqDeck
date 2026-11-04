@@ -31,6 +31,8 @@ qt_add_library(ReqDeckCore STATIC)
 
 target_sources(ReqDeckCore
     PRIVATE
+        core/history/historystore.cpp
+        core/history/historystore.h
         core/http/curlconverter.cpp
         core/http/curlconverter.h
         core/http/httpencoding.cpp
@@ -44,6 +46,8 @@ target_sources(ReqDeckCore
         core/http/responsedata.h
         core/http/variableresolver.cpp
         core/http/variableresolver.h
+        core/workspace/jsonfile.cpp
+        core/workspace/jsonfile.h
         core/workspace/requestjson.cpp
         core/workspace/requestjson.h
         core/workspace/secretstore.cpp

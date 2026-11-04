@@ -142,3 +142,8 @@ QString AppPaths::secretsDir() const
 {
     return QDir(dataDir()).filePath(QStringLiteral("secrets"));
 }
+
+QString AppPaths::historyFilePath() const
+{
+    return QDir(dataDir()).filePath(QStringLiteral("history.json"));
+}

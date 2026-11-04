@@ -41,6 +41,9 @@ private slots:
     /*! Verifies that secret values are stored below the data directory. */
     void secretsDirIsUnderDataDir();
 
+    /*! Verifies that the request history is stored below the data directory. */
+    void historyFileIsUnderDataDir();
+
     /*! Verifies that a second initialize() call does not change the result. */
     void initializeIsIdempotent();
 };
@@ -106,6 +109,12 @@ void AppPathsTest::secretsDirIsUnderDataDir()
 {
     const AppPaths &paths = AppPaths::instance();
     QCOMPARE(paths.secretsDir(), paths.dataDir() + QStringLiteral("/secrets"));
+}
+
+void AppPathsTest::historyFileIsUnderDataDir()
+{
+    const AppPaths &paths = AppPaths::instance();
+    QCOMPARE(paths.historyFilePath(), paths.dataDir() + QStringLiteral("/history.json"));
 }
 
 QTEST_GUILESS_MAIN(AppPathsTest)

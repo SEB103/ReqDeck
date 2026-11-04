@@ -7,10 +7,11 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QSaveFile>
 #include <QUuid>
 
 #include <utility>
+
+#include "core/workspace/jsonfile.h"
 
 namespace {
 /*!
@@ -37,20 +38,6 @@ bool fail(QString *errorString, const QString &message)
 bool isValidWorkspaceId(const QString &id)
 {
     return !QUuid::fromString(id).isNull();
-}
-
-/*!
- * \internal
- * \brief Moves the malformed file at \a path aside, replacing an older copy.
- *
- * Keeping the file gives the user a chance to recover the values by hand, and
- * the next save must not overwrite it.
- */
-void setAside(const QString &path)
-{
-    const QString target = path + QStringLiteral(".corrupt");
-    QFile::remove(target);
-    QFile::rename(path, target);
 }
 } // namespace
 
@@ -101,7 +88,7 @@ bool SecretStore::applyTo(WorkspaceData &data, QString *errorString) const
     const QJsonValue environments = root.value(QLatin1StringView("environments"));
     if (!document.isObject() || root.value(QLatin1StringView("schema")).toInt() != kSecretsSchemaVersion
         || !environments.isObject()) {
-        setAside(path);
+        setAsideCorruptFile(path);
         return fail(errorString, QStringLiteral("The secrets file is not valid."));
     }
 
@@ -122,8 +109,7 @@ bool SecretStore::applyTo(WorkspaceData &data, QString *errorString) const
  *
  * Every secret variable with a non-empty value is written, including disabled
  * ones. With no value left the file is removed, so a workspace without secrets
- * leaves nothing behind. Writing goes through QSaveFile: a failure keeps the
- * previous file.
+ * leaves nothing behind.
  * \param data The workspace to store.
  * \param errorString Receives the reason on failure when it is not null.
  * \return True on success.
@@ -152,18 +138,8 @@ bool SecretStore::save(const WorkspaceData &data, QString *errorString) const
         return true;
     }
 
-    if (!QDir().mkpath(m_directory))
-        return fail(errorString, writeError);
-
     QJsonObject root;
     root.insert(QLatin1StringView("schema"), kSecretsSchemaVersion);
     root.insert(QLatin1StringView("environments"), environments);
-
-    QSaveFile file(path);
-    if (!file.open(QIODevice::WriteOnly))
-        return fail(errorString, writeError);
-    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
-    if (!file.commit())
-        return fail(errorString, writeError);
-    return true;
+    return writeJsonFile(path, root) || fail(errorString, writeError);
 }

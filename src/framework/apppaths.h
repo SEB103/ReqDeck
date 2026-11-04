@@ -56,6 +56,9 @@ public:
     /** Directory for the values of secret environment variables. */
     QString secretsDir() const;
 
+    /** File holding the application-wide request history. */
+    QString historyFilePath() const;
+
 private:
     AppPaths() = default;
 
