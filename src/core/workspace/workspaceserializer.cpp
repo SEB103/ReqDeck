@@ -6,10 +6,17 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QSaveFile>
+#include <QSet>
+#include <QUuid>
+
+#include <algorithm>
+
+#include "core/workspace/requestjson.h"
 
 /*!
     \class WorkspaceSerializer
@@ -52,6 +59,185 @@ WorkspaceSerializer::LoadResult failure(WorkspaceSerializer::Error error,
     return result;
 }
 
+/*!
+ * \internal
+ * \brief Returns the JSON form of the tree rooted at \a node.
+ */
+QJsonObject nodeToJson(const CollectionNode &node)
+{
+    QJsonObject object;
+    object.insert(QLatin1StringView("id"), node.id);
+    object.insert(QLatin1StringView("name"), node.name);
+    if (node.kind == CollectionNode::Kind::Request) {
+        object.insert(QLatin1StringView("kind"), QLatin1StringView("request"));
+        object.insert(QLatin1StringView("request"), requestToJson(node.request));
+        return object;
+    }
+
+    object.insert(QLatin1StringView("kind"), QLatin1StringView("folder"));
+    if (!node.children.isEmpty()) {
+        QJsonArray children;
+        for (const CollectionNode &child : node.children)
+            children.append(nodeToJson(child));
+        object.insert(QLatin1StringView("children"), children);
+    }
+    return object;
+}
+
+/*!
+ * \internal
+ * \brief Returns the JSON form of \a environment.
+ *
+ * The value of a secret variable is never written: it belongs to SecretStore,
+ * and a workspace file must be safe to share.
+ */
+QJsonObject environmentToJson(const Environment &environment)
+{
+    QJsonArray variables;
+    for (const EnvironmentVariable &variable : environment.variables) {
+        QJsonObject row;
+        row.insert(QLatin1StringView("key"), variable.key);
+        if (!variable.secret)
+            row.insert(QLatin1StringView("value"), variable.value);
+        if (!variable.enabled)
+            row.insert(QLatin1StringView("enabled"), false);
+        if (variable.secret)
+            row.insert(QLatin1StringView("secret"), true);
+        variables.append(row);
+    }
+
+    QJsonObject object;
+    object.insert(QLatin1StringView("id"), environment.id);
+    object.insert(QLatin1StringView("name"), environment.name);
+    object.insert(QLatin1StringView("variables"), variables);
+    return object;
+}
+
+/*!
+ * \internal
+ * \brief Validates the id member \a value and records it in \a seenIds.
+ * \return An empty string on success, otherwise the error message.
+ */
+QString claimId(const QJsonValue &value, QSet<QString> &seenIds)
+{
+    const QString id = value.toString();
+    if (id.isEmpty())
+        return WorkspaceSerializer::errorToString(WorkspaceSerializer::Error::InvalidSchema);
+    if (seenIds.contains(id))
+        return QStringLiteral("Duplicate item id: %1").arg(id);
+    seenIds.insert(id);
+    return {};
+}
+
+/*!
+ * \internal
+ * \brief Parses the collection items in \a items, recursing into folders.
+ *
+ * \param items The JSON array of items.
+ * \param seenIds Ids seen so far in the whole collection.
+ * \param nodes Receives the parsed nodes.
+ * \return An empty string on success, otherwise the error message.
+ */
+QString nodesFromJson(const QJsonArray &items, QSet<QString> &seenIds, QList<CollectionNode> &nodes)
+{
+    const QString invalid =
+        WorkspaceSerializer::errorToString(WorkspaceSerializer::Error::InvalidSchema);
+
+    for (const QJsonValue &item : items) {
+        if (!item.isObject())
+            return invalid;
+        const QJsonObject object = item.toObject();
+
+        if (const QString error = claimId(object.value(QLatin1StringView("id")), seenIds);
+            !error.isEmpty()) {
+            return error;
+        }
+        if (!hasOptionalType(object, QLatin1StringView("name"), QJsonValue::String))
+            return invalid;
+
+        CollectionNode node;
+        node.id = object.value(QLatin1StringView("id")).toString();
+        node.name = object.value(QLatin1StringView("name")).toString();
+
+        const QString kind = object.value(QLatin1StringView("kind")).toString();
+        if (kind == QLatin1StringView("request")) {
+            const QJsonValue request = object.value(QLatin1StringView("request"));
+            if (!request.isObject())
+                return invalid;
+            QString requestError;
+            std::optional<RequestSpec> spec = requestFromJson(request.toObject(), &requestError);
+            if (!spec)
+                return QStringLiteral("Item %1: %2").arg(node.id, requestError);
+            node.kind = CollectionNode::Kind::Request;
+            node.request = std::move(*spec);
+        } else if (kind == QLatin1StringView("folder")) {
+            if (!hasOptionalType(object, QLatin1StringView("children"), QJsonValue::Array))
+                return invalid;
+            const QJsonArray children = object.value(QLatin1StringView("children")).toArray();
+            if (const QString error = nodesFromJson(children, seenIds, node.children);
+                !error.isEmpty()) {
+                return error;
+            }
+        } else {
+            return invalid;
+        }
+        nodes.append(std::move(node));
+    }
+    return {};
+}
+
+/*!
+ * \internal
+ * \brief Parses the environments in \a items.
+ *
+ * \param items The JSON array of environments.
+ * \param environments Receives the parsed environments.
+ * \return An empty string on success, otherwise the error message.
+ */
+QString environmentsFromJson(const QJsonArray &items, QList<Environment> &environments)
+{
+    const QString invalid =
+        WorkspaceSerializer::errorToString(WorkspaceSerializer::Error::InvalidSchema);
+
+    QSet<QString> seenIds;
+    for (const QJsonValue &item : items) {
+        if (!item.isObject())
+            return invalid;
+        const QJsonObject object = item.toObject();
+
+        if (const QString error = claimId(object.value(QLatin1StringView("id")), seenIds);
+            !error.isEmpty()) {
+            return error;
+        }
+        if (!hasOptionalType(object, QLatin1StringView("name"), QJsonValue::String)
+            || !hasOptionalType(object, QLatin1StringView("variables"), QJsonValue::Array)) {
+            return invalid;
+        }
+
+        Environment environment;
+        environment.id = object.value(QLatin1StringView("id")).toString();
+        environment.name = object.value(QLatin1StringView("name")).toString();
+
+        for (const QJsonValue &entry : object.value(QLatin1StringView("variables")).toArray()) {
+            if (!entry.isObject())
+                return invalid;
+            const QJsonObject row = entry.toObject();
+            if (!hasOptionalType(row, QLatin1StringView("key"), QJsonValue::String)
+                || !hasOptionalType(row, QLatin1StringView("value"), QJsonValue::String)
+                || !hasOptionalType(row, QLatin1StringView("enabled"), QJsonValue::Bool)
+                || !hasOptionalType(row, QLatin1StringView("secret"), QJsonValue::Bool)) {
+                return invalid;
+            }
+            environment.variables.append({row.value(QLatin1StringView("key")).toString(),
+                                          row.value(QLatin1StringView("value")).toString(),
+                                          row.value(QLatin1StringView("enabled")).toBool(true),
+                                          row.value(QLatin1StringView("secret")).toBool(false)});
+        }
+        environments.append(std::move(environment));
+    }
+    return {};
+}
+
 } // namespace
 
 /*!
@@ -59,11 +245,21 @@ WorkspaceSerializer::LoadResult failure(WorkspaceSerializer::Error error,
  */
 QJsonObject WorkspaceSerializer::toJson(const WorkspaceData &data)
 {
+    QJsonArray collection;
+    for (const CollectionNode &node : data.collection)
+        collection.append(nodeToJson(node));
+
+    QJsonArray environments;
+    for (const Environment &environment : data.environments)
+        environments.append(environmentToJson(environment));
+
     QJsonObject root;
     root.insert(kSchemaKey, data.schemaVersion);
+    if (!data.id.isEmpty())
+        root.insert(QLatin1StringView("id"), data.id);
     root.insert(QLatin1StringView("displayName"), data.displayName);
-    root.insert(QLatin1StringView("collection"), data.collection);
-    root.insert(QLatin1StringView("environments"), data.environments);
+    root.insert(QLatin1StringView("collection"), collection);
+    root.insert(QLatin1StringView("environments"), environments);
     root.insert(QLatin1StringView("activeEnvironmentId"), data.activeEnvironmentId);
     root.insert(QLatin1StringView("settings"), data.settings);
     return root;
@@ -73,11 +269,19 @@ QJsonObject WorkspaceSerializer::toJson(const WorkspaceData &data)
  * \brief Loads and validates the workspace file at \a filePath.
  *
  * The file must exist and contain a JSON object with an integer \c schema
- * member in the supported range. The optional members \c displayName,
+ * member in the supported range. The optional members \c id, \c displayName,
  * \c collection, \c environments, \c activeEnvironmentId, and \c settings fall
  * back to empty values when absent, but must have the expected JSON type when
- * present. On any failure the returned LoadResult has \c ok set to false and
- * describes the reason; the caller decides how to surface it.
+ * present.
+ *
+ * The workspace id must be a UUID, because SecretStore uses it as a file name
+ * and a shared file must not be able to point outside the secrets directory.
+ * Collection items and environments are validated completely, including unique
+ * ids. An active environment id naming no environment loads as empty, since
+ * that state is harmless and easily caused by editing the file by hand.
+ *
+ * On any failure the returned LoadResult has \c ok set to false and describes
+ * the reason; the caller decides how to surface it.
  */
 WorkspaceSerializer::LoadResult WorkspaceSerializer::load(const QString &filePath)
 {
@@ -108,7 +312,8 @@ WorkspaceSerializer::LoadResult WorkspaceSerializer::load(const QString &filePat
     if (schemaVersion < 1 || schemaVersion > kWorkspaceSchemaVersion)
         return failure(Error::UnsupportedVersion);
 
-    if (!hasOptionalType(root, QLatin1StringView("displayName"), QJsonValue::String)
+    if (!hasOptionalType(root, QLatin1StringView("id"), QJsonValue::String)
+        || !hasOptionalType(root, QLatin1StringView("displayName"), QJsonValue::String)
         || !hasOptionalType(root, QLatin1StringView("collection"), QJsonValue::Array)
         || !hasOptionalType(root, QLatin1StringView("environments"), QJsonValue::Array)
         || !hasOptionalType(root, QLatin1StringView("activeEnvironmentId"), QJsonValue::String)
@@ -117,14 +322,35 @@ WorkspaceSerializer::LoadResult WorkspaceSerializer::load(const QString &filePat
     }
 
     LoadResult result;
-    result.ok = true;
     result.data.schemaVersion = schemaVersion;
+    result.data.id = root.value(QLatin1StringView("id")).toString();
+    if (!result.data.id.isEmpty() && QUuid::fromString(result.data.id).isNull())
+        return failure(Error::InvalidSchema, QStringLiteral("Invalid workspace id."));
+
     result.data.displayName = root.value(QLatin1StringView("displayName")).toString();
-    result.data.collection = root.value(QLatin1StringView("collection")).toArray();
-    result.data.environments = root.value(QLatin1StringView("environments")).toArray();
-    result.data.activeEnvironmentId =
-        root.value(QLatin1StringView("activeEnvironmentId")).toString();
+
+    QSet<QString> seenIds;
+    if (const QString error = nodesFromJson(root.value(QLatin1StringView("collection")).toArray(),
+                                            seenIds, result.data.collection);
+        !error.isEmpty()) {
+        return failure(Error::InvalidSchema, error);
+    }
+    if (const QString error =
+            environmentsFromJson(root.value(QLatin1StringView("environments")).toArray(),
+                                 result.data.environments);
+        !error.isEmpty()) {
+        return failure(Error::InvalidSchema, error);
+    }
+
+    const QString activeId = root.value(QLatin1StringView("activeEnvironmentId")).toString();
+    const bool activeExists = std::any_of(
+        result.data.environments.cbegin(), result.data.environments.cend(),
+        [&activeId](const Environment &environment) { return environment.id == activeId; });
+    if (activeExists)
+        result.data.activeEnvironmentId = activeId;
+
     result.data.settings = root.value(QLatin1StringView("settings")).toObject();
+    result.ok = true;
     return result;
 }
 

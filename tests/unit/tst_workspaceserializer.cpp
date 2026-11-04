@@ -5,6 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
+#include <QUuid>
 #include <QtTest>
 
 #include "core/workspace/workspaceserializer.h"
@@ -15,15 +16,30 @@
  */
 static WorkspaceData makeWorkspace()
 {
+    CollectionNode request;
+    request.kind = CollectionNode::Kind::Request;
+    request.id = QStringLiteral("r1");
+    request.name = QStringLiteral("List");
+    request.request.url = QStringLiteral("{{baseUrl}}/invoices");
+    request.request.auth.type = AuthType::Bearer;
+    request.request.auth.token = QStringLiteral("{{token}}");
+
+    CollectionNode folder;
+    folder.id = QStringLiteral("f1");
+    folder.name = QStringLiteral("Invoices");
+    folder.children = {request};
+
+    Environment environment;
+    environment.id = QStringLiteral("e1");
+    environment.name = QStringLiteral("Staging");
+    environment.variables = {{QStringLiteral("baseUrl"), QStringLiteral("https://s"), true, false},
+                             {QStringLiteral("off"), QStringLiteral("x"), false, false}};
+
     WorkspaceData data;
+    data.id = QStringLiteral("3f2b8c1e-7a44-4a8e-9a55-0c1d2e3f4a5b");
     data.displayName = QStringLiteral("Billing API");
-    data.collection = QJsonArray {
-        QJsonObject {{QStringLiteral("id"), QStringLiteral("f1")},
-                     {QStringLiteral("kind"), QStringLiteral("folder")},
-                     {QStringLiteral("name"), QStringLiteral("Invoices")}}};
-    data.environments = QJsonArray {
-        QJsonObject {{QStringLiteral("id"), QStringLiteral("e1")},
-                     {QStringLiteral("name"), QStringLiteral("Staging")}}};
+    data.collection = {folder};
+    data.environments = {environment};
     data.activeEnvironmentId = QStringLiteral("e1");
     data.settings = QJsonObject {{QStringLiteral("timeoutMs"), 30000}};
     return data;
@@ -82,6 +98,44 @@ private slots:
 
     /*! Verifies that saving creates missing parent directories. */
     void saveCreatesParentDirectories();
+
+    /*! Verifies that a deep folder hierarchy survives a round trip. */
+    void deepNestingRoundTrips();
+
+    /*! Verifies that the value of a secret variable never reaches the file. */
+    void secretValueIsNeverWritten();
+
+    /*! Verifies that a secret value present in a file is kept in memory. */
+    void secretValueInFileIsKept();
+
+    /*! Verifies that only a UUID is accepted as workspace id. */
+    void rejectsNonUuidWorkspaceId_data();
+    /*! Runs one invalid workspace id case. */
+    void rejectsNonUuidWorkspaceId();
+
+    /*! Verifies the rejection of malformed collection items. */
+    void rejectsInvalidCollection_data();
+    /*! Runs one invalid collection case. */
+    void rejectsInvalidCollection();
+
+    /*! Verifies that duplicate ids are rejected, also across folders. */
+    void rejectsDuplicateIds_data();
+    /*! Runs one duplicate id case. */
+    void rejectsDuplicateIds();
+
+    /*! Verifies the rejection of malformed environments. */
+    void rejectsInvalidEnvironments_data();
+    /*! Runs one invalid environment case. */
+    void rejectsInvalidEnvironments();
+
+    /*! Verifies that an unknown active environment loads as none. */
+    void danglingActiveEnvironmentIsCleared();
+
+    /*! Verifies the variable rows returned for the active environment. */
+    void activeEnvironmentVariablesReturnsActiveRows();
+
+    /*! Verifies that generated ids are unique UUIDs. */
+    void newItemIdIsUniqueUuid();
 };
 
 void WorkspaceSerializerTest::roundTripPreservesData()
@@ -125,6 +179,7 @@ void WorkspaceSerializerTest::minimalFileLoadsWithDefaults()
     const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
     QVERIFY2(result.ok, qPrintable(result.errorString));
     QCOMPARE(result.data.schemaVersion, 1);
+    QVERIFY(result.data.id.isEmpty());
     QVERIFY(result.data.displayName.isEmpty());
     QVERIFY(result.data.collection.isEmpty());
     QVERIFY(result.data.environments.isEmpty());
@@ -247,6 +302,217 @@ void WorkspaceSerializerTest::saveCreatesParentDirectories()
     QString error;
     QVERIFY2(WorkspaceSerializer::save(path, makeWorkspace(), &error), qPrintable(error));
     QVERIFY(WorkspaceSerializer::load(path).ok);
+}
+
+void WorkspaceSerializerTest::deepNestingRoundTrips()
+{
+    CollectionNode node;
+    node.kind = CollectionNode::Kind::Request;
+    node.id = QStringLiteral("leaf");
+    node.name = QStringLiteral("Leaf");
+    for (int level = 0; level < 50; ++level) {
+        CollectionNode folder;
+        folder.id = QStringLiteral("f%1").arg(level);
+        folder.name = QStringLiteral("Level %1").arg(level);
+        folder.children = {node};
+        node = folder;
+    }
+    WorkspaceData data;
+    data.collection = {node};
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("deep.reqdeck"));
+    QVERIFY(WorkspaceSerializer::save(path, data));
+
+    const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QVERIFY(result.data == data);
+}
+
+void WorkspaceSerializerTest::secretValueIsNeverWritten()
+{
+    WorkspaceData data = makeWorkspace();
+    data.environments[0].variables.append(
+        {QStringLiteral("token"), QStringLiteral("s3cret-value"), true, true});
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("secret.reqdeck"));
+    QVERIFY(WorkspaceSerializer::save(path, data));
+
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    const QByteArray content = file.readAll();
+    QVERIFY(content.contains("token"));
+    QVERIFY(!content.contains("s3cret-value"));
+
+    const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    const EnvironmentVariable variable = result.data.environments.at(0).variables.at(2);
+    QCOMPARE(variable.key, QStringLiteral("token"));
+    QVERIFY(variable.secret);
+    QVERIFY(variable.value.isEmpty());
+}
+
+void WorkspaceSerializerTest::secretValueInFileIsKept()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("kept.reqdeck"));
+    QVERIFY(writeFile(path, R"({"schema": 1, "environments": [{"id": "e1", "name": "E", "variables":
+        [{"key": "k", "value": "v", "secret": true}]}]})"));
+
+    const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QCOMPARE(result.data.environments.at(0).variables.at(0).value, QStringLiteral("v"));
+}
+
+void WorkspaceSerializerTest::rejectsNonUuidWorkspaceId_data()
+{
+    QTest::addColumn<QByteArray>("content");
+    QTest::newRow("traversal") << QByteArray(R"({"schema": 1, "id": "../../x"})");
+    QTest::newRow("path") << QByteArray(R"({"schema": 1, "id": "a/b"})");
+    QTest::newRow("word") << QByteArray(R"({"schema": 1, "id": "abc"})");
+    QTest::newRow("number") << QByteArray(R"({"schema": 1, "id": 5})");
+}
+
+void WorkspaceSerializerTest::rejectsNonUuidWorkspaceId()
+{
+    QFETCH(QByteArray, content);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("id.reqdeck"));
+    QVERIFY(writeFile(path, content));
+
+    const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
+    QVERIFY(!result.ok);
+    QCOMPARE(result.error, WorkspaceSerializer::Error::InvalidSchema);
+}
+
+void WorkspaceSerializerTest::rejectsInvalidCollection_data()
+{
+    QTest::addColumn<QByteArray>("content");
+    QTest::newRow("not-object") << QByteArray(R"({"schema": 1, "collection": [1]})");
+    QTest::newRow("unknown-kind")
+        << QByteArray(R"({"schema": 1, "collection": [{"kind": "x", "id": "a", "name": "n"}]})");
+    QTest::newRow("empty-id")
+        << QByteArray(R"({"schema": 1, "collection": [{"kind": "folder", "id": "", "name": "n"}]})");
+    QTest::newRow("name-number")
+        << QByteArray(R"({"schema": 1, "collection": [{"kind": "folder", "id": "a", "name": 1}]})");
+    QTest::newRow("children-object") << QByteArray(
+        R"({"schema": 1, "collection": [{"kind": "folder", "id": "a", "name": "n", "children": {}}]})");
+    QTest::newRow("no-request")
+        << QByteArray(R"({"schema": 1, "collection": [{"kind": "request", "id": "a", "name": "n"}]})");
+    QTest::newRow("bad-method") << QByteArray(
+        R"({"schema": 1, "collection": [{"kind": "request", "id": "a", "name": "n",
+            "request": {"method": "FETCH"}}]})");
+    QTest::newRow("nested-bad") << QByteArray(
+        R"({"schema": 1, "collection": [{"kind": "folder", "id": "a", "name": "n",
+            "children": [{"kind": "x", "id": "b", "name": "m"}]}]})");
+}
+
+void WorkspaceSerializerTest::rejectsInvalidCollection()
+{
+    QFETCH(QByteArray, content);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("collection.reqdeck"));
+    QVERIFY(writeFile(path, content));
+
+    const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
+    QVERIFY(!result.ok);
+    QCOMPARE(result.error, WorkspaceSerializer::Error::InvalidSchema);
+    QVERIFY(!result.errorString.isEmpty());
+}
+
+void WorkspaceSerializerTest::rejectsDuplicateIds_data()
+{
+    QTest::addColumn<QByteArray>("content");
+    QTest::newRow("siblings") << QByteArray(
+        R"({"schema": 1, "collection": [{"kind": "folder", "id": "dup", "name": "a"},
+                                        {"kind": "folder", "id": "dup", "name": "b"}]})");
+    QTest::newRow("nested") << QByteArray(
+        R"({"schema": 1, "collection": [{"kind": "folder", "id": "dup", "name": "a", "children":
+            [{"kind": "folder", "id": "dup", "name": "b"}]}]})");
+    QTest::newRow("environments") << QByteArray(
+        R"({"schema": 1, "environments": [{"id": "dup", "name": "a"}, {"id": "dup", "name": "b"}]})");
+}
+
+void WorkspaceSerializerTest::rejectsDuplicateIds()
+{
+    QFETCH(QByteArray, content);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("dup.reqdeck"));
+    QVERIFY(writeFile(path, content));
+
+    const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
+    QVERIFY(!result.ok);
+    QCOMPARE(result.error, WorkspaceSerializer::Error::InvalidSchema);
+    QCOMPARE(result.errorString, QStringLiteral("Duplicate item id: dup"));
+}
+
+void WorkspaceSerializerTest::rejectsInvalidEnvironments_data()
+{
+    QTest::addColumn<QByteArray>("content");
+    QTest::newRow("not-object") << QByteArray(R"({"schema": 1, "environments": [1]})");
+    QTest::newRow("empty-id") << QByteArray(R"({"schema": 1, "environments": [{"id": "", "name": "n"}]})");
+    QTest::newRow("name-number") << QByteArray(R"({"schema": 1, "environments": [{"id": "e", "name": 1}]})");
+    QTest::newRow("variables-object")
+        << QByteArray(R"({"schema": 1, "environments": [{"id": "e", "name": "n", "variables": {}}]})");
+    QTest::newRow("value-number") << QByteArray(
+        R"({"schema": 1, "environments": [{"id": "e", "name": "n", "variables": [{"key": "k", "value": 1}]}]})");
+    QTest::newRow("secret-string") << QByteArray(
+        R"({"schema": 1, "environments": [{"id": "e", "name": "n", "variables": [{"key": "k", "secret": "y"}]}]})");
+}
+
+void WorkspaceSerializerTest::rejectsInvalidEnvironments()
+{
+    QFETCH(QByteArray, content);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("environments.reqdeck"));
+    QVERIFY(writeFile(path, content));
+
+    const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
+    QVERIFY(!result.ok);
+    QCOMPARE(result.error, WorkspaceSerializer::Error::InvalidSchema);
+}
+
+void WorkspaceSerializerTest::danglingActiveEnvironmentIsCleared()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("dangling.reqdeck"));
+    QVERIFY(writeFile(path, R"({"schema": 1, "activeEnvironmentId": "gone"})"));
+
+    const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QVERIFY(result.data.activeEnvironmentId.isEmpty());
+}
+
+void WorkspaceSerializerTest::activeEnvironmentVariablesReturnsActiveRows()
+{
+    WorkspaceData data = makeWorkspace();
+    const QList<KeyValue> expected {{QStringLiteral("baseUrl"), QStringLiteral("https://s"), true},
+                                    {QStringLiteral("off"), QStringLiteral("x"), false}};
+    QVERIFY(activeEnvironmentVariables(data) == expected);
+
+    data.activeEnvironmentId.clear();
+    QVERIFY(activeEnvironmentVariables(data).isEmpty());
+}
+
+void WorkspaceSerializerTest::newItemIdIsUniqueUuid()
+{
+    const QString first = newItemId();
+    QVERIFY(!QUuid::fromString(first).isNull());
+    QVERIFY(first != newItemId());
+    QVERIFY(!first.contains(u'{'));
 }
 
 QTEST_GUILESS_MAIN(WorkspaceSerializerTest)

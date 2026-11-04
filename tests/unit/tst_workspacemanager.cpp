@@ -344,6 +344,7 @@ void WorkspaceManagerTest::openWorkspaceLoadsAndActivates()
     const QString path = dir.filePath(QStringLiteral("Loaded.reqdeck"));
     WorkspaceData data;
     data.displayName = QStringLiteral("Loaded Workspace");
+    data.environments = {{QStringLiteral("env-1"), QStringLiteral("Env"), {}}};
     data.activeEnvironmentId = QStringLiteral("env-1");
     QString error;
     QVERIFY2(WorkspaceSerializer::save(path, data, &error), qPrintable(error));
@@ -454,6 +455,7 @@ void WorkspaceManagerTest::saveAsSwitchesActiveFile()
 
     QVERIFY(manager.createWorkspaceAtPath(dir.filePath(QStringLiteral("First.reqdeck"))));
     WorkspaceData changed = manager.workspaceData();
+    changed.environments = {{QStringLiteral("env-2"), QStringLiteral("Env"), {}}};
     changed.activeEnvironmentId = QStringLiteral("env-2");
     manager.updateWorkspaceData(changed);
 
