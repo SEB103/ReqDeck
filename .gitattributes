@@ -11,6 +11,7 @@ CMakePresets.json text eol=lf
 *.qml text eol=lf
 *.js text eol=lf
 *.json text eol=lf
+*.reqdeck text eol=lf
 *.md text eol=lf
 *.py text eol=lf
 *.ts text eol=lf

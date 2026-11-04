@@ -3,12 +3,34 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QStandardPaths>
+#include <QTemporaryDir>
 #include <QtTest>
 
 #include "framework/apppaths.h"
 #include "productinfo.h"
+
+/*!
+ * \internal
+ * \brief Writes \a content to \a path, replacing any existing file.
+ */
+static bool writeFile(const QString &path, const QByteArray &content)
+{
+    QFile file(path);
+    return file.open(QIODevice::WriteOnly) && file.write(content) == content.size();
+}
+
+/*!
+ * \internal
+ * \brief Returns the content of the file at \a path.
+ */
+static QByteArray readFile(const QString &path)
+{
+    QFile file(path);
+    return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
+}
 
 /*!
  * \internal
@@ -43,6 +65,18 @@ private slots:
 
     /*! Verifies that the request history is stored below the data directory. */
     void historyFileIsUnderDataDir();
+
+    /*! Verifies where the seeded samples workspace lives. */
+    void samplesPathIsUnderDataDir();
+
+    /*! Verifies that an existing target is never replaced. */
+    void seedFileCopiesOnce();
+
+    /*! Verifies that a seed from a read-only source can be edited. */
+    void seededFileIsWritable();
+
+    /*! Verifies the failure for a missing source. */
+    void seedFileReportsMissingSource();
 
     /*! Verifies that a second initialize() call does not change the result. */
     void initializeIsIdempotent();
@@ -115,6 +149,60 @@ void AppPathsTest::historyFileIsUnderDataDir()
 {
     const AppPaths &paths = AppPaths::instance();
     QCOMPARE(paths.historyFilePath(), paths.dataDir() + QStringLiteral("/history.json"));
+}
+
+void AppPathsTest::samplesPathIsUnderDataDir()
+{
+    const AppPaths &paths = AppPaths::instance();
+    QCOMPARE(paths.samplesWorkspacePath(),
+             paths.dataDir() + QStringLiteral("/samples/Samples.reqdeck"));
+}
+
+void AppPathsTest::seedFileCopiesOnce()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString first = dir.filePath(QStringLiteral("first.txt"));
+    const QString second = dir.filePath(QStringLiteral("second.txt"));
+    const QString target = dir.filePath(QStringLiteral("nested/target.txt"));
+    QVERIFY(writeFile(first, "first"));
+    QVERIFY(writeFile(second, "second"));
+
+    QString error;
+    QVERIFY2(AppPaths::seedFile(first, target, &error), qPrintable(error));
+    QCOMPARE(readFile(target), QByteArray("first"));
+
+    QVERIFY(AppPaths::seedFile(second, target));
+    QCOMPARE(readFile(target), QByteArray("first"));
+}
+
+void AppPathsTest::seededFileIsWritable()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString source = dir.filePath(QStringLiteral("source.txt"));
+    const QString target = dir.filePath(QStringLiteral("target.txt"));
+    QVERIFY(writeFile(source, "seed"));
+
+    const QFile::Permissions original = QFile::permissions(source);
+    QVERIFY(QFile::setPermissions(source, QFile::ReadOwner | QFile::ReadUser));
+
+    const bool seeded = AppPaths::seedFile(source, target);
+    QFile::setPermissions(source, original);
+    QVERIFY(seeded);
+
+    QFile file(target);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+}
+
+void AppPathsTest::seedFileReportsMissingSource()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    QString error;
+    QVERIFY(!AppPaths::seedFile(dir.filePath(QStringLiteral("missing")),
+                                dir.filePath(QStringLiteral("target")), &error));
+    QVERIFY(!error.isEmpty());
 }
 
 QTEST_GUILESS_MAIN(AppPathsTest)

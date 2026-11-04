@@ -7,7 +7,9 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QSaveFile>
 #include <QStandardPaths>
 
 namespace {
@@ -146,4 +148,52 @@ QString AppPaths::secretsDir() const
 QString AppPaths::historyFilePath() const
 {
     return QDir(dataDir()).filePath(QStringLiteral("history.json"));
+}
+
+QString AppPaths::samplesWorkspacePath() const
+{
+    return QDir(dataDir()).filePath(QStringLiteral("samples/Samples.reqdeck"));
+}
+
+/*!
+ * \brief Seeds the samples workspace from \a sourcePath.
+ * \param sourcePath The bundled file, normally a resource path.
+ * \param errorString Receives the reason on failure when it is not null.
+ * \return True when the samples workspace exists afterwards.
+ */
+bool AppPaths::ensureSamplesSeeded(const QString &sourcePath, QString *errorString) const
+{
+    return seedFile(sourcePath, samplesWorkspacePath(), errorString);
+}
+
+/*!
+ * \brief Copies \a sourcePath to \a targetPath unless the target exists.
+ *
+ * The content is written rather than copied with QFile::copy(), which would
+ * carry over the read-only flag of a resource and make the seed unsaveable.
+ * \param sourcePath The file to copy; may be a resource path.
+ * \param targetPath The file to create; parent directories are created.
+ * \param errorString Receives the reason on failure when it is not null.
+ * \return True when the target exists afterwards.
+ */
+bool AppPaths::seedFile(const QString &sourcePath, const QString &targetPath, QString *errorString)
+{
+    if (QFileInfo::exists(targetPath))
+        return true;
+
+    const auto fail = [&]() {
+        if (errorString)
+            *errorString = QStringLiteral("Could not seed %1.").arg(targetPath);
+        return false;
+    };
+
+    QFile source(sourcePath);
+    if (!source.open(QIODevice::ReadOnly) || !QDir().mkpath(QFileInfo(targetPath).absolutePath()))
+        return fail();
+
+    QSaveFile target(targetPath);
+    if (!target.open(QIODevice::WriteOnly))
+        return fail();
+    target.write(source.readAll());
+    return target.commit() || fail();
 }

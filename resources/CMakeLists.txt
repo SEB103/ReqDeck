@@ -9,6 +9,9 @@ qt_add_resources(appReqDeck "application_resources"
     FILES
         qtquickcontrols2.conf
 
+        # Samples workspace, seeded into the data directory at startup.
+        samples/Samples.reqdeck
+
         # Application branding: multi-size window/taskbar icon and the logo shown
         # on the launcher start page and in the About dialog. Source PNGs live
         # under images/app/source/ (the .exe icon is embedded through the

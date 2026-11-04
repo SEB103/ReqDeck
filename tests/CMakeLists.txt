@@ -195,6 +195,22 @@ target_link_libraries(tst_historystore
 
 add_test(NAME HistoryStore.Unit COMMAND tst_historystore)
 
+qt_add_executable(tst_samples
+    unit/tst_samples.cpp
+)
+
+target_compile_definitions(tst_samples
+    PRIVATE REQDECK_SAMPLES_FILE="${CMAKE_SOURCE_DIR}/resources/samples/Samples.reqdeck"
+)
+
+target_link_libraries(tst_samples
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME Samples.Unit COMMAND tst_samples)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml

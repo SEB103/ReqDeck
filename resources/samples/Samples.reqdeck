@@ -1,0 +1,211 @@
+{
+    "schema": 1,
+    "id": "9a1f3c52-6d0e-4b7a-8c21-5e7f0a4d2b16",
+    "displayName": "Samples",
+    "activeEnvironmentId": "public-test-apis",
+    "settings": {},
+    "environments": [
+        {
+            "id": "public-test-apis",
+            "name": "Public test APIs",
+            "variables": [
+                { "key": "baseUrl", "value": "https://httpbin.org" },
+                { "key": "placeholderUrl", "value": "https://jsonplaceholder.typicode.com" },
+                { "key": "user", "value": "demo" },
+                { "key": "password", "value": "demo" },
+                { "key": "token", "value": "demo-token" }
+            ]
+        }
+    ],
+    "collection": [
+        {
+            "kind": "folder",
+            "id": "http-methods",
+            "name": "HTTP methods",
+            "children": [
+                {
+                    "kind": "request",
+                    "id": "get",
+                    "name": "GET with query parameters",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/get",
+                        "queryParams": [
+                            { "key": "search", "value": "req deck" },
+                            { "key": "page", "value": "1" }
+                        ],
+                        "headers": [
+                            { "key": "Accept", "value": "application/json" }
+                        ]
+                    }
+                },
+                {
+                    "kind": "request",
+                    "id": "post",
+                    "name": "POST JSON",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/post",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"ReqDeck\",\n    \"active\": true\n}"
+                        }
+                    }
+                },
+                {
+                    "kind": "request",
+                    "id": "put",
+                    "name": "PUT JSON",
+                    "request": {
+                        "method": "PUT",
+                        "url": "{{baseUrl}}/put",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Updated\"\n}"
+                        }
+                    }
+                },
+                {
+                    "kind": "request",
+                    "id": "patch",
+                    "name": "PATCH JSON",
+                    "request": {
+                        "method": "PATCH",
+                        "url": "{{baseUrl}}/patch",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"active\": false\n}"
+                        }
+                    }
+                },
+                {
+                    "kind": "request",
+                    "id": "delete",
+                    "name": "DELETE",
+                    "request": {
+                        "method": "DELETE",
+                        "url": "{{baseUrl}}/delete"
+                    }
+                },
+                {
+                    "kind": "request",
+                    "id": "head",
+                    "name": "HEAD",
+                    "request": {
+                        "method": "HEAD",
+                        "url": "{{baseUrl}}/get"
+                    }
+                },
+                {
+                    "kind": "request",
+                    "id": "options",
+                    "name": "OPTIONS",
+                    "request": {
+                        "method": "OPTIONS",
+                        "url": "{{baseUrl}}/get"
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "folder",
+            "id": "bodies",
+            "name": "Bodies",
+            "children": [
+                {
+                    "kind": "request",
+                    "id": "form",
+                    "name": "POST form",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/post",
+                        "body": {
+                            "mode": "form",
+                            "form": [
+                                { "key": "name", "value": "ReqDeck" },
+                                { "key": "note", "value": "a & b" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "kind": "request",
+                    "id": "xml",
+                    "name": "POST XML",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/post",
+                        "body": {
+                            "mode": "raw",
+                            "rawType": "xml",
+                            "raw": "<note>\n    <text>ReqDeck</text>\n</note>"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "folder",
+            "id": "authentication",
+            "name": "Authentication",
+            "children": [
+                {
+                    "kind": "request",
+                    "id": "basic",
+                    "name": "Basic auth",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/basic-auth/{{user}}/{{password}}",
+                        "auth": {
+                            "type": "basic",
+                            "username": "{{user}}",
+                            "password": "{{password}}"
+                        }
+                    }
+                },
+                {
+                    "kind": "request",
+                    "id": "bearer",
+                    "name": "Bearer token",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/bearer",
+                        "auth": {
+                            "type": "bearer",
+                            "token": "{{token}}"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "folder",
+            "id": "jsonplaceholder",
+            "name": "JSONPlaceholder",
+            "children": [
+                {
+                    "kind": "request",
+                    "id": "placeholder-get",
+                    "name": "Get a post",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{placeholderUrl}}/posts/1"
+                    }
+                },
+                {
+                    "kind": "request",
+                    "id": "placeholder-post",
+                    "name": "Create a post",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{placeholderUrl}}/posts",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"title\": \"ReqDeck\",\n    \"body\": \"Sample\",\n    \"userId\": 1\n}"
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -33,6 +33,7 @@ path = [
     "resources/CMakeLists.txt",
     "resources/qtquickcontrols2.conf",
     "resources/images/app/**",
+    "resources/samples/**",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Copyright (C) 2026 ReqDeck Project"

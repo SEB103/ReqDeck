@@ -38,6 +38,13 @@ int main(int argc, char *argv[])
     // Resolve installed/portable data locations once, before anything opens them.
     AppPaths::instance().initialize();
 
+    // A failure only means the samples are missing; the application still works.
+    QString seedError;
+    if (!AppPaths::instance().ensureSamplesSeeded(QStringLiteral(":/samples/Samples.reqdeck"),
+                                                  &seedError)) {
+        qWarning().noquote() << seedError;
+    }
+
     // Set the application icon used for the window title bar, the taskbar and
     // Alt+Tab. The multi-size .ico is bundled via resources/CMakeLists.txt; Qt
     // selects the frame matching the requested size.

@@ -59,6 +59,19 @@ public:
     /** File holding the application-wide request history. */
     QString historyFilePath() const;
 
+    /** File the bundled samples workspace is seeded to. */
+    QString samplesWorkspacePath() const;
+
+    /** Seeds samplesWorkspacePath() from \a sourcePath; see seedFile(). */
+    bool ensureSamplesSeeded(const QString &sourcePath, QString *errorString = nullptr) const;
+
+    /**
+     * Copies \a sourcePath, which may be a resource, to \a targetPath unless the
+     * target exists, so edits by the user are kept. The copy is always writable.
+     */
+    static bool seedFile(const QString &sourcePath, const QString &targetPath,
+                         QString *errorString = nullptr);
+
 private:
     AppPaths() = default;
 
