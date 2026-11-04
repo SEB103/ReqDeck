@@ -250,6 +250,9 @@ protected:
     /** Whether the active workspace has unsaved changes. */
     bool m_dirty {false};
 
+    /** Whether stored secrets of the active workspace could not be read yet. */
+    bool m_secretsUnread {false};
+
     /** Last notification, kept re-buildable so retranslate() can refresh it. */
     RetranslatableStatus m_lastStatus;
 };

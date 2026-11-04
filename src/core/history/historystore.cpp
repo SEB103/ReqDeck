@@ -89,8 +89,10 @@ std::optional<HistoryEntry> entryFromJson(const QJsonValue &value)
     entry.id = object.value(QLatin1StringView("id")).toString();
     entry.timestamp = QDateTime::fromString(object.value(QLatin1StringView("timestamp")).toString(),
                                             Qt::ISODateWithMs);
-    const std::optional<RequestSpec> request =
-        requestFromJson(object.value(QLatin1StringView("request")).toObject());
+    const QJsonValue requestValue = object.value(QLatin1StringView("request"));
+    if (!requestValue.isObject())
+        return std::nullopt;
+    const std::optional<RequestSpec> request = requestFromJson(requestValue.toObject());
     if (entry.id.isEmpty() || !entry.timestamp.isValid() || !request)
         return std::nullopt;
 
@@ -114,21 +116,35 @@ HistoryStore::HistoryStore(QString filePath)
 
 /*!
  * \brief Reads the history file.
- *
- * A single invalid entry is skipped, so one damaged row does not cost the whole
- * history. A file that cannot be understood at all, including one written by a
- * newer schema, is renamed to "<file>.corrupt" rather than overwritten by the
- * next add().
  * \param errorString Receives the reason on failure when it is not null.
  * \return False when the file is unreadable or unusable; the history is then empty.
  */
 bool HistoryStore::load(QString *errorString)
 {
+    return readFile(errorString);
+}
+
+/*!
+ * \internal
+ * \brief Replaces the entries with the content of the file.
+ *
+ * A single invalid entry is skipped, so one damaged row does not cost the whole
+ * history. A file that cannot be understood at all, including one written by a
+ * newer schema, is renamed to "<file>.corrupt". As long as a file can neither be
+ * read nor moved, m_unread stays set and add() does not overwrite it.
+ * \param errorString Receives the reason on failure when it is not null.
+ * \return False when the file is unreadable or unusable.
+ */
+bool HistoryStore::readFile(QString *errorString)
+{
     m_entries.clear();
+    m_unread = true;
 
     QFile file(m_filePath);
-    if (!file.exists())
+    if (!file.exists()) {
+        m_unread = false;
         return true;
+    }
     if (!file.open(QIODevice::ReadOnly))
         return fail(errorString, QStringLiteral("The history file could not be read."));
 
@@ -139,7 +155,7 @@ bool HistoryStore::load(QString *errorString)
     const QJsonValue entries = root.value(QLatin1StringView("entries"));
     if (!document.isObject() || root.value(QLatin1StringView("schema")).toInt() != kHistorySchemaVersion
         || !entries.isArray()) {
-        setAsideCorruptFile(m_filePath);
+        m_unread = !setAsideCorruptFile(m_filePath);
         return fail(errorString, QStringLiteral("The history file is not valid."));
     }
 
@@ -149,6 +165,7 @@ bool HistoryStore::load(QString *errorString)
         if (m_entries.size() == kMaxEntries)
             break;
     }
+    m_unread = false;
     return true;
 }
 
@@ -165,9 +182,13 @@ const QList<HistoryEntry> &HistoryStore::entries() const
  *
  * A raw body above kMaxStoredBodyChars is left out and flagged with
  * HistoryEntry::bodyOmitted, because the whole file is rewritten on every call.
+ *
+ * The file is replaced as a whole, so entries it may still hold are read first,
+ * also when load() was never called. If that stays impossible nothing is
+ * written; the entries in memory are merged with the file by a later call.
  * \param entry The entry; an empty id and an invalid timestamp are filled in.
  * \param errorString Receives the reason on failure when it is not null.
- * \return False when the file could not be written; the entry stays in memory.
+ * \return False when the file could not be read or written; the entry stays in memory.
  */
 bool HistoryStore::add(HistoryEntry entry, QString *errorString)
 {
@@ -182,9 +203,18 @@ bool HistoryStore::add(HistoryEntry entry, QString *errorString)
         entry.bodyOmitted = true;
     }
 
+    if (m_unread) {
+        const QList<HistoryEntry> pending = m_entries;
+        readFile(nullptr);
+        m_entries = pending + m_entries;
+    }
+
     m_entries.prepend(std::move(entry));
     while (m_entries.size() > kMaxEntries)
         m_entries.removeLast();
+
+    if (m_unread)
+        return fail(errorString, QStringLiteral("The history file could not be read."));
 
     QJsonArray entries;
     for (const HistoryEntry &item : std::as_const(m_entries))
@@ -208,6 +238,7 @@ bool HistoryStore::clear(QString *errorString)
     m_entries.clear();
     if (QFile::exists(m_filePath) && !QFile::remove(m_filePath))
         return fail(errorString, QStringLiteral("The history file could not be removed."));
+    m_unread = false;
     return true;
 }
 

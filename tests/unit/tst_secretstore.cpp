@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <QDir>
 #include <QFile>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -94,6 +95,21 @@ private slots:
 
     /*! Verifies that a store directory blocked by a file fails cleanly. */
     void reportsWriteFailure();
+
+    /*! Verifies that fillEmptyValues() keeps a value entered in the meantime. */
+    void fillEmptyValuesKeepsEnteredValues();
+
+    /*! Verifies that a file that can neither be read nor moved is reported as such. */
+    void unmovableFileIsUnreadable();
+
+    /*! Verifies that a successful set-aside replaces an older copy. */
+    void setAsideReplacesOlderCopy();
+
+    /*! Verifies that a snapshot puts the file back, or removes it when there was none. */
+    void restoreBringsBackSnapshot();
+
+    /*! Verifies that rows sharing a key keep their own values. */
+    void duplicateSecretKeysKeepTheirValues();
 };
 
 void SecretStoreTest::saveThenApplyRestoresValues()
@@ -107,7 +123,7 @@ void SecretStoreTest::saveThenApplyRestoresValues()
     QVERIFY2(store.save(data, &error), qPrintable(error));
 
     WorkspaceData loaded = withoutSecretValues(data);
-    QVERIFY2(store.applyTo(loaded, &error), qPrintable(error));
+    QCOMPARE(store.applyTo(loaded), SecretStore::ReadStatus::Ok);
     QVERIFY(loaded == data);
 }
 
@@ -147,7 +163,7 @@ void SecretStoreTest::missingFileIsNotAnError()
 
     WorkspaceData data = withoutSecretValues(makeWorkspace());
     const WorkspaceData before = data;
-    QVERIFY(store.applyTo(data));
+    QCOMPARE(store.applyTo(data), SecretStore::ReadStatus::Ok);
     QVERIFY(data == before);
 }
 
@@ -174,9 +190,7 @@ void SecretStoreTest::malformedFileReportsErrorAndKeepsData()
     QVERIFY(writeFile(path, content));
 
     const WorkspaceData before = data;
-    QString error;
-    QVERIFY(!store.applyTo(data, &error));
-    QVERIFY(!error.isEmpty());
+    QCOMPARE(store.applyTo(data), SecretStore::ReadStatus::Corrupt);
     QVERIFY(data == before);
     QVERIFY(!QFile::exists(path));
     QCOMPARE(readFile(path + QStringLiteral(".corrupt")), content);
@@ -188,6 +202,9 @@ void SecretStoreTest::rejectsInvalidWorkspaceId_data()
 
     QTest::newRow("empty") << QString();
     QTest::newRow("traversal") << QStringLiteral("../../x");
+    QTest::newRow("prefix-traversal") << QStringLiteral("12345678-1234-1234-1234-123456789abc/../victim");
+    QTest::newRow("prefix-backslash") << QStringLiteral("12345678-1234-1234-1234-123456789abc\\..\\victim");
+    QTest::newRow("braced") << QStringLiteral("{12345678-1234-1234-1234-123456789abc}");
 }
 
 void SecretStoreTest::rejectsInvalidWorkspaceId()
@@ -198,11 +215,17 @@ void SecretStoreTest::rejectsInvalidWorkspaceId()
     QVERIFY(dir.isValid());
     const SecretStore store(dir.path());
 
+    const QString victim = dir.filePath(QStringLiteral("victim.json"));
+    QVERIFY(writeFile(victim, "{oops"));
+
     WorkspaceData data = makeWorkspace();
     data.id = id;
     QString error;
     QVERIFY(!store.save(data, &error));
     QVERIFY(!error.isEmpty());
+
+    store.applyTo(data);
+    QCOMPARE(readFile(victim), QByteArray("{oops"));
 }
 
 void SecretStoreTest::ignoresEntriesWithoutSecretFlag()
@@ -216,7 +239,7 @@ void SecretStoreTest::ignoresEntriesWithoutSecretFlag()
 
     data.environments[0].variables[1].secret = false;
     data.environments[0].variables[1].value = QStringLiteral("now-plain");
-    QVERIFY(store.applyTo(data));
+    QCOMPARE(store.applyTo(data), SecretStore::ReadStatus::Ok);
     QCOMPARE(data.environments.at(0).variables.at(1).value, QStringLiteral("now-plain"));
 }
 
@@ -230,6 +253,94 @@ void SecretStoreTest::reportsWriteFailure()
     QString error;
     QVERIFY(!SecretStore(blocked).save(makeWorkspace(), &error));
     QVERIFY(!error.isEmpty());
+}
+
+void SecretStoreTest::fillEmptyValuesKeepsEnteredValues()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const SecretStore store(dir.path());
+
+    const WorkspaceData data = makeWorkspace();
+    QVERIFY(store.save(data));
+
+    WorkspaceData loaded = withoutSecretValues(data);
+    loaded.environments[0].variables[1].value = QStringLiteral("entered");
+    QCOMPARE(store.fillEmptyValues(loaded), SecretStore::ReadStatus::Ok);
+    QCOMPARE(loaded.environments.at(0).variables.at(1).value, QStringLiteral("entered"));
+    QCOMPARE(loaded.environments.at(0).variables.at(2).value, QStringLiteral("off-value"));
+}
+
+void SecretStoreTest::unmovableFileIsUnreadable()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const SecretStore store(dir.path());
+
+    WorkspaceData data = withoutSecretValues(makeWorkspace());
+    const QString path = store.filePath(data.id);
+    QVERIFY(writeFile(path, "{oops"));
+    QVERIFY(writeFile(path + QStringLiteral(".corrupt"), "older"));
+    QVERIFY(QDir().mkpath(path + QStringLiteral(".corrupt.new/keep")));
+
+    QCOMPARE(store.applyTo(data), SecretStore::ReadStatus::Unreadable);
+    QCOMPARE(readFile(path), QByteArray("{oops"));
+    QCOMPARE(readFile(path + QStringLiteral(".corrupt")), QByteArray("older"));
+}
+
+void SecretStoreTest::setAsideReplacesOlderCopy()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const SecretStore store(dir.path());
+
+    WorkspaceData data = withoutSecretValues(makeWorkspace());
+    const QString path = store.filePath(data.id);
+    QVERIFY(writeFile(path, "{new"));
+    QVERIFY(writeFile(path + QStringLiteral(".corrupt"), "older"));
+
+    QCOMPARE(store.applyTo(data), SecretStore::ReadStatus::Corrupt);
+    QCOMPARE(readFile(path + QStringLiteral(".corrupt")), QByteArray("{new"));
+    QVERIFY(!QFile::exists(path + QStringLiteral(".corrupt.new")));
+}
+
+void SecretStoreTest::restoreBringsBackSnapshot()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const SecretStore store(dir.path());
+
+    const WorkspaceData data = makeWorkspace();
+    QVERIFY(!store.snapshot(data.id));
+
+    QVERIFY(store.save(data));
+    const std::optional<QByteArray> saved = store.snapshot(data.id);
+    QVERIFY(saved);
+
+    QVERIFY(store.save(withoutSecretValues(data)));
+    QVERIFY(store.restore(data.id, saved));
+    QCOMPARE(readFile(store.filePath(data.id)), *saved);
+
+    QVERIFY(store.restore(data.id, std::nullopt));
+    QVERIFY(!QFile::exists(store.filePath(data.id)));
+}
+
+void SecretStoreTest::duplicateSecretKeysKeepTheirValues()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const SecretStore store(dir.path());
+
+    WorkspaceData data = makeWorkspace();
+    data.environments[0].variables = {
+        {QStringLiteral("token"), QStringLiteral("staging"), false, true},
+        {QStringLiteral("token"), QStringLiteral("production"), true, true},
+    };
+    QVERIFY(store.save(data));
+
+    WorkspaceData loaded = withoutSecretValues(data);
+    store.applyTo(loaded);
+    QVERIFY(loaded == data);
 }
 
 QTEST_GUILESS_MAIN(SecretStoreTest)

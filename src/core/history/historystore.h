@@ -41,19 +41,24 @@ public:
     /** Longest raw request body kept, because the file is rewritten on every add. */
     static constexpr qsizetype kMaxStoredBodyChars = 65536;
 
-    /** Creates an empty store writing to \a filePath; load() reads existing entries. */
+    /** Creates a store over \a filePath; add() reads existing entries if load() was not called. */
     explicit HistoryStore(QString filePath);
 
     /**
-     * Reads the file; a missing file gives an empty history. An unusable file is
-     * renamed to "<file>.corrupt" and false is returned with \a errorString set.
+     * Reads the file; a missing file gives an empty history. A malformed file is
+     * renamed to "<file>.corrupt". Returns false with \a errorString set for a
+     * malformed or unreadable file.
      */
     bool load(QString *errorString = nullptr);
 
     /** Returns the entries, newest first. */
     const QList<HistoryEntry> &entries() const;
 
-    /** Redacts \a entry, prepends it, caps the list, and writes the file. */
+    /**
+     * Redacts \a entry, prepends it, caps the list, and writes the file. While the
+     * file cannot be read the entry stays in memory, the file stays as it is, and
+     * false is returned; a later add() merges both.
+     */
     bool add(HistoryEntry entry, QString *errorString = nullptr);
 
     /** Removes all entries and the file. */
@@ -63,11 +68,17 @@ public:
     static RequestSpec redacted(const RequestSpec &spec);
 
 private:
+    /** Replaces the entries with the content of the file; see load(). */
+    bool readFile(QString *errorString);
+
     /** History file. */
     QString m_filePath;
 
     /** Entries, newest first. */
     QList<HistoryEntry> m_entries;
+
+    /** Whether the file may hold entries that are not in memory yet. */
+    bool m_unread {true};
 };
 
 #endif // HISTORYSTORE_H

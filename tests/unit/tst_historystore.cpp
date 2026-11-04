@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <QDir>
 #include <QFile>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -91,6 +92,12 @@ private slots:
 
     /*! Verifies that one invalid entry does not lose the others. */
     void invalidEntryIsSkipped();
+
+    /*! Verifies that add() without load() keeps what the file already holds. */
+    void addBeforeLoadKeepsExistingEntries();
+
+    /*! Verifies that a file that cannot be read is never overwritten. */
+    void unreadableHistoryIsNotOverwritten();
 
     /*! Verifies that a write failure keeps the entry in memory. */
     void writeFailureKeepsEntryInMemory();
@@ -314,12 +321,68 @@ void HistoryStoreTest::invalidEntryIsSkipped()
                       "{\"id\":\"b\",\"timestamp\":\"not a date\",\"request\":{}},"
                       "{\"id\":\"c\",\"timestamp\":\"2026-11-04T12:00:00.000Z\","
                       "\"request\":{\"method\":\"FETCH\"}},"
+                      "{\"id\":\"d\",\"timestamp\":\"2026-11-04T12:00:00.000Z\"},"
                       "7]}"));
 
     HistoryStore store(path);
     QVERIFY(store.load());
     QCOMPARE(store.entries().size(), 1);
     QCOMPARE(store.entries().at(0).request.url, QStringLiteral("http://ok"));
+}
+
+void HistoryStoreTest::addBeforeLoadKeepsExistingEntries()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("history.json"));
+    {
+        HistoryStore store(path);
+        QVERIFY(store.add(makeEntry(QStringLiteral("http://old"))));
+    }
+
+    HistoryStore store(path);
+    QVERIFY(store.add(makeEntry(QStringLiteral("http://new"))));
+    QCOMPARE(store.entries().size(), 2);
+
+    HistoryStore reloaded(path);
+    QVERIFY(reloaded.load());
+    QCOMPARE(reloaded.entries().size(), 2);
+    QCOMPARE(reloaded.entries().at(1).request.url, QStringLiteral("http://old"));
+}
+
+void HistoryStoreTest::unreadableHistoryIsNotOverwritten()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("history.json"));
+    {
+        HistoryStore store(path);
+        QVERIFY(store.add(makeEntry(QStringLiteral("http://old"))));
+    }
+    const QByteArray content = readFile(path);
+
+    // A directory at the file's path cannot be opened, like a locked file.
+    QVERIFY(QFile::remove(path));
+    QVERIFY(QDir().mkpath(path));
+
+    HistoryStore store(path);
+    QString error;
+    QVERIFY(!store.load(&error));
+    QVERIFY(!store.add(makeEntry(QStringLiteral("http://while-locked")), &error));
+    QVERIFY(!error.isEmpty());
+    QCOMPARE(store.entries().size(), 1);
+
+    QVERIFY(QDir().rmdir(path));
+    QVERIFY(writeFile(path, content));
+
+    QVERIFY(store.add(makeEntry(QStringLiteral("http://after"))));
+    QCOMPARE(store.entries().size(), 3);
+    QCOMPARE(store.entries().at(0).request.url, QStringLiteral("http://after"));
+    QCOMPARE(store.entries().at(2).request.url, QStringLiteral("http://old"));
+
+    HistoryStore reloaded(path);
+    QVERIFY(reloaded.load());
+    QCOMPARE(reloaded.entries().size(), 3);
 }
 
 void HistoryStoreTest::writeFailureKeepsEntryInMemory()

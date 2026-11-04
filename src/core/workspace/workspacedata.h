@@ -101,7 +101,14 @@ struct WorkspaceData
 /** Returns a new UUID without braces for a workspace, node, or environment. */
 QString newItemId();
 
-/** Returns the rows of the active environment of \a data; empty when none is active. */
+/** Returns whether \a id is a UUID in canonical form, without braces or anything else. */
+bool isValidWorkspaceId(const QString &id);
+
+/**
+ * Returns the rows of the active environment of \a data; empty when none is
+ * active. A secret without a value is left out, so references to it are reported
+ * as unresolved instead of silently sending an empty value.
+ */
 QList<KeyValue> activeEnvironmentVariables(const WorkspaceData &data);
 
 #endif // WORKSPACEDATA_H

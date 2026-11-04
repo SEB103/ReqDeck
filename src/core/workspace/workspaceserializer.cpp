@@ -12,7 +12,6 @@
 #include <QJsonValue>
 #include <QSaveFile>
 #include <QSet>
-#include <QUuid>
 
 #include <algorithm>
 
@@ -32,6 +31,15 @@ namespace {
  * \brief JSON key holding the schema version.
  */
 constexpr QLatin1StringView kSchemaKey("schema");
+
+/*!
+ * \internal
+ * \brief Maximum nesting of collection items.
+ *
+ * Parsing and every later walk over the tree recurse, and a crafted file could
+ * otherwise nest deeply enough to overflow the stack.
+ */
+constexpr int kMaxCollectionDepth = 64;
 
 /*!
  * \internal
@@ -136,10 +144,15 @@ QString claimId(const QJsonValue &value, QSet<QString> &seenIds)
  * \param items The JSON array of items.
  * \param seenIds Ids seen so far in the whole collection.
  * \param nodes Receives the parsed nodes.
+ * \param depth Nesting level of \a items, starting at 1.
  * \return An empty string on success, otherwise the error message.
  */
-QString nodesFromJson(const QJsonArray &items, QSet<QString> &seenIds, QList<CollectionNode> &nodes)
+QString nodesFromJson(const QJsonArray &items, QSet<QString> &seenIds, QList<CollectionNode> &nodes,
+                      int depth = 1)
 {
+    if (depth > kMaxCollectionDepth)
+        return QStringLiteral("Folders are nested too deeply.");
+
     const QString invalid =
         WorkspaceSerializer::errorToString(WorkspaceSerializer::Error::InvalidSchema);
 
@@ -174,7 +187,7 @@ QString nodesFromJson(const QJsonArray &items, QSet<QString> &seenIds, QList<Col
             if (!hasOptionalType(object, QLatin1StringView("children"), QJsonValue::Array))
                 return invalid;
             const QJsonArray children = object.value(QLatin1StringView("children")).toArray();
-            if (const QString error = nodesFromJson(children, seenIds, node.children);
+            if (const QString error = nodesFromJson(children, seenIds, node.children, depth + 1);
                 !error.isEmpty()) {
                 return error;
             }
@@ -324,7 +337,7 @@ WorkspaceSerializer::LoadResult WorkspaceSerializer::load(const QString &filePat
     LoadResult result;
     result.data.schemaVersion = schemaVersion;
     result.data.id = root.value(QLatin1StringView("id")).toString();
-    if (!result.data.id.isEmpty() && QUuid::fromString(result.data.id).isNull())
+    if (!result.data.id.isEmpty() && !isValidWorkspaceId(result.data.id))
         return failure(Error::InvalidSchema, QStringLiteral("Invalid workspace id."));
 
     result.data.displayName = root.value(QLatin1StringView("displayName")).toString();

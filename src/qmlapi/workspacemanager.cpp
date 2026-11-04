@@ -5,10 +5,13 @@
 
 #include <QDateTime>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QSettings>
 #include <QUrl>
 #include <QVariantMap>
+
+#include <optional>
 
 #include "core/workspace/secretstore.h"
 #include "core/workspace/workspaceserializer.h"
@@ -287,7 +290,8 @@ bool WorkspaceManager::createWorkspaceAtPath(const QString &pathOrUrl)
  * A file without a stored display name is shown under its file name. A file
  * without an id gets one that is written with the next save, which does not
  * count as an unsaved change. Secret values that cannot be read are reported as
- * a warning: the workspace itself is intact, and the user can enter them again.
+ * a warning, because the workspace itself is intact. A file that could not be
+ * read at all stays protected: the next save reads it again first.
  */
 bool WorkspaceManager::openWorkspace(const QString &pathOrUrl)
 {
@@ -305,14 +309,15 @@ bool WorkspaceManager::openWorkspace(const QString &pathOrUrl)
         result.data.id = newItemId();
 
     const QString name = result.data.displayName;
-    const bool secretsRead = SecretStore(secretsDir()).applyTo(result.data);
+    const SecretStore::ReadStatus secrets = SecretStore(secretsDir()).applyTo(result.data);
 
     setActiveWorkspace(path, result.data);
+    m_secretsUnread = secrets == SecretStore::ReadStatus::Unreadable;
     addOrUpdateRecent(path, name);
     notify(Diagnostics::Info, [=, this] {
         return tr("Opened workspace %1.").arg(name);
     });
-    if (!secretsRead) {
+    if (secrets != SecretStore::ReadStatus::Ok) {
         notify(Diagnostics::Warning, [=, this] {
             return tr("The secret values of workspace %1 could not be read.").arg(name);
         });
@@ -370,20 +375,46 @@ bool WorkspaceManager::saveWorkspaceAs(const QString &pathOrUrl)
  * workspace is left unchanged.
  *
  * A write to another file creates a separate workspace, which gets its own id
- * and therefore its own secrets; the original keeps its secrets file. The
- * secret values are written first, so a failure there leaves the workspace file
- * untouched instead of saving a file whose secrets are lost.
+ * and therefore its own secrets; the original keeps its secrets file.
+ *
+ * Secrets that could not be read on open are read again first, so values the
+ * user never saw are not replaced by empty ones; while the file stays unreadable
+ * saving is refused. The secret values are then written before the workspace
+ * file, and a failure of the latter puts the previous secrets back: both files
+ * change together or not at all.
  */
 bool WorkspaceManager::writeActiveWorkspaceTo(const QString &path, const QString &displayName)
 {
     WorkspaceData data = m_data;
     data.displayName = displayName;
+
+    const SecretStore store(secretsDir());
+    if (m_secretsUnread
+        && store.fillEmptyValues(data) == SecretStore::ReadStatus::Unreadable) {
+        emit workspaceError(tr("The secret values of workspace %1 could not be read, "
+                               "so it was not saved. Try again.")
+                                .arg(displayName));
+        return false;
+    }
+
     if (canonicalKey(path) != canonicalKey(m_activePath))
         data.id = newItemId();
 
+    const std::optional<QByteArray> previousSecrets = store.snapshot(data.id);
+    if (!previousSecrets && QFile::exists(store.filePath(data.id))) {
+        emit workspaceError(tr("The secret values of workspace %1 could not be read, "
+                               "so it was not saved. Try again.")
+                                .arg(displayName));
+        return false;
+    }
+
     QString error;
-    if (!SecretStore(secretsDir()).save(data, &error)
-        || !WorkspaceSerializer::save(path, data, &error)) {
+    if (!store.save(data, &error)) {
+        emit workspaceError(error);
+        return false;
+    }
+    if (!WorkspaceSerializer::save(path, data, &error)) {
+        store.restore(data.id, previousSecrets);
         emit workspaceError(error);
         return false;
     }
@@ -521,6 +552,7 @@ void WorkspaceManager::addOrUpdateRecent(const QString &path, const QString &dis
  */
 void WorkspaceManager::setActiveWorkspace(const QString &path, const WorkspaceData &data)
 {
+    m_secretsUnread = false;
     m_activePath = QDir::cleanPath(QFileInfo(path).absoluteFilePath());
     m_data = data;
     setDirty(false);

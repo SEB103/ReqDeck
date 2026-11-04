@@ -102,6 +102,9 @@ private slots:
     /*! Verifies that a deep folder hierarchy survives a round trip. */
     void deepNestingRoundTrips();
 
+    /*! Verifies that nesting beyond the limit is rejected instead of recursing on. */
+    void rejectsExcessiveNesting();
+
     /*! Verifies that the value of a secret variable never reaches the file. */
     void secretValueIsNeverWritten();
 
@@ -133,6 +136,9 @@ private slots:
 
     /*! Verifies the variable rows returned for the active environment. */
     void activeEnvironmentVariablesReturnsActiveRows();
+
+    /*! Verifies that a secret without a value counts as an unknown variable. */
+    void activeEnvironmentVariablesSkipsEmptySecrets();
 
     /*! Verifies that generated ids are unique UUIDs. */
     void newItemIdIsUniqueUuid();
@@ -330,6 +336,25 @@ void WorkspaceSerializerTest::deepNestingRoundTrips()
     QVERIFY(result.data == data);
 }
 
+void WorkspaceSerializerTest::rejectsExcessiveNesting()
+{
+    QByteArray items = R"([{"kind": "folder", "id": "leaf", "name": "n"}])";
+    for (int level = 0; level < 64; ++level) {
+        items = R"([{"kind": "folder", "id": "f)" + QByteArray::number(level)
+                + R"(", "name": "n", "children": )" + items + "}]";
+    }
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("nested.reqdeck"));
+    QVERIFY(writeFile(path, R"({"schema": 1, "collection": )" + items + "}"));
+
+    const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
+    QVERIFY(!result.ok);
+    QCOMPARE(result.error, WorkspaceSerializer::Error::InvalidSchema);
+    QCOMPARE(result.errorString, QStringLiteral("Folders are nested too deeply."));
+}
+
 void WorkspaceSerializerTest::secretValueIsNeverWritten()
 {
     WorkspaceData data = makeWorkspace();
@@ -375,6 +400,17 @@ void WorkspaceSerializerTest::rejectsNonUuidWorkspaceId_data()
     QTest::newRow("path") << QByteArray(R"({"schema": 1, "id": "a/b"})");
     QTest::newRow("word") << QByteArray(R"({"schema": 1, "id": "abc"})");
     QTest::newRow("number") << QByteArray(R"({"schema": 1, "id": 5})");
+    QTest::newRow("prefix-traversal")
+        << QByteArray(R"({"schema": 1, "id": "12345678-1234-1234-1234-123456789abc/../../x"})");
+    QTest::newRow("prefix-backslash")
+        << QByteArray(R"({"schema": 1, "id": "12345678-1234-1234-1234-123456789abc\\..\\x"})");
+    QTest::newRow("prefix-stream")
+        << QByteArray(R"({"schema": 1, "id": "12345678-1234-1234-1234-123456789abc:stream"})");
+    QTest::newRow("prefix-suffix")
+        << QByteArray(R"({"schema": 1, "id": "12345678-1234-1234-1234-123456789abczz"})");
+    QTest::newRow("braced") << QByteArray(R"({"schema": 1, "id": "{12345678-1234-1234-1234-123456789abc}"})");
+    QTest::newRow("braced-traversal")
+        << QByteArray(R"({"schema": 1, "id": "{12345678-1234-1234-1234-123456789abc}/../x"})");
 }
 
 void WorkspaceSerializerTest::rejectsNonUuidWorkspaceId()
@@ -505,6 +541,20 @@ void WorkspaceSerializerTest::activeEnvironmentVariablesReturnsActiveRows()
 
     data.activeEnvironmentId.clear();
     QVERIFY(activeEnvironmentVariables(data).isEmpty());
+}
+
+void WorkspaceSerializerTest::activeEnvironmentVariablesSkipsEmptySecrets()
+{
+    WorkspaceData data = makeWorkspace();
+    data.environments[0].variables.append({QStringLiteral("token"), QString(), true, true});
+    data.environments[0].variables.append(
+        {QStringLiteral("key"), QStringLiteral("value"), true, true});
+
+    const QStringList names = {QStringLiteral("baseUrl"), QStringLiteral("off"), QStringLiteral("key")};
+    QStringList actual;
+    for (const KeyValue &row : activeEnvironmentVariables(data))
+        actual.append(row.key);
+    QCOMPARE(actual, names);
 }
 
 void WorkspaceSerializerTest::newItemIdIsUniqueUuid()

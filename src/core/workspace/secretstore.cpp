@@ -5,9 +5,10 @@
 
 #include <QDir>
 #include <QFile>
+#include <QHash>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QUuid>
 
 #include <utility>
 
@@ -29,15 +30,6 @@ bool fail(QString *errorString, const QString &message)
     if (errorString)
         *errorString = message;
     return false;
-}
-
-/*!
- * \internal
- * \brief Returns whether \a id is a UUID and therefore safe as a file name.
- */
-bool isValidWorkspaceId(const QString &id)
-{
-    return !QUuid::fromString(id).isNull();
 }
 } // namespace
 
@@ -65,21 +57,49 @@ QString SecretStore::filePath(const QString &workspaceId) const
  * Only variables that still have the secret flag and a stored value change, so
  * a variable the user made public keeps its value from the workspace file. A
  * workspace without a valid id has nothing stored.
- * \param data The workspace to complete.
- * \param errorString Receives the reason on failure when it is not null.
- * \return False when the file is unreadable or malformed; \a data is then unchanged.
+ * \param data The workspace to complete; unchanged unless the result is Ok.
+ * \return The outcome of reading the file.
  */
-bool SecretStore::applyTo(WorkspaceData &data, QString *errorString) const
+SecretStore::ReadStatus SecretStore::applyTo(WorkspaceData &data) const
+{
+    return read(data, false);
+}
+
+/*!
+ * \brief Fills only the secret variables of \a data that have no value yet.
+ *
+ * This completes a workspace whose secrets could not be read when it was opened,
+ * without replacing values the user has entered since.
+ * \param data The workspace to complete; unchanged unless the result is Ok.
+ * \return The outcome of reading the file.
+ */
+SecretStore::ReadStatus SecretStore::fillEmptyValues(WorkspaceData &data) const
+{
+    return read(data, true);
+}
+
+/*!
+ * \internal
+ * \brief Reads the secrets file into \a data.
+ *
+ * Rows with the same key take their values by position. A malformed file is set
+ * aside, so it survives the next save; when even that fails the caller gets
+ * Unreadable, like for a file that cannot be opened.
+ * \param data The workspace to complete.
+ * \param onlyEmpty Whether values already present in \a data are kept.
+ * \return The outcome of reading the file.
+ */
+SecretStore::ReadStatus SecretStore::read(WorkspaceData &data, bool onlyEmpty) const
 {
     if (!isValidWorkspaceId(data.id))
-        return true;
+        return ReadStatus::Ok;
 
     const QString path = filePath(data.id);
     QFile file(path);
     if (!file.exists())
-        return true;
+        return ReadStatus::Ok;
     if (!file.open(QIODevice::ReadOnly))
-        return fail(errorString, QStringLiteral("The secrets file could not be read."));
+        return ReadStatus::Unreadable;
 
     const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
     file.close();
@@ -88,28 +108,32 @@ bool SecretStore::applyTo(WorkspaceData &data, QString *errorString) const
     const QJsonValue environments = root.value(QLatin1StringView("environments"));
     if (!document.isObject() || root.value(QLatin1StringView("schema")).toInt() != kSecretsSchemaVersion
         || !environments.isObject()) {
-        setAsideCorruptFile(path);
-        return fail(errorString, QStringLiteral("The secrets file is not valid."));
+        return setAsideCorruptFile(path) ? ReadStatus::Corrupt : ReadStatus::Unreadable;
     }
 
     const QJsonObject stored = environments.toObject();
     for (Environment &environment : data.environments) {
         const QJsonObject values = stored.value(environment.id).toObject();
+        QHash<QString, int> occurrences;
         for (EnvironmentVariable &variable : environment.variables) {
-            const QJsonValue value = values.value(variable.key);
-            if (variable.secret && value.isString())
-                variable.value = value.toString();
+            if (!variable.secret)
+                continue;
+            const int index = occurrences[variable.key]++;
+            const QString value = values.value(variable.key).toArray().at(index).toString();
+            if (!value.isEmpty() && (!onlyEmpty || variable.value.isEmpty()))
+                variable.value = value;
         }
     }
-    return true;
+    return ReadStatus::Ok;
 }
 
 /*!
  * \brief Replaces the stored values of \a data.
  *
- * Every secret variable with a non-empty value is written, including disabled
- * ones. With no value left the file is removed, so a workspace without secrets
- * leaves nothing behind.
+ * Every secret variable counts, including disabled ones; an empty value keeps
+ * its position so that rows sharing a key stay aligned. An environment without
+ * any value is left out, and with none left at all the file is removed, so a
+ * workspace without secrets leaves nothing behind.
  * \param data The workspace to store.
  * \param errorString Receives the reason on failure when it is not null.
  * \return True on success.
@@ -123,11 +147,16 @@ bool SecretStore::save(const WorkspaceData &data, QString *errorString) const
     QJsonObject environments;
     for (const Environment &environment : data.environments) {
         QJsonObject values;
+        bool hasValue = false;
         for (const EnvironmentVariable &variable : environment.variables) {
-            if (variable.secret && !variable.value.isEmpty())
-                values.insert(variable.key, variable.value);
+            if (!variable.secret)
+                continue;
+            QJsonArray rows = values.value(variable.key).toArray();
+            rows.append(variable.value);
+            values.insert(variable.key, rows);
+            hasValue = hasValue || !variable.value.isEmpty();
         }
-        if (!values.isEmpty())
+        if (hasValue)
             environments.insert(environment.id, values);
     }
 
@@ -142,4 +171,31 @@ bool SecretStore::save(const WorkspaceData &data, QString *errorString) const
     root.insert(QLatin1StringView("schema"), kSecretsSchemaVersion);
     root.insert(QLatin1StringView("environments"), environments);
     return writeJsonFile(path, root) || fail(errorString, writeError);
+}
+
+/*!
+ * \brief Returns the content of the secrets file of \a workspaceId.
+ * \param workspaceId The UUID of the workspace.
+ * \return The content, or std::nullopt when the file is missing or unreadable.
+ */
+std::optional<QByteArray> SecretStore::snapshot(const QString &workspaceId) const
+{
+    QFile file(filePath(workspaceId));
+    if (!file.open(QIODevice::ReadOnly))
+        return std::nullopt;
+    return file.readAll();
+}
+
+/*!
+ * \brief Puts the secrets file of \a workspaceId back to a snapshot().
+ * \param workspaceId The UUID of the workspace.
+ * \param content The snapshot; std::nullopt removes the file.
+ * \return True on success.
+ */
+bool SecretStore::restore(const QString &workspaceId, const std::optional<QByteArray> &content) const
+{
+    const QString path = filePath(workspaceId);
+    if (content)
+        return writeFileAtomically(path, *content);
+    return !QFile::exists(path) || QFile::remove(path);
 }
