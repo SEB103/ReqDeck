@@ -12,6 +12,7 @@
 #include <QVariantMap>
 
 #include <optional>
+#include <utility>
 
 #include "core/workspace/secretstore.h"
 #include "core/workspace/workspaceserializer.h"
@@ -137,10 +138,16 @@ const WorkspaceData &WorkspaceManager::workspaceData() const
  */
 void WorkspaceManager::updateWorkspaceData(const WorkspaceData &data)
 {
-    if (!hasActiveWorkspace() || data == m_data)
+    if (!hasActiveWorkspace())
         return;
 
-    m_data = data;
+    // The id names the secrets file, so a facade must not be able to change it.
+    WorkspaceData updated = data;
+    updated.id = m_data.id;
+    if (updated == m_data)
+        return;
+
+    m_data = std::move(updated);
     setDirty(true);
 }
 

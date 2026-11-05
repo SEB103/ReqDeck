@@ -76,6 +76,8 @@ qt_add_library(ReqDeckQmlApi STATIC)
 
 target_sources(ReqDeckQmlApi
     PRIVATE
+        qmlapi/collectiontreemodel.cpp
+        qmlapi/collectiontreemodel.h
         qmlapi/workspacemanager.cpp
         qmlapi/workspacemanager.h
 )

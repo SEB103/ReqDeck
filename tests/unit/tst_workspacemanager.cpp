@@ -151,6 +151,9 @@ private slots:
     /*! Verifies that saving to the same file keeps the workspace id. */
     void saveKeepsWorkspaceId();
 
+    /*! Verifies that a data update cannot replace the workspace id. */
+    void updateKeepsWorkspaceId();
+
     /*! Verifies that a save is refused while stored secrets cannot be read. */
     void unreadableSecretsBlockSave();
 
@@ -1023,6 +1026,32 @@ void WorkspaceManagerTest::failedSaveAsLeavesNoSecrets()
 
     QVERIFY(!manager.saveWorkspaceAs(blocked + QStringLiteral("/Copy.reqdeck")));
     QCOMPARE(QDir(secretsDir).entryList(QDir::Files).size(), 1);
+}
+
+void WorkspaceManagerTest::updateKeepsWorkspaceId()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.createWorkspaceAtPath(dir.filePath(QStringLiteral("Keep.reqdeck"))));
+    const QString id = manager.workspaceData().id;
+
+    WorkspaceData changed = manager.workspaceData();
+    changed.id = newItemId();
+    changed.settings.insert(QStringLiteral("changed"), true);
+    manager.updateWorkspaceData(changed);
+    QCOMPARE(manager.workspaceData().id, id);
+    QVERIFY(manager.dirty());
+    QVERIFY(manager.saveWorkspace());
+
+    changed = manager.workspaceData();
+    changed.id.clear();
+    manager.updateWorkspaceData(changed);
+    QCOMPARE(manager.workspaceData().id, id);
+    QVERIFY(!manager.dirty());
 }
 
 void WorkspaceManagerTest::saveKeepsWorkspaceId()

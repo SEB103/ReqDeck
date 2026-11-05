@@ -223,6 +223,25 @@ target_link_libraries(tst_collectiontree
 
 add_test(NAME CollectionTree.Unit COMMAND tst_collectiontree)
 
+qt_add_executable(tst_collectiontreemodel
+    unit/tst_collectiontreemodel.cpp
+)
+
+target_include_directories(tst_collectiontreemodel
+    PRIVATE
+        "${REQDECK_GENERATED_DIR}"
+)
+
+# QAbstractItemModelTester touches Qt Gui metatypes.
+target_link_libraries(tst_collectiontreemodel
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Gui
+        Qt6::Test
+)
+
+add_test(NAME CollectionTreeModel.Unit COMMAND tst_collectiontreemodel)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml
