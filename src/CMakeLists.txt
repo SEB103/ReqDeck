@@ -78,6 +78,8 @@ qt_add_library(ReqDeckQmlApi STATIC)
 
 target_sources(ReqDeckQmlApi
     PRIVATE
+        qmlapi/bodyhighlighter.cpp
+        qmlapi/bodyhighlighter.h
         qmlapi/collectiontreemodel.cpp
         qmlapi/collectiontreemodel.h
         qmlapi/keyvaluemodel.cpp
@@ -100,4 +102,6 @@ target_link_libraries(ReqDeckQmlApi
         ReqDeckCore
         ReqDeckFramework
         Qt6::Core
+        Qt6::Gui
+        Qt6::Quick
 )

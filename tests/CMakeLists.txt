@@ -292,6 +292,19 @@ target_link_libraries(tst_responseview
 
 add_test(NAME ResponseView.Unit COMMAND tst_responseview)
 
+qt_add_executable(tst_bodyhighlighter
+    unit/tst_bodyhighlighter.cpp
+)
+
+target_link_libraries(tst_bodyhighlighter
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Gui
+        Qt6::Test
+)
+
+add_test(NAME BodyHighlighter.Unit COMMAND tst_bodyhighlighter)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml
