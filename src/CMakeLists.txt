@@ -46,6 +46,8 @@ target_sources(ReqDeckCore
         core/http/responsedata.h
         core/http/variableresolver.cpp
         core/http/variableresolver.h
+        core/workspace/collectiontree.cpp
+        core/workspace/collectiontree.h
         core/workspace/jsonfile.cpp
         core/workspace/jsonfile.h
         core/workspace/requestjson.cpp

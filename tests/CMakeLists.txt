@@ -211,6 +211,18 @@ target_link_libraries(tst_samples
 
 add_test(NAME Samples.Unit COMMAND tst_samples)
 
+qt_add_executable(tst_collectiontree
+    unit/tst_collectiontree.cpp
+)
+
+target_link_libraries(tst_collectiontree
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME CollectionTree.Unit COMMAND tst_collectiontree)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml

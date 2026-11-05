@@ -34,15 +34,6 @@ constexpr QLatin1StringView kSchemaKey("schema");
 
 /*!
  * \internal
- * \brief Maximum nesting of collection items.
- *
- * Parsing and every later walk over the tree recurse, and a crafted file could
- * otherwise nest deeply enough to overflow the stack.
- */
-constexpr int kMaxCollectionDepth = 64;
-
-/*!
- * \internal
  * \brief Returns whether the optional member \a key of \a root is absent or of \a type.
  *
  * Optional members may be missing (their defaults apply), but a member that is
@@ -140,6 +131,9 @@ QString claimId(const QJsonValue &value, QSet<QString> &seenIds)
 /*!
  * \internal
  * \brief Parses the collection items in \a items, recursing into folders.
+ *
+ * Nesting stops at kMaxCollectionDepth: parsing and every later walk over the
+ * tree recurse, and a crafted file could otherwise overflow the stack.
  *
  * \param items The JSON array of items.
  * \param seenIds Ids seen so far in the whole collection.

@@ -17,6 +17,9 @@ inline constexpr int kWorkspaceSchemaVersion = 1;
 /** File-name suffix of workspace files, including the leading dot. */
 inline constexpr QLatin1StringView kWorkspaceFileSuffix(".reqdeck");
 
+/** Deepest nesting of collection items a workspace may have. */
+inline constexpr int kMaxCollectionDepth = 64;
+
 /** One variable of an environment. */
 struct EnvironmentVariable
 {
