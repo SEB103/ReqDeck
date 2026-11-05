@@ -256,6 +256,12 @@ void MockHttpServer::route(QTcpSocket *socket, const Request &request)
         return;
     }
 
+    if (path == "/binary") {
+        writeResponse(socket, 200, {{"Content-Type", "application/octet-stream"}},
+                      QByteArray::fromHex("89504E4700010203"), head);
+        return;
+    }
+
     if (path == "/response-headers") {
         writeResponse(socket, 200, {{"X-Dup", "a"}, {"X-Dup", "b"}, {"Content-Type", "text/plain"}},
                       "ok", head);

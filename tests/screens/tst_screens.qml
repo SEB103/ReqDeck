@@ -44,6 +44,7 @@ Item {
         Item {
             property alias collection: collectionPane
             property alias request: requestPane
+            property alias response: responsePane
 
             width: 1000
             height: 600
@@ -60,7 +61,15 @@ Item {
                 id: requestPane
 
                 x: 300
-                width: 700
+                width: 400
+                height: 600
+            }
+
+            ResponsePane {
+                id: responsePane
+
+                x: 700
+                width: 300
                 height: 600
             }
         }
@@ -243,7 +252,7 @@ Item {
             compare(findChild(pane, "nameField").text, "Create item");
             compare(findChild(pane, "urlField").text, "http://h/items");
             compare(findChild(pane, "methodCombo").currentText, "POST");
-            compare(findChild(pane, "sendButton").enabled, false);
+            compare(findChild(pane, "sendButton").enabled, true);
             verify(!cppWorkspaceManager.dirty);
         }
 
@@ -463,6 +472,160 @@ Item {
 
             dialog.accept();
             verify(!cppCollection.indexOfNode("r2").valid);
+        }
+
+        /*! Creates the wired panes with r2 open, pointing at \a url, ready to send. */
+        function createSender(url) {
+            const host = createWired();
+            clickRow(host, 1);
+            cppRequestEditor.url = url;
+            waitForRendering(host);
+            return host;
+        }
+
+        /*! Sends through the button and waits for the result. */
+        function sendAndWait(host) {
+            mouseClick(findChild(host.request, "sendButton"));
+            tryCompare(cppResponse, "busy", false, 10000);
+            waitForRendering(host);
+        }
+
+        /*! Verifies that a sent request shows status, details, and body. */
+        function test_sendShowsStatusAndBody() {
+            const host = createSender(cppTestHost.serverUrl("/status/201"));
+            verify(findChild(host.response, "placeholder").visible);
+
+            sendAndWait(host);
+
+            compare(findChild(host.response, "placeholder").visible, false);
+            compare(findChild(host.response, "statusChip").text, "201 Created");
+            compare(findChild(host.response, "statusChip").statusClass, 2);
+            compare(findChild(host.response, "sizeLabel").text, "10 B");
+            compare(findChild(host.response, "requestNameLabel").text, "List items");
+            compare(findChild(host.response, "bodyArea").text, "status 201");
+        }
+
+        /*! Verifies that a value being typed counts when Send is clicked. */
+        function test_sendCommitsFocusedField() {
+            const host = createSender(cppTestHost.serverUrl("/status/200"));
+            findChild(host.request, "tabs").currentIndex = 3;
+            waitForRendering(host);
+
+            const box = findChild(host.request, "timeoutBox");
+            box.contentItem.forceActiveFocus();
+            box.contentItem.selectAll();
+            keyClick(Qt.Key_9);
+            compare(cppRequestEditor.timeoutMs, 0);
+
+            sendAndWait(host);
+
+            compare(cppRequestEditor.timeoutMs, 9);
+        }
+
+        /*! Verifies cancelling from the response pane. */
+        function test_cancelDuringDelay() {
+            const host = createSender(cppTestHost.serverUrl("/delay/3000"));
+            mouseClick(findChild(host.request, "sendButton"));
+            verify(cppResponse.busy);
+            waitForRendering(host);
+            compare(findChild(host.response, "busyColumn").visible, true);
+            compare(findChild(host.request, "sendButton").text, "Cancel");
+
+            mouseClick(findChild(host.response, "cancelButton"));
+
+            compare(cppResponse.busy, false);
+            tryCompare(findChild(host.response, "errorLabel"), "visible", true);
+            compare(findChild(host.request, "sendButton").text, "Send");
+        }
+
+        /*! Verifies that the send button cancels while a request runs. */
+        function test_sendButtonCancels() {
+            const host = createSender(cppTestHost.serverUrl("/delay/3000"));
+            const button = findChild(host.request, "sendButton");
+            mouseClick(button);
+            verify(cppResponse.busy);
+
+            mouseClick(button);
+
+            compare(cppResponse.busy, false);
+        }
+
+        /*! Verifies that a transport failure appears in the pane. */
+        function test_errorShowsInPane() {
+            const host = createSender(cppTestHost.closedUrl());
+
+            sendAndWait(host);
+
+            compare(findChild(host.response, "statusChip").visible, false);
+            compare(findChild(host.response, "errorLabel").visible, true);
+            verify(findChild(host.response, "errorLabel").text.length > 0);
+        }
+
+        /*! Verifies that a request that cannot be built appears in the pane. */
+        function test_buildErrorShowsInPane() {
+            const host = createSender("{{nope}}/x");
+
+            sendAndWait(host);
+
+            verify(findChild(host.response, "errorLabel").text.indexOf("{{nope}}") >= 0);
+        }
+
+        /*! Verifies the switch between formatted and original text. */
+        function test_prettyRawSwitch() {
+            const host = createSender(cppTestHost.serverUrl("/echo"));
+            sendAndWait(host);
+
+            const area = findChild(host.response, "bodyArea");
+            const toggle = findChild(host.response, "prettySwitch");
+            compare(toggle.visible, true);
+            compare(toggle.checked, true);
+            verify(area.text.indexOf("\n") >= 0);
+
+            mouseClick(toggle);
+
+            compare(cppResponse.pretty, false);
+            verify(area.text.indexOf("\n") < 0);
+            cppResponse.pretty = true;
+        }
+
+        /*! Verifies that formatted JSON is colored. */
+        function test_bodyIsColored() {
+            const host = createSender(cppTestHost.serverUrl("/echo"));
+            sendAndWait(host);
+            const area = findChild(host.response, "bodyArea");
+            // Line 2 holds the first key; the first line is only a brace.
+            verify(cppTestHost.isColoredBelowFirstLine(area.textDocument));
+        }
+
+        /*! Verifies the header list. */
+        function test_headersTabListsHeaders() {
+            const host = createSender(cppTestHost.serverUrl("/response-headers"));
+            sendAndWait(host);
+
+            findChild(host.response, "responseTabs").currentIndex = 1;
+            waitForRendering(host);
+
+            const list = findChild(host.response, "headersList");
+            verify(list.count >= 3);
+        }
+
+        /*! Verifies that binary data is described, not shown. */
+        function test_binaryNoticeShown() {
+            const host = createSender(cppTestHost.serverUrl("/binary"));
+            sendAndWait(host);
+
+            compare(findChild(host.response, "bodyArea").text, "Binary body, 8 B. Not shown.");
+            compare(findChild(host.response, "prettySwitch").visible, false);
+        }
+
+        /*! Verifies that another workspace removes the response. */
+        function test_workspaceSwitchClearsResponse() {
+            const host = createSender(cppTestHost.serverUrl("/status/200"));
+            sendAndWait(host);
+
+            verify(cppTestHost.reset());
+
+            tryCompare(findChild(host.response, "placeholder"), "visible", true);
         }
 
         /*! Verifies typing in a table with the real model keeps the row and focus. */

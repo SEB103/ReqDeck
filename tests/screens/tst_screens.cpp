@@ -3,12 +3,18 @@
 
 #include <QQmlContext>
 #include <QQmlEngine>
+#include <QQuickTextDocument>
+#include <QTcpServer>
 #include <QTemporaryDir>
+#include <QTextBlock>
+#include <QTextDocument>
+#include <QTextLayout>
 #include <QtQuickTest/quicktest.h>
 
 #include <memory>
 
 #include "core/workspace/workspaceserializer.h"
+#include "mockhttpserver.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/requesteditor.h"
@@ -62,12 +68,31 @@ public:
     /*! Creates the facades and publishes them to QML. */
     void publish(QQmlContext *context)
     {
+        m_server.start();
         m_manager.setSecretsDir(m_dir.filePath(QStringLiteral("secrets")));
         context->setContextProperty(QStringLiteral("cppWorkspaceManager"), &m_manager);
         context->setContextProperty(QStringLiteral("cppCollection"), &m_collection);
         context->setContextProperty(QStringLiteral("cppRequestEditor"), &m_editor);
         context->setContextProperty(QStringLiteral("cppResponse"), &m_response);
         context->setContextProperty(QStringLiteral("cppTestHost"), this);
+    }
+
+    /*! Returns the URL of \a path on the mock server. */
+    Q_INVOKABLE QString serverUrl(const QString &path) const { return m_server.url(path).toString(); }
+
+    /*! Returns a URL on a port nothing listens on. */
+    Q_INVOKABLE QString closedUrl() const
+    {
+        QTcpServer probe;
+        probe.listen(QHostAddress::LocalHost, 0);
+        return QStringLiteral("http://127.0.0.1:%1/").arg(probe.serverPort());
+    }
+
+    /*! Returns whether the second block of \a document carries any text format. */
+    Q_INVOKABLE bool isColoredBelowFirstLine(QQuickTextDocument *document) const
+    {
+        const QTextBlock block = document->textDocument()->firstBlock().next();
+        return block.isValid() && !block.layout()->formats().isEmpty();
     }
 
     /*! Opens a fresh copy of the test workspace, clean and with nothing selected. */
@@ -87,6 +112,9 @@ public:
 private:
     /*! Directory of the test workspace. */
     QTemporaryDir m_dir;
+
+    /*! Local server the requests of the tests go to. */
+    MockHttpServer m_server;
 
     /*! Real workspace manager. */
     WorkspaceManager m_manager;

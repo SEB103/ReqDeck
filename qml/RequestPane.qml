@@ -77,13 +77,19 @@ Item {
                 onTextEdited: cppRequestEditor.url = text
             }
 
-            // Sending arrives with the response viewer.
+            // Taking the focus first commits a field still being edited.
             Button {
                 objectName: "sendButton"
 
                 highlighted: true
-                enabled: false
-                text: qsTr("Send")
+                text: cppRequestEditor.busy ? qsTr("Cancel") : qsTr("Send")
+                onClicked: {
+                    forceActiveFocus(Qt.MouseFocusReason)
+                    if (cppRequestEditor.busy)
+                        cppRequestEditor.cancel()
+                    else
+                        cppRequestEditor.send()
+                }
             }
         }
 
@@ -297,6 +303,8 @@ Item {
                     }
 
                     SpinBox {
+                        objectName: "timeoutBox"
+
                         editable: true
                         from: 0
                         to: 3600000

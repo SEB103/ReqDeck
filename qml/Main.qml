@@ -132,6 +132,8 @@ ApplicationWindow {
         hasWorkspace: cppWorkspaceManager.hasActiveWorkspace
         workspaceDirty: cppWorkspaceManager.dirty
         recentWorkspaces: cppWorkspaceManager.recentWorkspaces
+        canSend: cppRequestEditor.canSend
+        canCancel: cppRequestEditor.busy
     }
 
     // The status bar belongs to the workspace; the launcher has nothing to report.
@@ -228,6 +230,16 @@ ApplicationWindow {
 
         function onDuplicateRequested() {
             mainScreen.collectionPane.duplicateSelected()
+        }
+
+        function onSendRequested() {
+            // A field being edited commits when it loses the focus.
+            mainWindow.contentItem.forceActiveFocus()
+            cppRequestEditor.send()
+        }
+
+        function onCancelRequested() {
+            cppRequestEditor.cancel()
         }
     }
 

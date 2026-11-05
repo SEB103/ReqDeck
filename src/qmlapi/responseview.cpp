@@ -3,6 +3,10 @@
 
 #include "qmlapi/responseview.h"
 
+#include <QQuickTextDocument>
+
+#include "qmlapi/bodyhighlighter.h"
+
 namespace {
 /*!
  * \internal
@@ -26,6 +30,7 @@ QString unresolvedWarning(const QStringList &names)
 ResponseView::ResponseView(QObject *parent)
     : QObject(parent)
     , m_headers(new KeyValueModel(this))
+    , m_highlighter(new BodyHighlighter(this))
 {
 }
 
@@ -152,9 +157,34 @@ void ResponseView::setPretty(bool pretty)
     emit responseChanged();
 }
 
+bool ResponseView::darkTheme() const
+{
+    return m_darkTheme;
+}
+
+void ResponseView::setDarkTheme(bool dark)
+{
+    if (m_darkTheme == dark)
+        return;
+    m_darkTheme = dark;
+    m_highlighter->setDark(dark);
+    emit darkThemeChanged();
+}
+
 KeyValueModel *ResponseView::headersModel() const
 {
     return m_headers;
+}
+
+/*!
+ * \brief Colors the text of \a document.
+ *
+ * The view owns the highlighter, so that QML needs no C++ type for it.
+ * \param document The document of the body view.
+ */
+void ResponseView::attachHighlighter(QQuickTextDocument *document)
+{
+    m_highlighter->setDocument(document ? document->textDocument() : nullptr);
 }
 
 /*!
@@ -182,6 +212,7 @@ void ResponseView::setResponse(const ResponseData &response, const QStringList &
     resetResult();
     m_hasResponse = true;
     m_body = decodeBody(response.body, response.contentType);
+    m_highlighter->setKind(int(m_body.kind));
     m_response = response;
     m_response.body.clear();
     m_warningText = unresolvedWarning(unresolvedVariables);

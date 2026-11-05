@@ -13,7 +13,7 @@ import Base as Base
     \brief Composes the menu band, the three-pane workspace, and the log panel.
 
     The workspace is split into the collection sidebar, the request editor, and
-    the response viewer, which shows a placeholder until sending exists. Main.qml
+    the response viewer. Main.qml
     supplies the state and connects to the exposed menu bar, quick actions,
     banner, log panel, and collection pane.
 */
@@ -56,6 +56,12 @@ Pane {
     /*! Recent-workspace rows forwarded to the menu bar. */
     property var recentWorkspaces: []
 
+    /*! Whether the open request can be sent. */
+    property bool canSend: false
+
+    /*! Whether a running request can be cancelled. */
+    property bool canCancel: false
+
     width: 1200
     height: 800
     padding: 0
@@ -92,6 +98,8 @@ Pane {
                     workspaceDirty: main.workspaceDirty
                     recentWorkspaces: main.recentWorkspaces
                     hasSelection: collectionPane.selectedId.length > 0
+                    canSend: main.canSend
+                    canCancel: main.canCancel
                 }
 
                 Base.BsTopBarActions {
@@ -172,7 +180,10 @@ Pane {
                 SplitView.minimumWidth: 260
                 SplitView.fillHeight: true
                 title: qsTr("Response")
-                placeholderText: qsTr("Send a request to see the response here.")
+
+                ResponsePane {
+                    anchors.fill: parent
+                }
             }
         }
 

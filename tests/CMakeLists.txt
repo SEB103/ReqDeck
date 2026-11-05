@@ -359,6 +359,7 @@ target_link_libraries(tst_screens
         MainQmlplugin
         Baseplugin
         ReqDeckQmlApi
+        ReqDeckTestSupport
         Qt6::Qml
         Qt6::Quick
         Qt6::QuickControls2

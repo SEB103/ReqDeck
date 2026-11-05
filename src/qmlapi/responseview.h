@@ -12,6 +12,12 @@
 #include "framework/bodyformatter.h"
 #include "qmlapi/keyvaluemodel.h"
 
+class BodyHighlighter;
+
+QT_BEGIN_NAMESPACE
+class QQuickTextDocument;
+QT_END_NAMESPACE
+
 /**
  * The last response, prepared for the response pane; exposed to QML as
  * \c cppResponse. \c bodyKind uses the numeric values of BodyKind.
@@ -71,6 +77,9 @@ class ResponseView : public QObject
 
     /** Whether formatted text is preferred; stays set across responses. */
     Q_PROPERTY(bool pretty READ pretty WRITE setPretty NOTIFY responseChanged)
+
+    /** Whether the body colors suit a dark background. */
+    Q_PROPERTY(bool darkTheme READ darkTheme WRITE setDarkTheme NOTIFY darkThemeChanged)
 
     /** Response headers. */
     Q_PROPERTY(KeyValueModel *headersModel READ headersModel CONSTANT)
@@ -133,8 +142,17 @@ public:
     /** Sets whether formatted text is preferred. */
     void setPretty(bool pretty);
 
+    /** Returns whether the body colors suit a dark background. */
+    bool darkTheme() const;
+
+    /** Sets whether the body colors suit a dark background. */
+    void setDarkTheme(bool dark);
+
     /** Returns the response headers. */
     KeyValueModel *headersModel() const;
+
+    /** Colors the text of \a document, the document of the body view. */
+    Q_INVOKABLE void attachHighlighter(QQuickTextDocument *document);
 
     /** Shows that the request \a requestName is running. */
     void setBusy(const QString &requestName);
@@ -152,6 +170,9 @@ signals:
     /** Emitted when anything shown changes. */
     void responseChanged();
 
+    /** Emitted when darkTheme() changes. */
+    void darkThemeChanged();
+
 private:
     /** Forgets the shown result, keeping requestName() and pretty(). */
     void resetResult();
@@ -161,6 +182,9 @@ private:
 
     /** Response headers; owned through the QObject tree. */
     KeyValueModel *m_headers {nullptr};
+
+    /** Colors the body view; owned through the QObject tree. */
+    BodyHighlighter *m_highlighter {nullptr};
 
     /** The response shown; the body is released after decoding. */
     ResponseData m_response;
@@ -191,6 +215,9 @@ private:
 
     /** Whether formatted text is preferred. */
     bool m_pretty {true};
+
+    /** Whether the body colors suit a dark background. */
+    bool m_darkTheme {false};
 };
 
 #endif // RESPONSEVIEW_H
