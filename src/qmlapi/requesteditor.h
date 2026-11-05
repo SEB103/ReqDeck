@@ -1,0 +1,236 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#ifndef REQUESTEDITOR_H
+#define REQUESTEDITOR_H
+
+#include <QObject>
+#include <QString>
+
+#include "core/http/requestspec.h"
+
+class CollectionTreeModel;
+class KeyValueModel;
+
+/**
+ * The request open in the editor, exposed to QML as \c cppRequestEditor.
+ *
+ * Edits go straight into the workspace through CollectionTreeModel and mark it
+ * dirty; File > Save writes them. Enum properties use the numeric values of
+ * BodyMode, RawBodyType, and AuthType.
+ */
+class RequestEditor : public QObject
+{
+    Q_OBJECT
+    Q_DISABLE_COPY_MOVE(RequestEditor)
+
+    /** Whether a request is open. */
+    Q_PROPERTY(bool hasRequest READ hasRequest NOTIFY requestChanged)
+
+    /** Node id of the open request; empty when none is open. */
+    Q_PROPERTY(QString requestId READ requestId NOTIFY requestChanged)
+
+    /** Name of the request in the collection; a blank name is refused. */
+    Q_PROPERTY(QString name READ name WRITE setName NOTIFY requestChanged)
+
+    /** Request verb, for example "GET". */
+    Q_PROPERTY(QString method READ method WRITE setMethod NOTIFY requestChanged)
+
+    /** Request URL. */
+    Q_PROPERTY(QString url READ url WRITE setUrl NOTIFY requestChanged)
+
+    /** Body mode: 0 none, 1 raw, 2 form. */
+    Q_PROPERTY(int bodyMode READ bodyMode WRITE setBodyMode NOTIFY requestChanged)
+
+    /** Raw body flavor: 0 JSON, 1 text, 2 XML. */
+    Q_PROPERTY(int rawBodyType READ rawBodyType WRITE setRawBodyType NOTIFY requestChanged)
+
+    /** Raw body text. */
+    Q_PROPERTY(QString rawBody READ rawBody WRITE setRawBody NOTIFY requestChanged)
+
+    /** Authentication: 0 none, 1 basic, 2 bearer, 3 API key. */
+    Q_PROPERTY(int authType READ authType WRITE setAuthType NOTIFY requestChanged)
+
+    /** Basic auth user name. */
+    Q_PROPERTY(QString authUsername READ authUsername WRITE setAuthUsername NOTIFY requestChanged)
+
+    /** Basic auth password. */
+    Q_PROPERTY(QString authPassword READ authPassword WRITE setAuthPassword NOTIFY requestChanged)
+
+    /** Bearer token. */
+    Q_PROPERTY(QString authToken READ authToken WRITE setAuthToken NOTIFY requestChanged)
+
+    /** API key header or parameter name. */
+    Q_PROPERTY(QString apiKeyName READ apiKeyName WRITE setApiKeyName NOTIFY requestChanged)
+
+    /** API key value. */
+    Q_PROPERTY(QString apiKeyValue READ apiKeyValue WRITE setApiKeyValue NOTIFY requestChanged)
+
+    /** Whether the API key goes into the query string instead of a header. */
+    Q_PROPERTY(bool apiKeyInQuery READ apiKeyInQuery WRITE setApiKeyInQuery NOTIFY requestChanged)
+
+    /** Transfer timeout in milliseconds; 0 uses the default. */
+    Q_PROPERTY(int timeoutMs READ timeoutMs WRITE setTimeoutMs NOTIFY requestChanged)
+
+    /** Query parameter rows. */
+    Q_PROPERTY(KeyValueModel *paramsModel READ paramsModel CONSTANT)
+
+    /** Header rows. */
+    Q_PROPERTY(KeyValueModel *headersModel READ headersModel CONSTANT)
+
+    /** Form field rows. */
+    Q_PROPERTY(KeyValueModel *formModel READ formModel CONSTANT)
+
+public:
+    /** Creates an empty editor over \a collection, which must outlive it. */
+    explicit RequestEditor(CollectionTreeModel *collection, QObject *parent = nullptr);
+
+    /** Returns whether a request is open. */
+    bool hasRequest() const;
+
+    /** Returns the node id of the open request. */
+    QString requestId() const;
+
+    /** Returns the name of the request. */
+    QString name() const;
+
+    /** Renames the request. */
+    void setName(const QString &name);
+
+    /** Returns the request verb. */
+    QString method() const;
+
+    /** Sets the request verb; an unknown verb is ignored. */
+    void setMethod(const QString &method);
+
+    /** Returns the request URL. */
+    QString url() const;
+
+    /** Sets the request URL. */
+    void setUrl(const QString &url);
+
+    /** Returns the body mode. */
+    int bodyMode() const;
+
+    /** Sets the body mode; an unknown value is ignored. */
+    void setBodyMode(int mode);
+
+    /** Returns the raw body flavor. */
+    int rawBodyType() const;
+
+    /** Sets the raw body flavor; an unknown value is ignored. */
+    void setRawBodyType(int type);
+
+    /** Returns the raw body text. */
+    QString rawBody() const;
+
+    /** Sets the raw body text. */
+    void setRawBody(const QString &text);
+
+    /** Returns the authentication type. */
+    int authType() const;
+
+    /** Sets the authentication type; an unknown value is ignored. */
+    void setAuthType(int type);
+
+    /** Returns the Basic auth user name. */
+    QString authUsername() const;
+
+    /** Sets the Basic auth user name. */
+    void setAuthUsername(const QString &username);
+
+    /** Returns the Basic auth password. */
+    QString authPassword() const;
+
+    /** Sets the Basic auth password. */
+    void setAuthPassword(const QString &password);
+
+    /** Returns the Bearer token. */
+    QString authToken() const;
+
+    /** Sets the Bearer token. */
+    void setAuthToken(const QString &token);
+
+    /** Returns the API key name. */
+    QString apiKeyName() const;
+
+    /** Sets the API key name. */
+    void setApiKeyName(const QString &name);
+
+    /** Returns the API key value. */
+    QString apiKeyValue() const;
+
+    /** Sets the API key value. */
+    void setApiKeyValue(const QString &value);
+
+    /** Returns whether the API key goes into the query string. */
+    bool apiKeyInQuery() const;
+
+    /** Sets whether the API key goes into the query string. */
+    void setApiKeyInQuery(bool inQuery);
+
+    /** Returns the transfer timeout in milliseconds. */
+    int timeoutMs() const;
+
+    /** Sets the transfer timeout; a negative value is ignored. */
+    void setTimeoutMs(int timeoutMs);
+
+    /** Returns the query parameter rows. */
+    KeyValueModel *paramsModel() const;
+
+    /** Returns the header rows. */
+    KeyValueModel *headersModel() const;
+
+    /** Returns the form field rows. */
+    KeyValueModel *formModel() const;
+
+    /** Opens the request \a id; a folder or an unknown id leaves the editor empty. */
+    Q_INVOKABLE void load(const QString &id);
+
+    /** Closes the open request. */
+    Q_INVOKABLE void clear();
+
+signals:
+    /** Emitted when the open request or any of its fields changes. */
+    void requestChanged();
+
+private:
+    /** Assigns \a value to \a field of the open request and stores the request. */
+    template<typename T>
+    void updateField(T &field, const T &value);
+
+    /** Stores the working copy in the collection. */
+    void store();
+
+    /** Puts the rows of the table models into the working copy and stores it. */
+    void storeTables();
+
+    /** Follows changes of the collection made outside the editor. */
+    void syncWithCollection();
+
+    /** Shows the working copy in the table models and notifies QML. */
+    void showRequest();
+
+    /** Collection holding the requests; not owned. */
+    CollectionTreeModel *m_collection {nullptr};
+
+    /** Query parameter rows; owned through the QObject tree. */
+    KeyValueModel *m_params {nullptr};
+
+    /** Header rows; owned through the QObject tree. */
+    KeyValueModel *m_headers {nullptr};
+
+    /** Form field rows; owned through the QObject tree. */
+    KeyValueModel *m_form {nullptr};
+
+    /** Node id of the open request; empty when none is open. */
+    QString m_requestId;
+
+    /** Name of the open request. */
+    QString m_name;
+
+    /** Working copy of the open request. */
+    RequestSpec m_request;
+};
+
+#endif // REQUESTEDITOR_H

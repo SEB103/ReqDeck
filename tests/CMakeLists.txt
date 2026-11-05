@@ -255,6 +255,18 @@ target_link_libraries(tst_keyvaluemodel
 
 add_test(NAME KeyValueModel.Unit COMMAND tst_keyvaluemodel)
 
+qt_add_executable(tst_requesteditor
+    unit/tst_requesteditor.cpp
+)
+
+target_link_libraries(tst_requesteditor
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Test
+)
+
+add_test(NAME RequestEditor.Unit COMMAND tst_requesteditor)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml
