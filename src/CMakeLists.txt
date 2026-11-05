@@ -78,6 +78,8 @@ target_sources(ReqDeckQmlApi
     PRIVATE
         qmlapi/collectiontreemodel.cpp
         qmlapi/collectiontreemodel.h
+        qmlapi/keyvaluemodel.cpp
+        qmlapi/keyvaluemodel.h
         qmlapi/workspacemanager.cpp
         qmlapi/workspacemanager.h
 )

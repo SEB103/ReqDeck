@@ -242,6 +242,19 @@ target_link_libraries(tst_collectiontreemodel
 
 add_test(NAME CollectionTreeModel.Unit COMMAND tst_collectiontreemodel)
 
+qt_add_executable(tst_keyvaluemodel
+    unit/tst_keyvaluemodel.cpp
+)
+
+target_link_libraries(tst_keyvaluemodel
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Gui
+        Qt6::Test
+)
+
+add_test(NAME KeyValueModel.Unit COMMAND tst_keyvaluemodel)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml
