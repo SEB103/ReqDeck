@@ -51,3 +51,7 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
   secret variables stay out of the file, in a per-user secrets file (not
   encrypted); request history of 200 entries with literal credentials removed; a
   samples workspace against public test APIs, seeded into the data directory.
+- Collection sidebar and request editor: build a tree of folders and requests,
+  rename, duplicate, and delete them, and edit method, URL, parameters, headers,
+  body, and authentication; changes are saved with the workspace. Sending
+  requests follows.
