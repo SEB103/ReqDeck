@@ -10,9 +10,11 @@ qt_add_qml_module(MainQml
     CLASS_NAME ReqDeckPlugin
     QML_FILES
         AboutDialog.qml
+        CollectionPane.qml
         LauncherScreen.qml
         Main.qml
         MainScreen.ui.qml
+        RequestPane.qml
         UpdateDialog.qml
 )
 

@@ -273,6 +273,27 @@ QModelIndex CollectionTreeModel::indexOfNode(const QString &id) const
 }
 
 /*!
+ * \brief Returns the name of the node \a id.
+ * \param id The node.
+ * \return The name, or an empty string when the node does not exist.
+ */
+QString CollectionTreeModel::nodeName(const QString &id) const
+{
+    const Item *item = m_items.value(id);
+    return item ? item->name : QString();
+}
+
+/*!
+ * \brief Returns whether \a id is a folder.
+ * \param id The node.
+ */
+bool CollectionTreeModel::isFolder(const QString &id) const
+{
+    const Item *item = m_items.value(id);
+    return item && item->isFolder;
+}
+
+/*!
  * \brief Returns the folder a new item belongs to.
  *
  * With a folder selected the new item goes into it, with a request selected it

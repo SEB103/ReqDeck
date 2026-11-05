@@ -9,9 +9,11 @@
 #include "framework/logfiltermodel.h"
 
 class AppInfo;
+class CollectionTreeModel;
 class LicenseModel;
 class LocaleController;
 class LogModel;
+class RequestEditor;
 class UpdateController;
 class WorkspaceManager;
 
@@ -23,8 +25,9 @@ QT_END_NAMESPACE
  * QML engine wrapper that owns application-level C++ services.
  *
  * Exposes the services to QML as context properties: \c cppAppEngine,
- * \c cppWorkspaceManager, \c cppAppInfo, \c cppLicenseModel, and, once injected,
- * \c cppLocale and \c cppUpdate. It also installs the Qt message handler that
+ * \c cppWorkspaceManager, \c cppCollection, \c cppRequestEditor, \c cppAppInfo,
+ * \c cppLicenseModel, and, once injected, \c cppLocale and \c cppUpdate. It also
+ * installs the Qt message handler that
  * feeds the in-application log and the release log file.
  */
 class AppEngine : public QQmlApplicationEngine
@@ -75,6 +78,12 @@ public:
 private:
     /** Workspace facade exposed to QML as \c cppWorkspaceManager; owned by this engine. */
     WorkspaceManager* m_workspaceManager = nullptr;
+
+    /** Collection of the active workspace exposed to QML as \c cppCollection; owned by this engine. */
+    CollectionTreeModel* m_collection = nullptr;
+
+    /** Open request exposed to QML as \c cppRequestEditor; owned by this engine. */
+    RequestEditor* m_requestEditor = nullptr;
 
     /** Application/build metadata exposed to QML as \c cppAppInfo; owned by this engine. */
     AppInfo* m_appInfo = nullptr;

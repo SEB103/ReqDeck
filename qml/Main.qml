@@ -214,6 +214,31 @@ ApplicationWindow {
         function onAboutRequested() {
             aboutDialog.open()
         }
+
+        function onNewRequestRequested() {
+            mainScreen.collectionPane.addRequest()
+        }
+
+        function onNewFolderRequested() {
+            mainScreen.collectionPane.addFolder()
+        }
+
+        function onDuplicateRequested() {
+            mainScreen.collectionPane.duplicateSelected()
+        }
+    }
+
+    Connections {
+        target: mainScreen.collectionPane
+
+        function onNodeSelected(id) {
+            cppRequestEditor.load(id)
+        }
+
+        function onDepthLimitReached() {
+            mainWindow.showNotification(2, // Diagnostics::Warning
+                                        qsTr("Folders cannot be nested more than 64 levels deep."))
+        }
     }
 
     Connections {

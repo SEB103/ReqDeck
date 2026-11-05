@@ -90,6 +90,9 @@ private slots:
     /*! Verifies that a changed method shows in the tree. */
     void updateRequestChangesMethodRole();
 
+    /*! Verifies the lookups used by the rename and delete dialogs. */
+    void nodeNameAndKindByIdentifier();
+
     /*! Verifies where a new item goes for a selected folder or request. */
     void parentForNewItemResolvesFolderAndRequest();
 
@@ -275,6 +278,15 @@ void CollectionTreeModelTest::updateRequestChangesMethodRole()
              QStringLiteral("DELETE"));
     QCOMPARE(m_model->request(QStringLiteral("r3"))->method, HttpMethod::Delete);
     QVERIFY(m_manager->dirty());
+}
+
+void CollectionTreeModelTest::nodeNameAndKindByIdentifier()
+{
+    QCOMPARE(m_model->nodeName(QStringLiteral("r1")), QStringLiteral("r1"));
+    QVERIFY(m_model->isFolder(QStringLiteral("f1")));
+    QVERIFY(!m_model->isFolder(QStringLiteral("r1")));
+    QVERIFY(m_model->nodeName(QStringLiteral("nope")).isEmpty());
+    QVERIFY(!m_model->isFolder(QStringLiteral("nope")));
 }
 
 void CollectionTreeModelTest::parentForNewItemResolvesFolderAndRequest()

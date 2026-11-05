@@ -30,6 +30,9 @@
 #include "framework/logmodel.h"
 #include "licensemodel.h"
 #include "localecontroller.h"
+#include "qmlapi/collectiontreemodel.h"
+#include "qmlapi/keyvaluemodel.h"
+#include "qmlapi/requesteditor.h"
 #include "qmlapi/workspacemanager.h"
 #include "updatecontroller.h"
 
@@ -260,6 +263,8 @@ void customLogMessageHandler(QtMsgType type, const QMessageLogContext& context, 
 AppEngine::AppEngine(QObject* parent)
     : QQmlApplicationEngine(parent)
     , m_workspaceManager(new WorkspaceManager(this))
+    , m_collection(new CollectionTreeModel(m_workspaceManager, this))
+    , m_requestEditor(new RequestEditor(m_collection, this))
     , m_appInfo(new AppInfo(this))
     , m_licenseModel(new LicenseModel(this))
     , m_logModel(new LogModel(2000, this))
@@ -279,6 +284,12 @@ AppEngine::AppEngine(QObject* parent)
 
     qmlRegisterUncreatableType<WorkspaceManager>("Cpp.WorkspaceManager", 1, 0, "WorkspaceManager", QStringLiteral("WorkspaceManager should not be created in QML."));
     rootContext()->setContextProperty("cppWorkspaceManager", m_workspaceManager);
+
+    qmlRegisterUncreatableType<CollectionTreeModel>("Cpp.WorkspaceManager", 1, 0, "CollectionTreeModel", QStringLiteral("CollectionTreeModel should not be created in QML."));
+    qmlRegisterUncreatableType<KeyValueModel>("Cpp.WorkspaceManager", 1, 0, "KeyValueModel", QStringLiteral("KeyValueModel is exposed by RequestEditor."));
+    qmlRegisterUncreatableType<RequestEditor>("Cpp.WorkspaceManager", 1, 0, "RequestEditor", QStringLiteral("RequestEditor should not be created in QML."));
+    rootContext()->setContextProperty("cppCollection", m_collection);
+    rootContext()->setContextProperty("cppRequestEditor", m_requestEditor);
 
     // Application/build metadata and the bundled license documents shown by the
     // Help > About dialog. The license texts are embedded as resources under

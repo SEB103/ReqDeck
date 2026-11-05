@@ -12,10 +12,10 @@ import Base as Base
     \inqmlmodule ReqDeck
     \brief Composes the menu band, the three-pane workspace, and the log panel.
 
-    The workspace is split into the sidebar (collection tree and history), the
-    request editor, and the response viewer. The panes show placeholders until
-    the HTTP features fill them. Main.qml supplies the state and connects to the
-    exposed menu bar, quick actions, banner, and log panel.
+    The workspace is split into the collection sidebar, the request editor, and
+    the response viewer, which shows a placeholder until sending exists. Main.qml
+    supplies the state and connects to the exposed menu bar, quick actions,
+    banner, log panel, and collection pane.
 */
 Pane {
     id: main
@@ -31,6 +31,9 @@ Pane {
 
     /*! Exposes the log panel so Main can react to its close request. */
     property alias logPanel: logPanel
+
+    /*! Exposes the collection pane so Main can connect it to the menu and editor. */
+    property alias collectionPane: collectionPane
 
     /*! Whether child controls should follow the dark theme state. */
     property bool darkTheme: false
@@ -88,6 +91,7 @@ Pane {
                     hasWorkspace: main.hasWorkspace
                     workspaceDirty: main.workspaceDirty
                     recentWorkspaces: main.recentWorkspaces
+                    hasSelection: collectionPane.selectedId.length > 0
                 }
 
                 Base.BsTopBarActions {
@@ -144,7 +148,12 @@ Pane {
                 SplitView.minimumWidth: 200
                 SplitView.fillHeight: true
                 title: qsTr("Collection")
-                placeholderText: qsTr("Requests and history appear here.")
+
+                CollectionPane {
+                    id: collectionPane
+
+                    anchors.fill: parent
+                }
             }
 
             Base.BsPane {
@@ -152,7 +161,10 @@ Pane {
                 SplitView.minimumWidth: 300
                 SplitView.fillHeight: true
                 title: qsTr("Request")
-                placeholderText: qsTr("Select or create a request to edit it here.")
+
+                RequestPane {
+                    anchors.fill: parent
+                }
             }
 
             Base.BsPane {

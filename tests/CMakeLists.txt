@@ -295,3 +295,41 @@ add_test(NAME ReqDeck.QmlSmoke COMMAND tst_qml)
 set_tests_properties(ReqDeck.QmlSmoke PROPERTIES
     ENVIRONMENT "QML2_IMPORT_PATH=${QT_QML_OUTPUT_DIRECTORY}"
 )
+
+# The application's screens read its context, so they run against the real
+# facades instead of the smoke test's mock.
+qt_add_executable(tst_screens
+    screens/tst_screens.cpp
+)
+
+target_sources(tst_screens
+    PRIVATE
+        screens/tst_screens.qml
+)
+
+target_compile_definitions(tst_screens
+    PRIVATE QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/screens"
+)
+
+target_include_directories(tst_screens
+    PRIVATE
+        "${REQDECK_GENERATED_DIR}"
+)
+
+target_link_libraries(tst_screens
+    PRIVATE
+        MainQmlplugin
+        Baseplugin
+        ReqDeckQmlApi
+        Qt6::Qml
+        Qt6::Quick
+        Qt6::QuickControls2
+        Qt6::QuickTest
+)
+
+qt_import_qml_plugins(tst_screens)
+
+add_test(NAME ReqDeck.Screens COMMAND tst_screens)
+set_tests_properties(ReqDeck.Screens PROPERTIES
+    ENVIRONMENT "QML2_IMPORT_PATH=${QT_QML_OUTPUT_DIRECTORY}"
+)

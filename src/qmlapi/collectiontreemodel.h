@@ -77,6 +77,12 @@ public:
     /** Returns the index of the node \a id; invalid when it does not exist. */
     Q_INVOKABLE QModelIndex indexOfNode(const QString &id) const;
 
+    /** Returns the name of the node \a id; empty when it does not exist. */
+    Q_INVOKABLE QString nodeName(const QString &id) const;
+
+    /** Returns whether \a id is a folder. */
+    Q_INVOKABLE bool isFolder(const QString &id) const;
+
     /** Returns the folder a new item belongs to when the node \a id is selected. */
     Q_INVOKABLE QString parentForNewItem(const QString &id) const;
 

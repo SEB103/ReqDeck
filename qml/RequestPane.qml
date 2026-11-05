@@ -1,0 +1,279 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Controls.Material
+import QtQuick.Layouts
+import Base as Base
+
+/*!
+    \qmltype RequestPane
+    \inqmlmodule ReqDeck
+    \brief Edits the request open in \c cppRequestEditor.
+
+    Controls write only on user input (\c onTextEdited, \c onActivated, or with
+    active focus), so showing a request never changes it. The numbers used for
+    body mode, raw body type, and authentication are the values of BodyMode,
+    RawBodyType, and AuthType.
+*/
+Item {
+    id: root
+
+    Label {
+        objectName: "placeholder"
+
+        anchors.centerIn: parent
+        width: parent.width - 32
+        visible: !cppRequestEditor.hasRequest
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.Wrap
+        opacity: 0.6
+        text: qsTr("Select or create a request to edit it here.")
+    }
+
+    ColumnLayout {
+        objectName: "editor"
+
+        anchors.fill: parent
+        anchors.margins: 8
+        visible: cppRequestEditor.hasRequest
+        spacing: 6
+
+        TextField {
+            objectName: "nameField"
+
+            Layout.fillWidth: true
+            placeholderText: qsTr("Request name")
+            selectByMouse: true
+            text: cppRequestEditor.name
+            onEditingFinished: cppRequestEditor.name = text
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 6
+
+            ComboBox {
+                objectName: "methodCombo"
+
+                Layout.preferredWidth: 120
+                model: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
+                currentIndex: Math.max(0, indexOfValue(cppRequestEditor.method))
+                onActivated: cppRequestEditor.method = currentText
+            }
+
+            TextField {
+                objectName: "urlField"
+
+                Layout.fillWidth: true
+                placeholderText: qsTr("https://example.com or {{baseUrl}}/path")
+                selectByMouse: true
+                text: cppRequestEditor.url
+                onTextEdited: cppRequestEditor.url = text
+            }
+
+            // Sending arrives with the response viewer.
+            Button {
+                objectName: "sendButton"
+
+                highlighted: true
+                enabled: false
+                text: qsTr("Send")
+            }
+        }
+
+        TabBar {
+            id: tabs
+
+            objectName: "tabs"
+
+            Layout.fillWidth: true
+
+            TabButton {
+                text: qsTr("Params")
+            }
+
+            TabButton {
+                text: qsTr("Headers")
+            }
+
+            TabButton {
+                text: qsTr("Body")
+            }
+
+            TabButton {
+                text: qsTr("Auth")
+            }
+        }
+
+        StackLayout {
+            objectName: "tabStack"
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            currentIndex: tabs.currentIndex
+
+            Base.BsKeyValueTable {
+                model: cppRequestEditor.paramsModel
+                keyPlaceholder: qsTr("Parameter")
+            }
+
+            Base.BsKeyValueTable {
+                model: cppRequestEditor.headersModel
+                keyPlaceholder: qsTr("Header")
+            }
+
+            ColumnLayout {
+                spacing: 6
+
+                RowLayout {
+                    spacing: 6
+
+                    ComboBox {
+                        Layout.preferredWidth: 180
+                        model: [qsTr("No body"), qsTr("Raw"), qsTr("Form URL encoded")]
+                        currentIndex: cppRequestEditor.bodyMode
+                        onActivated: (index) => cppRequestEditor.bodyMode = index
+                    }
+
+                    ComboBox {
+                        Layout.preferredWidth: 120
+                        visible: cppRequestEditor.bodyMode === 1 // BodyMode::Raw
+                        model: ["JSON", qsTr("Text"), "XML"]
+                        currentIndex: cppRequestEditor.rawBodyType
+                        onActivated: (index) => cppRequestEditor.rawBodyType = index
+                    }
+                }
+
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    visible: cppRequestEditor.bodyMode === 1 // BodyMode::Raw
+
+                    TextArea {
+                        objectName: "rawBodyArea"
+
+                        font.family: "Consolas"
+                        selectByMouse: true
+                        placeholderText: qsTr("Request body")
+                        text: cppRequestEditor.rawBody
+                        onTextChanged: {
+                            if (activeFocus)
+                                cppRequestEditor.rawBody = text
+                        }
+                    }
+                }
+
+                Base.BsKeyValueTable {
+                    objectName: "formTable"
+
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    visible: cppRequestEditor.bodyMode === 2 // BodyMode::FormUrlEncoded
+                    model: cppRequestEditor.formModel
+                    keyPlaceholder: qsTr("Field")
+                }
+
+                Item {
+                    Layout.fillHeight: true
+                    visible: cppRequestEditor.bodyMode === 0 // BodyMode::None
+                }
+            }
+
+            ColumnLayout {
+                spacing: 6
+
+                ComboBox {
+                    Layout.preferredWidth: 180
+                    model: [qsTr("No authentication"), qsTr("Basic"), qsTr("Bearer token"), qsTr("API key")]
+                    currentIndex: cppRequestEditor.authType
+                    onActivated: (index) => cppRequestEditor.authType = index
+                }
+
+                TextField {
+                    Layout.fillWidth: true
+                    visible: cppRequestEditor.authType === 1 // AuthType::Basic
+                    placeholderText: qsTr("User name")
+                    selectByMouse: true
+                    text: cppRequestEditor.authUsername
+                    onTextEdited: cppRequestEditor.authUsername = text
+                }
+
+                TextField {
+                    objectName: "passwordField"
+
+                    Layout.fillWidth: true
+                    visible: cppRequestEditor.authType === 1 // AuthType::Basic
+                    echoMode: TextInput.Password
+                    placeholderText: qsTr("Password")
+                    selectByMouse: true
+                    text: cppRequestEditor.authPassword
+                    onTextEdited: cppRequestEditor.authPassword = text
+                }
+
+                TextField {
+                    objectName: "tokenField"
+
+                    Layout.fillWidth: true
+                    visible: cppRequestEditor.authType === 2 // AuthType::Bearer
+                    echoMode: TextInput.Password
+                    placeholderText: qsTr("Token")
+                    selectByMouse: true
+                    text: cppRequestEditor.authToken
+                    onTextEdited: cppRequestEditor.authToken = text
+                }
+
+                TextField {
+                    Layout.fillWidth: true
+                    visible: cppRequestEditor.authType === 3 // AuthType::ApiKey
+                    placeholderText: qsTr("Key name")
+                    selectByMouse: true
+                    text: cppRequestEditor.apiKeyName
+                    onTextEdited: cppRequestEditor.apiKeyName = text
+                }
+
+                TextField {
+                    Layout.fillWidth: true
+                    visible: cppRequestEditor.authType === 3 // AuthType::ApiKey
+                    echoMode: TextInput.Password
+                    placeholderText: qsTr("Key value")
+                    selectByMouse: true
+                    text: cppRequestEditor.apiKeyValue
+                    onTextEdited: cppRequestEditor.apiKeyValue = text
+                }
+
+                ComboBox {
+                    Layout.preferredWidth: 180
+                    visible: cppRequestEditor.authType === 3 // AuthType::ApiKey
+                    model: [qsTr("Send as header"), qsTr("Send as query parameter")]
+                    currentIndex: cppRequestEditor.apiKeyInQuery ? 1 : 0
+                    onActivated: (index) => cppRequestEditor.apiKeyInQuery = index === 1
+                }
+
+                RowLayout {
+                    spacing: 6
+
+                    Label {
+                        text: qsTr("Timeout in ms (0 = default)")
+                    }
+
+                    SpinBox {
+                        editable: true
+                        from: 0
+                        to: 3600000
+                        stepSize: 1000
+                        value: cppRequestEditor.timeoutMs
+                        onValueModified: cppRequestEditor.timeoutMs = value
+                    }
+                }
+
+                Item {
+                    Layout.fillHeight: true
+                }
+            }
+        }
+    }
+}
