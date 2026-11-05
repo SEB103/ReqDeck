@@ -10,6 +10,7 @@ qt_add_qml_module(Base
     URI Base
     CLASS_NAME BasePlugin
     QML_FILES
+        BsKeyValueTable.qml
         BsLanguageSelector.qml
         BsLogPanel.qml
         BsMenuBar.qml

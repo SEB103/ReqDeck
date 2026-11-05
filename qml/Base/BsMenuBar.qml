@@ -45,6 +45,9 @@ MenuBar {
     /*! Product name used in the About item. */
     property string appName: ""
 
+    /*! Whether an item is selected in the collection. */
+    property bool hasSelection: false
+
     /*! Emitted when the user selects New Workspace. */
     signal newWorkspaceRequested()
 
@@ -80,6 +83,15 @@ MenuBar {
 
     /*! Emitted when the user opens the About dialog. */
     signal aboutRequested()
+
+    /*! Emitted to add a request. */
+    signal newRequestRequested()
+
+    /*! Emitted to add a folder. */
+    signal newFolderRequested()
+
+    /*! Emitted to duplicate the selected item. */
+    signal duplicateRequested()
 
     background: Rectangle {
         implicitHeight: 40
@@ -213,13 +225,15 @@ MenuBar {
         BsMenuItem {
             text: qsTr("&New Request")
             icon.source: "qrc:/images/svg/note_add.svg"
-            enabled: false
+            enabled: appMenuBar.hasWorkspace
+            onTriggered: appMenuBar.newRequestRequested()
         }
 
         BsMenuItem {
             text: qsTr("New &Folder")
             icon.source: "qrc:/images/svg/folder.svg"
-            enabled: false
+            enabled: appMenuBar.hasWorkspace
+            onTriggered: appMenuBar.newFolderRequested()
         }
 
         MenuSeparator {}
@@ -241,7 +255,8 @@ MenuBar {
         BsMenuItem {
             text: qsTr("&Duplicate")
             icon.source: "qrc:/images/svg/content_copy.svg"
-            enabled: false
+            enabled: appMenuBar.hasWorkspace && appMenuBar.hasSelection
+            onTriggered: appMenuBar.duplicateRequested()
         }
 
         BsMenuItem {

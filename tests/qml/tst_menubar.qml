@@ -66,6 +66,29 @@ Item {
         }
     }
 
+    // Stands in for KeyValueModel: the table only needs its roles and two calls.
+    ListModel {
+        id: keyValueModel
+
+        function addRow() {
+            append({key: "", value: "", enabled: true});
+        }
+
+        function removeRow(row) {
+            remove(row);
+        }
+    }
+
+    Component {
+        id: keyValueTableComponent
+
+        BsKeyValueTable {
+            width: 500
+            height: 200
+            model: keyValueModel
+        }
+    }
+
     SignalSpy {
         id: checkForUpdatesSpy
 
@@ -99,8 +122,97 @@ Item {
             return null;
         }
 
+        /*! Fills the model with two rows, the second one disabled. */
+        function resetKeyValueModel() {
+            keyValueModel.clear();
+            keyValueModel.append({key: "Accept", value: "*/*", enabled: true});
+            keyValueModel.append({key: "X-Off", value: "1", enabled: false});
+        }
+
+        /*! Returns the child named \a name in the delegate of \a row of \a table. */
+        function rowChild(table, row, name) {
+            const rows = findChild(table, "rows");
+            return findChild(rows.itemAtIndex(row), name);
+        }
+
         function cleanup() {
             BsTheme.dark = false;
+        }
+
+        /*! Verifies that the table shows the rows of its model. */
+        function test_keyValueTableShowsRows() {
+            resetKeyValueModel();
+            const table = createTemporaryObject(keyValueTableComponent, root);
+            verify(table !== null);
+            waitForRendering(table);
+
+            compare(findChild(table, "rows").count, 2);
+            compare(rowChild(table, 0, "keyField").text, "Accept");
+            compare(rowChild(table, 0, "valueField").text, "*/*");
+            compare(rowChild(table, 0, "enabledBox").checked, true);
+            compare(rowChild(table, 1, "enabledBox").checked, false);
+        }
+
+        /*! Verifies that typing and toggling reach the model. */
+        function test_keyValueTableEditsWriteToModel() {
+            resetKeyValueModel();
+            const table = createTemporaryObject(keyValueTableComponent, root);
+            verify(table !== null);
+            waitForRendering(table);
+
+            const field = rowChild(table, 0, "valueField");
+            field.forceActiveFocus();
+            field.cursorPosition = field.length;
+            keyClick(Qt.Key_X);
+            compare(keyValueModel.get(0).value, "*/*x");
+
+            mouseClick(rowChild(table, 1, "enabledBox"));
+            compare(keyValueModel.get(1).enabled, true);
+        }
+
+        /*! Verifies that the remove button removes its row. */
+        function test_keyValueTableRemoveCallsModel() {
+            resetKeyValueModel();
+            const table = createTemporaryObject(keyValueTableComponent, root);
+            verify(table !== null);
+            waitForRendering(table);
+
+            mouseClick(rowChild(table, 0, "removeButton"));
+            compare(keyValueModel.count, 1);
+            compare(keyValueModel.get(0).key, "X-Off");
+        }
+
+        /*! Verifies that the add button appends a row. */
+        function test_keyValueTableAddCallsModel() {
+            resetKeyValueModel();
+            const table = createTemporaryObject(keyValueTableComponent, root);
+            verify(table !== null);
+            waitForRendering(table);
+
+            mouseClick(findChild(table, "addButton"));
+            compare(keyValueModel.count, 3);
+        }
+
+        /*! Verifies when the Request menu actions are available. */
+        function test_menuRequestActionsFollowState() {
+            const menuBar = createTemporaryObject(menuBarComponent, root);
+            verify(menuBar !== null);
+            const menu = menuByTitle(menuBar, "Request");
+            const newRequest = itemByText(menu, "New Request");
+            const newFolder = itemByText(menu, "New Folder");
+            const duplicate = itemByText(menu, "Duplicate");
+
+            compare(newRequest.enabled, false);
+            compare(newFolder.enabled, false);
+            compare(duplicate.enabled, false);
+
+            menuBar.hasWorkspace = true;
+            compare(newRequest.enabled, true);
+            compare(newFolder.enabled, true);
+            compare(duplicate.enabled, false);
+
+            menuBar.hasSelection = true;
+            compare(duplicate.enabled, true);
         }
 
         /*! Verifies that BsMenuBar can be created and its theme property is writable. */
