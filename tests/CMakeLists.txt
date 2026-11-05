@@ -329,6 +329,17 @@ target_link_libraries(tst_screens
 
 qt_import_qml_plugins(tst_screens)
 
+# The icons the screens show, so that a warning in the log means something.
+qt_add_resources(tst_screens "screen_icons"
+    PREFIX "/"
+    BASE "${CMAKE_SOURCE_DIR}/resources"
+    FILES
+        "${CMAKE_SOURCE_DIR}/resources/images/svg/close.svg"
+        "${CMAKE_SOURCE_DIR}/resources/images/svg/content_copy.svg"
+        "${CMAKE_SOURCE_DIR}/resources/images/svg/folder.svg"
+        "${CMAKE_SOURCE_DIR}/resources/images/svg/note_add.svg"
+)
+
 add_test(NAME ReqDeck.Screens COMMAND tst_screens)
 set_tests_properties(ReqDeck.Screens PROPERTIES
     ENVIRONMENT "QML2_IMPORT_PATH=${QT_QML_OUTPUT_DIRECTORY}"

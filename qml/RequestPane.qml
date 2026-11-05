@@ -14,10 +14,12 @@ import Base as Base
     \inqmlmodule ReqDeck
     \brief Edits the request open in \c cppRequestEditor.
 
-    Controls write only on user input (\c onTextEdited, \c onActivated, or with
-    active focus), so showing a request never changes it. The numbers used for
-    body mode, raw body type, and authentication are the values of BodyMode,
-    RawBodyType, and AuthType.
+    Controls write only on user input (\c onTextEdited, \c onActivated), so showing
+    a request never changes it. The name field and the timeout box write when
+    editing finishes, because the editor trims names and refuses blank ones; the
+    collection pane therefore moves the focus before it loads another request.
+    The numbers used for body mode, raw body type, and authentication are the
+    values of BodyMode, RawBodyType, and AuthType.
 */
 Item {
     id: root
@@ -122,6 +124,8 @@ Item {
             }
 
             Base.BsKeyValueTable {
+                objectName: "headersTable"
+
                 model: cppRequestEditor.headersModel
                 keyPlaceholder: qsTr("Header")
             }
@@ -153,16 +157,47 @@ Item {
                     Layout.fillHeight: true
                     visible: cppRequestEditor.bodyMode === 1 // BodyMode::Raw
 
+                    // TextArea has no textEdited signal, and it normalizes line
+                    // endings, so a binding could not tell an edit from showing
+                    // a request. The text is assigned here instead.
                     TextArea {
+                        id: rawBodyArea
+
+                        /*! The request's body as last shown or written. */
+                        property string shownBody: ""
+
+                        /*! Whether the text is being replaced by the request's body. */
+                        property bool showingBody: false
+
+                        /*! Shows the body of the request unless it is already shown. */
+                        function showBody() {
+                            if (cppRequestEditor.rawBody === rawBodyArea.shownBody)
+                                return
+                            rawBodyArea.shownBody = cppRequestEditor.rawBody
+                            rawBodyArea.showingBody = true
+                            rawBodyArea.text = cppRequestEditor.rawBody
+                            rawBodyArea.showingBody = false
+                        }
+
                         objectName: "rawBodyArea"
 
                         font.family: "Consolas"
                         selectByMouse: true
                         placeholderText: qsTr("Request body")
-                        text: cppRequestEditor.rawBody
                         onTextChanged: {
-                            if (activeFocus)
-                                cppRequestEditor.rawBody = text
+                            if (rawBodyArea.showingBody)
+                                return
+                            rawBodyArea.shownBody = text
+                            cppRequestEditor.rawBody = text
+                        }
+                        Component.onCompleted: rawBodyArea.showBody()
+
+                        Connections {
+                            target: cppRequestEditor
+
+                            function onRequestChanged() {
+                                rawBodyArea.showBody()
+                            }
                         }
                     }
                 }
@@ -178,6 +213,7 @@ Item {
                 }
 
                 Item {
+                    Layout.fillWidth: true
                     Layout.fillHeight: true
                     visible: cppRequestEditor.bodyMode === 0 // BodyMode::None
                 }
@@ -271,6 +307,7 @@ Item {
                 }
 
                 Item {
+                    Layout.fillWidth: true
                     Layout.fillHeight: true
                 }
             }

@@ -144,7 +144,8 @@ QString claimId(const QJsonValue &value, QSet<QString> &seenIds)
 QString nodesFromJson(const QJsonArray &items, QSet<QString> &seenIds, QList<CollectionNode> &nodes,
                       int depth = 1)
 {
-    if (depth > kMaxCollectionDepth)
+    // Every folder recurses, also an empty one, so only items count as too deep.
+    if (depth > kMaxCollectionDepth && !items.isEmpty())
         return QStringLiteral("Folders are nested too deeply.");
 
     const QString invalid =

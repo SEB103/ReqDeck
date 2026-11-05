@@ -97,6 +97,9 @@ ApplicationWindow {
 
     // Guard application exit: prompt to save when the open workspace is dirty.
     onClosing: (close) => {
+        // A field being edited commits when it loses the focus, and that edit
+        // must count before asking about unsaved changes.
+        mainWindow.contentItem.forceActiveFocus()
         if (cppWorkspaceManager.dirty) {
             close.accepted = false
             runGuarded(() => Qt.quit())

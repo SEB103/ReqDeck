@@ -105,6 +105,9 @@ private slots:
     /*! Verifies that nesting beyond the limit is rejected instead of recursing on. */
     void rejectsExcessiveNesting();
 
+    /*! Verifies that the deepest allowed tree can be saved and opened again. */
+    void deepestAllowedTreeRoundTrips();
+
     /*! Verifies that the value of a secret variable never reaches the file. */
     void secretValueIsNeverWritten();
 
@@ -353,6 +356,31 @@ void WorkspaceSerializerTest::rejectsExcessiveNesting()
     QVERIFY(!result.ok);
     QCOMPARE(result.error, WorkspaceSerializer::Error::InvalidSchema);
     QCOMPARE(result.errorString, QStringLiteral("Folders are nested too deeply."));
+}
+
+void WorkspaceSerializerTest::deepestAllowedTreeRoundTrips()
+{
+    CollectionNode node;
+    node.id = QStringLiteral("deepest");
+    node.name = QStringLiteral("Deepest");
+    for (int level = 1; level < kMaxCollectionDepth; ++level) {
+        CollectionNode parent;
+        parent.id = QStringLiteral("f%1").arg(level);
+        parent.name = QStringLiteral("Level %1").arg(level);
+        parent.children = {node};
+        node = parent;
+    }
+    WorkspaceData data;
+    data.collection = {node};
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("deepest.reqdeck"));
+    QVERIFY(WorkspaceSerializer::save(path, data));
+
+    const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QVERIFY(result.data == data);
 }
 
 void WorkspaceSerializerTest::secretValueIsNeverWritten()

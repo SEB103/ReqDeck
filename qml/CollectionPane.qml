@@ -82,6 +82,21 @@ Item {
         cppCollection.remove(root.selectedId)
     }
 
+    /*! Asks for a new name of the selected node. */
+    function openRename() {
+        renameField.text = cppCollection.nodeName(root.selectedId)
+        renameDialog.open()
+    }
+
+    /*! Asks whether to delete the selected node, naming it as it is called now. */
+    function openDelete() {
+        const name = cppCollection.nodeName(root.selectedId)
+        deleteLabel.text = cppCollection.isFolder(root.selectedId)
+                           ? qsTr("Delete folder \"%1\" and everything in it?").arg(name)
+                           : qsTr("Delete request \"%1\"?").arg(name)
+        deleteDialog.open()
+    }
+
     // The selection goes with its node, also when a whole folder or the
     // workspace disappears.
     Connections {
@@ -105,6 +120,21 @@ Item {
         model: cppCollection
 
         ScrollBar.vertical: ScrollBar {}
+
+        // A press takes the focus first: a field in the request pane must commit
+        // its text before the selection loads another request.
+        TapHandler {
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onTapped: (eventPoint, button) => {
+                const position = tree.contentItem.mapFromItem(tree, eventPoint.position)
+                if (tree.cellAtPosition(position).y >= 0)
+                    return
+                tree.forceActiveFocus(Qt.MouseFocusReason)
+                root.selectNode("")
+                if (button === Qt.RightButton)
+                    nodeMenu.popup()
+            }
+        }
 
         delegate: TreeViewDelegate {
             id: nodeDelegate
@@ -147,11 +177,13 @@ Item {
                 }
             }
 
+            onPressed: tree.forceActiveFocus(Qt.MouseFocusReason)
             onClicked: root.selectNode(nodeDelegate.nodeId)
 
             TapHandler {
                 acceptedButtons: Qt.RightButton
                 onTapped: {
+                    tree.forceActiveFocus(Qt.MouseFocusReason)
                     root.selectNode(nodeDelegate.nodeId)
                     nodeMenu.popup()
                 }
@@ -174,6 +206,8 @@ Item {
     Menu {
         id: nodeMenu
 
+        objectName: "nodeMenu"
+
         delegate: Base.BsMenuItem {}
 
         Base.BsMenuItem {
@@ -192,27 +226,29 @@ Item {
 
         Base.BsMenuItem {
             text: qsTr("Rename…")
-            onTriggered: {
-                renameField.text = cppCollection.nodeName(root.selectedId)
-                renameDialog.open()
-            }
+            enabled: root.selectedId.length > 0
+            onTriggered: root.openRename()
         }
 
         Base.BsMenuItem {
             text: qsTr("Duplicate")
             icon.source: "qrc:/images/svg/content_copy.svg"
+            enabled: root.selectedId.length > 0
             onTriggered: root.duplicateSelected()
         }
 
         Base.BsMenuItem {
             text: qsTr("Delete…")
             icon.source: "qrc:/images/svg/close.svg"
-            onTriggered: deleteDialog.open()
+            enabled: root.selectedId.length > 0
+            onTriggered: root.openDelete()
         }
     }
 
     Dialog {
         id: renameDialog
+
+        objectName: "renameDialog"
 
         anchors.centerIn: Overlay.overlay
         modal: true
@@ -228,14 +264,25 @@ Item {
         TextField {
             id: renameField
 
+            /*! Whether the text can become a name. */
+            readonly property bool valid: text.trim().length > 0
+
+            objectName: "renameField"
+
             implicitWidth: 320
             selectByMouse: true
-            onAccepted: renameDialog.accept()
+            onAccepted: {
+                if (valid)
+                    renameDialog.accept()
+            }
+            onValidChanged: renameDialog.standardButton(Dialog.Ok).enabled = valid
         }
     }
 
     Dialog {
         id: deleteDialog
+
+        objectName: "deleteDialog"
 
         anchors.centerIn: Overlay.overlay
         width: 420
@@ -246,12 +293,12 @@ Item {
         onAccepted: root.deleteSelected()
 
         Label {
+            id: deleteLabel
+
+            objectName: "deleteLabel"
+
             width: deleteDialog.availableWidth
             wrapMode: Text.Wrap
-            text: cppCollection.isFolder(root.selectedId)
-                  ? qsTr("Delete folder \"%1\" and everything in it?")
-                        .arg(cppCollection.nodeName(root.selectedId))
-                  : qsTr("Delete request \"%1\"?").arg(cppCollection.nodeName(root.selectedId))
         }
     }
 }
