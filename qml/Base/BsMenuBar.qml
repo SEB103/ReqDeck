@@ -48,6 +48,12 @@ MenuBar {
     /*! Whether an item is selected in the collection. */
     property bool hasSelection: false
 
+    /*! Whether the open request can be sent. */
+    property bool canSend: false
+
+    /*! Whether a running request can be cancelled. */
+    property bool canCancel: false
+
     /*! Emitted when the user selects New Workspace. */
     signal newWorkspaceRequested()
 
@@ -92,6 +98,12 @@ MenuBar {
 
     /*! Emitted to duplicate the selected item. */
     signal duplicateRequested()
+
+    /*! Emitted to send the open request. */
+    signal sendRequested()
+
+    /*! Emitted to cancel the running request. */
+    signal cancelRequested()
 
     background: Rectangle {
         implicitHeight: 40
@@ -241,13 +253,15 @@ MenuBar {
         BsMenuItem {
             text: qsTr("&Send")
             icon.source: "qrc:/images/svg/play_arrow.svg"
-            enabled: false
+            enabled: appMenuBar.canSend
+            onTriggered: appMenuBar.sendRequested()
         }
 
         BsMenuItem {
             text: qsTr("&Cancel")
             icon.source: "qrc:/images/svg/stop.svg"
-            enabled: false
+            enabled: appMenuBar.canCancel
+            onTriggered: appMenuBar.cancelRequested()
         }
 
         MenuSeparator {}

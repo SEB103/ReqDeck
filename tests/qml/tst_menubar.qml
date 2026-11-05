@@ -89,6 +89,12 @@ Item {
         }
     }
 
+    Component {
+        id: statusChipComponent
+
+        BsStatusChip {}
+    }
+
     SignalSpy {
         id: checkForUpdatesSpy
 
@@ -191,6 +197,49 @@ Item {
 
             mouseClick(findChild(table, "addButton"));
             compare(keyValueModel.count, 3);
+        }
+
+        /*! Verifies that the chip shows its text. */
+        function test_statusChipShowsText() {
+            const chip = createTemporaryObject(statusChipComponent, root, {text: "200 OK", statusClass: 2});
+            verify(chip !== null);
+            compare(findChild(chip, "label").text, "200 OK");
+            verify(chip.implicitWidth > 0);
+        }
+
+        /*! Verifies that each status class has its own color in both themes. */
+        function test_statusChipColorFollowsClass() {
+            const chip = createTemporaryObject(statusChipComponent, root);
+            verify(chip !== null);
+
+            for (const dark of [false, true]) {
+                BsTheme.dark = dark;
+                const colors = [];
+                for (const statusClass of [2, 3, 4, 5]) {
+                    chip.statusClass = statusClass;
+                    colors.push(chip.classColor.toString());
+                }
+                compare(new Set(colors).size, 4);
+            }
+        }
+
+        /*! Verifies when Send and Cancel are available. */
+        function test_menuSendFollowsState() {
+            const menuBar = createTemporaryObject(menuBarComponent, root);
+            verify(menuBar !== null);
+            const menu = menuByTitle(menuBar, "Request");
+            const send = itemByText(menu, "Send");
+            const cancel = itemByText(menu, "Cancel");
+
+            compare(send.enabled, false);
+            compare(cancel.enabled, false);
+
+            menuBar.canSend = true;
+            compare(send.enabled, true);
+            menuBar.canSend = false;
+            menuBar.canCancel = true;
+            compare(send.enabled, false);
+            compare(cancel.enabled, true);
         }
 
         /*! Verifies when the Request menu actions are available. */

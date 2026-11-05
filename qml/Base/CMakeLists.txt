@@ -18,6 +18,7 @@ qt_add_qml_module(Base
         BsNotificationBanner.qml
         BsPane.qml
         BsStatusBar.qml
+        BsStatusChip.qml
         BsTheme.qml
         BsTopBarActions.qml
 )
