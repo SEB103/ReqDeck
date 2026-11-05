@@ -53,5 +53,7 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
   samples workspace against public test APIs, seeded into the data directory.
 - Collection sidebar and request editor: build a tree of folders and requests,
   rename, duplicate, and delete them, and edit method, URL, parameters, headers,
-  body, and authentication; changes are saved with the workspace. Sending
-  requests follows.
+  body, and authentication; changes are saved with the workspace.
+- Sending requests and a response viewer: status, time, size, headers, and a
+  Pretty or Raw body with JSON and XML highlighting; requests can be cancelled,
+  and very long or binary bodies are limited in the view.
