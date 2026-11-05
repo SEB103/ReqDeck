@@ -6,6 +6,8 @@ target_sources(ReqDeckFramework
     PRIVATE
         framework/apppaths.cpp
         framework/apppaths.h
+        framework/bodyformatter.cpp
+        framework/bodyformatter.h
         framework/diagnosticslevel.h
         framework/logfiltermodel.cpp
         framework/logfiltermodel.h

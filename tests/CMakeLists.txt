@@ -267,6 +267,18 @@ target_link_libraries(tst_requesteditor
 
 add_test(NAME RequestEditor.Unit COMMAND tst_requesteditor)
 
+qt_add_executable(tst_bodyformatter
+    unit/tst_bodyformatter.cpp
+)
+
+target_link_libraries(tst_bodyformatter
+    PRIVATE
+        ReqDeckFramework
+        Qt6::Test
+)
+
+add_test(NAME BodyFormatter.Unit COMMAND tst_bodyformatter)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml
