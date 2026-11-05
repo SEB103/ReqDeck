@@ -161,6 +161,9 @@ signals:
     /** Emitted when the active workspace, its name, or its path changes. */
     void activeWorkspaceChanged();
 
+    /** Emitted when another workspace was opened or created, or the active one closed. */
+    void workspaceReplaced();
+
     /** Emitted when the unsaved-changes state changes. */
     void dirtyChanged();
 

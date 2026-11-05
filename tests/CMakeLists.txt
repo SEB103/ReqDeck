@@ -262,6 +262,7 @@ qt_add_executable(tst_requesteditor
 target_link_libraries(tst_requesteditor
     PRIVATE
         ReqDeckQmlApi
+        ReqDeckTestSupport
         Qt6::Test
 )
 

@@ -9,9 +9,11 @@
 
 #include "core/workspace/collectiontree.h"
 #include "core/workspace/workspaceserializer.h"
+#include "mockhttpserver.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/requesteditor.h"
+#include "qmlapi/responseview.h"
 #include "qmlapi/workspacemanager.h"
 
 /*!
@@ -124,7 +126,70 @@ private slots:
     /*! Verifies that edits reach the file and come back. */
     void editsSurviveSaveAndReopen();
 
+    /*! Verifies that a sent request ends in the response view. */
+    void sendShowsResponse();
+
+    /*! Verifies that an edit counts without saving first. */
+    void sendUsesWorkingCopy();
+
+    /*! Verifies that variables come from the active environment. */
+    void sendResolvesActiveEnvironment();
+
+    /*! Verifies the builder options. */
+    void sendSetsUserAgentFromOptions();
+
+    /*! Verifies that an unknown variable in the URL sends nothing. */
+    void unresolvedUrlVariableReportsBuildError();
+
+    /*! Verifies that an unknown variable elsewhere sends and warns. */
+    void unresolvedHeaderVariableSendsAndWarns();
+
+    /*! Verifies that nothing is sent without a request. */
+    void sendWithoutRequestDoesNothing();
+
+    /*! Verifies that a running request blocks a second one. */
+    void sendWhileBusyIsIgnored();
+
+    /*! Verifies cancelling. */
+    void cancelAbortsAndReportsIt();
+
+    /*! Verifies cancelling without a running request. */
+    void cancelWhenIdleDoesNothing();
+
+    /*! Verifies busy and canSend during a request. */
+    void busyFollowsRequest();
+
+    /*! Verifies that selecting another request lets the response arrive. */
+    void selectingAnotherRequestKeepsResponseComing();
+
+    /*! Verifies that another workspace ends a running request. */
+    void workspaceSwitchAbortsRequest();
+
+    /*! Verifies that closing the workspace ends a running request. */
+    void closingWorkspaceAbortsRequest();
+
+    /*! Verifies that a save leaves a running request alone. */
+    void saveDoesNotAbortRequest();
+
+    /*! Verifies that deleting the open request during a request is safe. */
+    void deletingOpenRequestKeepsRunningRequestSafe();
+
+    /*! Verifies that sending changes nothing in the workspace. */
+    void sendDoesNotMarkDirty();
+
 private:
+    /*! Waits until the running request has finished. */
+    static bool waitForResponse(const ResponseView &response);
+
+    /*! Points the request r on the mock server at \a path, keeping the workspace clean. */
+    void openRequestAt(const QString &path);
+
+    /*! Mock server of the send tests. */
+    MockHttpServer m_server;
+
+    /*! Response view the editor reports to. */
+    std::unique_ptr<ResponseView> m_response;
+
     /*! Writes a workspace file holding \a collection; returns its path. */
     QString writeWorkspace(const QString &name, const QList<CollectionNode> &collection);
 
@@ -158,13 +223,17 @@ void RequestEditorTest::init()
     m_manager = std::make_unique<WorkspaceManager>();
     m_manager->setSecretsDir(m_dir->filePath(QStringLiteral("secrets")));
     m_collection = std::make_unique<CollectionTreeModel>(m_manager.get());
-    m_editor = std::make_unique<RequestEditor>(m_collection.get());
+    m_response = std::make_unique<ResponseView>();
+    m_editor = std::make_unique<RequestEditor>(m_manager.get(), m_collection.get(), m_response.get());
+    if (m_server.port() == 0)
+        QVERIFY(m_server.start());
     QVERIFY(m_manager->openWorkspace(writeWorkspace(QStringLiteral("Main"), makeCollection())));
 }
 
 void RequestEditorTest::cleanup()
 {
     m_editor.reset();
+    m_response.reset();
     m_collection.reset();
     m_manager.reset();
     m_dir.reset();
@@ -251,7 +320,8 @@ void RequestEditorTest::settersWriteThroughAndMarkDirty()
     QVERIFY(m_manager->dirty());
 
     // A second editor sees only what was stored.
-    RequestEditor reader(m_collection.get());
+    ResponseView readerResponse;
+    RequestEditor reader(m_manager.get(), m_collection.get(), &readerResponse);
     reader.load(QStringLiteral("full"));
     QCOMPARE(reader.property(name.constData()), value);
 }
@@ -417,6 +487,231 @@ void RequestEditorTest::editsSurviveSaveAndReopen()
     QCOMPARE(m_editor->property("url").toString(), QStringLiteral("http://persisted"));
     QCOMPARE(m_editor->property("authType").toInt(), 2);
     QCOMPARE(m_editor->headersModel()->rowCount(), 2);
+}
+
+bool RequestEditorTest::waitForResponse(const ResponseView &response)
+{
+    return QTest::qWaitFor([&response]() { return !response.busy(); }, 8000);
+}
+
+void RequestEditorTest::openRequestAt(const QString &path)
+{
+    WorkspaceData data = m_manager->workspaceData();
+    RequestSpec spec;
+    spec.url = m_server.url(path).toString();
+    setNodeRequest(data.collection, QStringLiteral("other"), spec);
+    const QString file = m_dir->filePath(QStringLiteral("sent.reqdeck"));
+    QVERIFY(WorkspaceSerializer::save(file, data));
+    QVERIFY(m_manager->openWorkspace(file));
+    m_editor->load(QStringLiteral("other"));
+}
+
+void RequestEditorTest::sendShowsResponse()
+{
+    openRequestAt(QStringLiteral("/status/201"));
+    m_editor->send();
+
+    QVERIFY(m_response->busy());
+    QCOMPARE(m_response->requestName(), QStringLiteral("Other"));
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY(m_response->hasResponse());
+    QCOMPARE(m_response->statusCode(), 201);
+    QCOMPARE(m_response->bodyText(), QStringLiteral("status 201"));
+}
+
+void RequestEditorTest::sendUsesWorkingCopy()
+{
+    openRequestAt(QStringLiteral("/status/201"));
+    m_editor->setProperty("url", m_server.url(QStringLiteral("/status/404")).toString());
+    m_editor->send();
+
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_response->statusCode(), 404);
+}
+
+void RequestEditorTest::sendResolvesActiveEnvironment()
+{
+    openRequestAt(QStringLiteral("/echo"));
+
+    Environment environment;
+    environment.id = QStringLiteral("e1");
+    environment.name = QStringLiteral("Env");
+    environment.variables = {{QStringLiteral("base"), m_server.url(QString()).toString(), true, false}};
+    WorkspaceData data = m_manager->workspaceData();
+    data.environments = {environment};
+    data.activeEnvironmentId = environment.id;
+    m_manager->updateWorkspaceData(data);
+
+    m_editor->setProperty("url", QStringLiteral("{{base}}/status/202"));
+    m_editor->send();
+
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_response->statusCode(), 202);
+    QVERIFY(m_response->warningText().isEmpty());
+}
+
+void RequestEditorTest::sendSetsUserAgentFromOptions()
+{
+    openRequestAt(QStringLiteral("/echo"));
+    RequestBuilder::Options options;
+    options.userAgent = QStringLiteral("ReqDeck/test");
+    m_editor->setBuilderOptions(options);
+    m_editor->send();
+
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY(m_response->bodyText().contains(QStringLiteral("ReqDeck/test")));
+}
+
+void RequestEditorTest::unresolvedUrlVariableReportsBuildError()
+{
+    openRequestAt(QStringLiteral("/echo"));
+    const int requests = m_server.requestCount();
+    m_editor->setProperty("url", QStringLiteral("{{nope}}/x"));
+    m_editor->send();
+
+    QVERIFY(!m_response->busy());
+    QVERIFY(m_response->hasResponse());
+    QVERIFY(m_response->errorText().contains(QStringLiteral("{{nope}}")));
+    QCOMPARE(m_server.requestCount(), requests);
+    QVERIFY(m_editor->property("canSend").toBool());
+}
+
+void RequestEditorTest::unresolvedHeaderVariableSendsAndWarns()
+{
+    openRequestAt(QStringLiteral("/status/200"));
+    m_editor->headersModel()->addRow();
+    KeyValueModel *headers = m_editor->headersModel();
+    headers->setData(headers->index(0), QStringLiteral("X-A"), KeyValueModel::KeyRole);
+    headers->setData(headers->index(0), QStringLiteral("{{missing}}"), KeyValueModel::ValueRole);
+    m_editor->send();
+
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_response->statusCode(), 200);
+    QCOMPARE(m_response->warningText(), QStringLiteral("Unresolved variables: {{missing}}"));
+}
+
+void RequestEditorTest::sendWithoutRequestDoesNothing()
+{
+    m_editor->send();
+    QVERIFY(!m_response->busy());
+    QVERIFY(!m_response->hasResponse());
+    QVERIFY(!m_editor->property("canSend").toBool());
+}
+
+void RequestEditorTest::sendWhileBusyIsIgnored()
+{
+    openRequestAt(QStringLiteral("/delay/200"));
+    const int requests = m_server.requestCount();
+    m_editor->send();
+    m_editor->send();
+
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_response->statusCode(), 200);
+    QCOMPARE(m_server.requestCount(), requests + 1);
+}
+
+void RequestEditorTest::cancelAbortsAndReportsIt()
+{
+    openRequestAt(QStringLiteral("/delay/3000"));
+    m_editor->send();
+    QTest::qWait(50);
+    m_editor->cancel();
+
+    QVERIFY(!m_response->busy());
+    QVERIFY(m_response->hasResponse());
+    QVERIFY(!m_response->errorText().isEmpty());
+    QVERIFY(!m_editor->property("busy").toBool());
+}
+
+void RequestEditorTest::cancelWhenIdleDoesNothing()
+{
+    openRequestAt(QStringLiteral("/echo"));
+    m_editor->cancel();
+    QVERIFY(!m_response->hasResponse());
+}
+
+void RequestEditorTest::busyFollowsRequest()
+{
+    openRequestAt(QStringLiteral("/delay/100"));
+    QVERIFY(m_editor->property("canSend").toBool());
+    QSignalSpy spy(m_editor.get(), &RequestEditor::busyChanged);
+
+    m_editor->send();
+    QVERIFY(m_editor->property("busy").toBool());
+    QVERIFY(!m_editor->property("canSend").toBool());
+
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY(!m_editor->property("busy").toBool());
+    QVERIFY(m_editor->property("canSend").toBool());
+    QCOMPARE(spy.count(), 2);
+}
+
+void RequestEditorTest::selectingAnotherRequestKeepsResponseComing()
+{
+    openRequestAt(QStringLiteral("/delay/200"));
+    m_editor->send();
+    m_editor->load(QStringLiteral("full"));
+
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_response->statusCode(), 200);
+    QCOMPARE(m_response->requestName(), QStringLiteral("Other"));
+}
+
+void RequestEditorTest::workspaceSwitchAbortsRequest()
+{
+    openRequestAt(QStringLiteral("/delay/3000"));
+    m_editor->send();
+    QVERIFY(m_response->busy());
+
+    QVERIFY(m_manager->openWorkspace(writeWorkspace(QStringLiteral("Other"), {})));
+
+    QVERIFY(!m_response->busy());
+    QVERIFY(!m_response->hasResponse());
+    QVERIFY(!m_editor->property("busy").toBool());
+}
+
+void RequestEditorTest::closingWorkspaceAbortsRequest()
+{
+    openRequestAt(QStringLiteral("/delay/3000"));
+    m_editor->send();
+
+    m_manager->closeWorkspace();
+
+    QVERIFY(!m_response->busy());
+    QVERIFY(!m_response->hasResponse());
+}
+
+void RequestEditorTest::saveDoesNotAbortRequest()
+{
+    openRequestAt(QStringLiteral("/delay/200"));
+    m_editor->send();
+
+    QVERIFY(m_manager->saveWorkspace());
+    QVERIFY(m_manager->saveWorkspaceAs(m_dir->filePath(QStringLiteral("Copy.reqdeck"))));
+
+    QVERIFY(m_response->busy());
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_response->statusCode(), 200);
+}
+
+void RequestEditorTest::deletingOpenRequestKeepsRunningRequestSafe()
+{
+    openRequestAt(QStringLiteral("/delay/100"));
+    m_editor->send();
+    QVERIFY(m_collection->remove(QStringLiteral("other")));
+
+    QVERIFY(!m_editor->property("hasRequest").toBool());
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_response->statusCode(), 200);
+}
+
+void RequestEditorTest::sendDoesNotMarkDirty()
+{
+    openRequestAt(QStringLiteral("/status/200"));
+    QVERIFY(!m_manager->dirty());
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY(!m_manager->dirty());
 }
 
 QTEST_GUILESS_MAIN(RequestEditorTest)

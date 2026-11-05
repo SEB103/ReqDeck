@@ -7,17 +7,23 @@
 #include <QObject>
 #include <QString>
 
+#include "core/http/requestbuilder.h"
 #include "core/http/requestspec.h"
 
 class CollectionTreeModel;
+class HttpExecutor;
 class KeyValueModel;
+class ResponseView;
+class WorkspaceManager;
+struct ResponseData;
 
 /**
  * The request open in the editor, exposed to QML as \c cppRequestEditor.
  *
  * Edits go straight into the workspace through CollectionTreeModel and mark it
- * dirty; File > Save writes them. Enum properties use the numeric values of
- * BodyMode, RawBodyType, and AuthType.
+ * dirty; File > Save writes them. send() runs the open request with the active
+ * environment and reports to a ResponseView. Enum properties use the numeric
+ * values of BodyMode, RawBodyType, and AuthType.
  */
 class RequestEditor : public QObject
 {
@@ -26,6 +32,12 @@ class RequestEditor : public QObject
 
     /** Whether a request is open. */
     Q_PROPERTY(bool hasRequest READ hasRequest NOTIFY requestChanged)
+
+    /** Whether a request is running. */
+    Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
+
+    /** Whether send() would start a request. */
+    Q_PROPERTY(bool canSend READ canSend NOTIFY canSendChanged)
 
     /** Node id of the open request; empty when none is open. */
     Q_PROPERTY(QString requestId READ requestId NOTIFY requestChanged)
@@ -82,11 +94,21 @@ class RequestEditor : public QObject
     Q_PROPERTY(KeyValueModel *formModel READ formModel CONSTANT)
 
 public:
-    /** Creates an empty editor over \a collection, which must outlive it. */
-    explicit RequestEditor(CollectionTreeModel *collection, QObject *parent = nullptr);
+    /** Creates an empty editor; \a manager, \a collection, and \a response must outlive it. */
+    RequestEditor(WorkspaceManager *manager, CollectionTreeModel *collection, ResponseView *response,
+                  QObject *parent = nullptr);
+
+    /** Sets the defaults requests are built with. */
+    void setBuilderOptions(const RequestBuilder::Options &options);
 
     /** Returns whether a request is open. */
     bool hasRequest() const;
+
+    /** Returns whether a request is running. */
+    bool busy() const;
+
+    /** Returns whether send() would start a request. */
+    bool canSend() const;
 
     /** Returns the node id of the open request. */
     QString requestId() const;
@@ -190,9 +212,21 @@ public:
     /** Closes the open request. */
     Q_INVOKABLE void clear();
 
+    /** Sends the open request; does nothing without one or while one is running. */
+    Q_INVOKABLE void send();
+
+    /** Cancels the running request. */
+    Q_INVOKABLE void cancel();
+
 signals:
     /** Emitted when the open request or any of its fields changes. */
     void requestChanged();
+
+    /** Emitted when busy() changes. */
+    void busyChanged();
+
+    /** Emitted when canSend() changes. */
+    void canSendChanged();
 
 private:
     /** Assigns \a value to \a field of the open request and stores the request. */
@@ -211,8 +245,29 @@ private:
     /** Shows the working copy in the table models and notifies QML. */
     void showRequest();
 
+    /** Passes the result of the running request to the response view. */
+    void showResponse(const ResponseData &response);
+
+    /** Ends a running request and removes the response of the old workspace. */
+    void dropResponse();
+
+    /** Workspace holding the environments; not owned. */
+    WorkspaceManager *m_manager {nullptr};
+
     /** Collection holding the requests; not owned. */
     CollectionTreeModel *m_collection {nullptr};
+
+    /** Receives the state and result of sending; not owned. */
+    ResponseView *m_response {nullptr};
+
+    /** Sends requests; owned through the QObject tree. */
+    HttpExecutor *m_executor {nullptr};
+
+    /** Defaults requests are built with. */
+    RequestBuilder::Options m_builderOptions;
+
+    /** Variables of the running request that had no value. */
+    QStringList m_unresolved;
 
     /** Query parameter rows; owned through the QObject tree. */
     KeyValueModel *m_params {nullptr};

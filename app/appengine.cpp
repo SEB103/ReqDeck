@@ -30,9 +30,11 @@
 #include "framework/logmodel.h"
 #include "licensemodel.h"
 #include "localecontroller.h"
+#include "productinfo.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/requesteditor.h"
+#include "qmlapi/responseview.h"
 #include "qmlapi/workspacemanager.h"
 #include "updatecontroller.h"
 
@@ -264,7 +266,8 @@ AppEngine::AppEngine(QObject* parent)
     : QQmlApplicationEngine(parent)
     , m_workspaceManager(new WorkspaceManager(this))
     , m_collection(new CollectionTreeModel(m_workspaceManager, this))
-    , m_requestEditor(new RequestEditor(m_collection, this))
+    , m_response(new ResponseView(this))
+    , m_requestEditor(new RequestEditor(m_workspaceManager, m_collection, m_response, this))
     , m_appInfo(new AppInfo(this))
     , m_licenseModel(new LicenseModel(this))
     , m_logModel(new LogModel(2000, this))
@@ -289,7 +292,13 @@ AppEngine::AppEngine(QObject* parent)
     qmlRegisterUncreatableType<KeyValueModel>("Cpp.WorkspaceManager", 1, 0, "KeyValueModel", QStringLiteral("KeyValueModel is exposed by RequestEditor."));
     qmlRegisterUncreatableType<RequestEditor>("Cpp.WorkspaceManager", 1, 0, "RequestEditor", QStringLiteral("RequestEditor should not be created in QML."));
     rootContext()->setContextProperty("cppCollection", m_collection);
+    qmlRegisterUncreatableType<ResponseView>("Cpp.WorkspaceManager", 1, 0, "ResponseView", QStringLiteral("ResponseView should not be created in QML."));
     rootContext()->setContextProperty("cppRequestEditor", m_requestEditor);
+    rootContext()->setContextProperty("cppResponse", m_response);
+
+    RequestBuilder::Options builderOptions;
+    builderOptions.userAgent = QStringLiteral(PRODUCT_IDENTIFIER "/" PRODUCT_VERSION);
+    m_requestEditor->setBuilderOptions(builderOptions);
 
     // Application/build metadata and the bundled license documents shown by the
     // Help > About dialog. The license texts are embedded as resources under

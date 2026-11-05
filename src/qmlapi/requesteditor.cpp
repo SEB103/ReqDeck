@@ -3,17 +3,28 @@
 
 #include "qmlapi/requesteditor.h"
 
+#include "core/http/httpexecutor.h"
+#include "core/http/variableresolver.h"
+#include "core/workspace/workspacedata.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/keyvaluemodel.h"
+#include "qmlapi/responseview.h"
+#include "qmlapi/workspacemanager.h"
 
 /*!
- * \brief Creates an empty editor over \a collection.
+ * \brief Creates an empty editor.
+ * \param manager The workspace manager, source of the active environment.
  * \param collection The collection holding the requests.
+ * \param response The view that shows the state and result of sending.
  * \param parent The QObject parent.
  */
-RequestEditor::RequestEditor(CollectionTreeModel *collection, QObject *parent)
+RequestEditor::RequestEditor(WorkspaceManager *manager, CollectionTreeModel *collection,
+                             ResponseView *response, QObject *parent)
     : QObject(parent)
+    , m_manager(manager)
     , m_collection(collection)
+    , m_response(response)
+    , m_executor(new HttpExecutor(this))
     , m_params(new KeyValueModel(this))
     , m_headers(new KeyValueModel(this))
     , m_form(new KeyValueModel(this))
@@ -23,11 +34,37 @@ RequestEditor::RequestEditor(CollectionTreeModel *collection, QObject *parent)
     connect(m_params, &KeyValueModel::edited, this, &RequestEditor::storeTables);
     connect(m_headers, &KeyValueModel::edited, this, &RequestEditor::storeTables);
     connect(m_form, &KeyValueModel::edited, this, &RequestEditor::storeTables);
+
+    connect(m_manager, &WorkspaceManager::workspaceReplaced, this, &RequestEditor::dropResponse);
+    connect(m_executor, &HttpExecutor::finished, this, &RequestEditor::showResponse);
+    connect(m_executor, &HttpExecutor::busyChanged, this, [this]() {
+        emit busyChanged();
+        emit canSendChanged();
+    });
+}
+
+/*!
+ * \brief Sets the defaults requests are built with.
+ * \param options User-Agent, default timeout, and redirect handling.
+ */
+void RequestEditor::setBuilderOptions(const RequestBuilder::Options &options)
+{
+    m_builderOptions = options;
 }
 
 bool RequestEditor::hasRequest() const
 {
     return !m_requestId.isEmpty();
+}
+
+bool RequestEditor::busy() const
+{
+    return m_executor->isBusy();
+}
+
+bool RequestEditor::canSend() const
+{
+    return hasRequest() && !busy();
 }
 
 QString RequestEditor::requestId() const
@@ -238,6 +275,62 @@ void RequestEditor::clear()
 }
 
 /*!
+ * \brief Sends the open request.
+ *
+ * The working copy is built with the variables of the active environment. A
+ * request that cannot be built is reported to the response view and not sent.
+ * The response goes to the view even when another request was opened meanwhile;
+ * the view names the request it belongs to.
+ */
+void RequestEditor::send()
+{
+    if (!canSend())
+        return;
+
+    const VariableResolver variables =
+        VariableResolver::fromKeyValues(activeEnvironmentVariables(m_manager->workspaceData()));
+    const BuiltRequest built = RequestBuilder::build(m_request, variables, m_builderOptions);
+
+    m_response->setBusy(m_name);
+    if (!built.ok) {
+        m_response->setBuildError(built.errorString, built.unresolvedVariables);
+        return;
+    }
+    m_unresolved = built.unresolvedVariables;
+    m_executor->send(built);
+}
+
+/*!
+ * \brief Cancels the running request, which finishes as aborted.
+ */
+void RequestEditor::cancel()
+{
+    m_executor->abort();
+}
+
+/*!
+ * \internal
+ * \brief Passes the result of the running request to the response view.
+ */
+void RequestEditor::showResponse(const ResponseData &response)
+{
+    m_response->setResponse(response, m_unresolved);
+}
+
+/*!
+ * \internal
+ * \brief Ends a running request and removes the response of the old workspace.
+ *
+ * A save also reports a changed workspace, so this listens only to the signal
+ * for a real change of workspace.
+ */
+void RequestEditor::dropResponse()
+{
+    m_executor->abort();
+    m_response->clear();
+}
+
+/*!
  * \internal
  * \brief Assigns \a value to \a field of the open request and stores the request.
  *
@@ -316,4 +409,5 @@ void RequestEditor::showRequest()
     m_headers->setRows(m_request.headers);
     m_form->setRows(m_request.body.form);
     emit requestChanged();
+    emit canSendChanged();
 }

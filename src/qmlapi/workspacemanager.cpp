@@ -284,6 +284,7 @@ bool WorkspaceManager::createWorkspaceAtPath(const QString &pathOrUrl)
     }
 
     setActiveWorkspace(path, data);
+    emit workspaceReplaced();
     addOrUpdateRecent(path, data.displayName);
     notify(Diagnostics::Info, [=, this] {
         return tr("Created workspace %1.").arg(data.displayName);
@@ -319,6 +320,7 @@ bool WorkspaceManager::openWorkspace(const QString &pathOrUrl)
     const SecretStore::ReadStatus secrets = SecretStore(secretsDir()).applyTo(result.data);
 
     setActiveWorkspace(path, result.data);
+    emit workspaceReplaced();
     m_secretsUnread = secrets == SecretStore::ReadStatus::Unreadable;
     addOrUpdateRecent(path, name);
     notify(Diagnostics::Info, [=, this] {
@@ -580,6 +582,7 @@ void WorkspaceManager::clearActiveWorkspace()
     m_data = WorkspaceData();
     setDirty(false);
     emit activeWorkspaceChanged();
+    emit workspaceReplaced();
 }
 
 void WorkspaceManager::setDirty(bool dirty)

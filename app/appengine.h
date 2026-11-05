@@ -14,6 +14,7 @@ class LicenseModel;
 class LocaleController;
 class LogModel;
 class RequestEditor;
+class ResponseView;
 class UpdateController;
 class WorkspaceManager;
 
@@ -25,8 +26,9 @@ QT_END_NAMESPACE
  * QML engine wrapper that owns application-level C++ services.
  *
  * Exposes the services to QML as context properties: \c cppAppEngine,
- * \c cppWorkspaceManager, \c cppCollection, \c cppRequestEditor, \c cppAppInfo,
- * \c cppLicenseModel, and, once injected, \c cppLocale and \c cppUpdate. It also
+ * \c cppWorkspaceManager, \c cppCollection, \c cppRequestEditor, \c cppResponse,
+ * \c cppAppInfo, \c cppLicenseModel, and, once injected, \c cppLocale and
+ * \c cppUpdate. It also
  * installs the Qt message handler that
  * feeds the in-application log and the release log file.
  */
@@ -81,6 +83,9 @@ private:
 
     /** Collection of the active workspace exposed to QML as \c cppCollection; owned by this engine. */
     CollectionTreeModel* m_collection = nullptr;
+
+    /** Last response exposed to QML as \c cppResponse; owned by this engine. */
+    ResponseView* m_response = nullptr;
 
     /** Open request exposed to QML as \c cppRequestEditor; owned by this engine. */
     RequestEditor* m_requestEditor = nullptr;

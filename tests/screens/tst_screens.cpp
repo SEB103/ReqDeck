@@ -6,10 +6,13 @@
 #include <QTemporaryDir>
 #include <QtQuickTest/quicktest.h>
 
+#include <memory>
+
 #include "core/workspace/workspaceserializer.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/requesteditor.h"
+#include "qmlapi/responseview.h"
 #include "qmlapi/workspacemanager.h"
 
 /*!
@@ -63,6 +66,7 @@ public:
         context->setContextProperty(QStringLiteral("cppWorkspaceManager"), &m_manager);
         context->setContextProperty(QStringLiteral("cppCollection"), &m_collection);
         context->setContextProperty(QStringLiteral("cppRequestEditor"), &m_editor);
+        context->setContextProperty(QStringLiteral("cppResponse"), &m_response);
         context->setContextProperty(QStringLiteral("cppTestHost"), this);
     }
 
@@ -90,8 +94,11 @@ private:
     /*! Real collection model. */
     CollectionTreeModel m_collection {&m_manager};
 
+    /*! Real response view. */
+    ResponseView m_response;
+
     /*! Real request editor. */
-    RequestEditor m_editor {&m_collection};
+    RequestEditor m_editor {&m_manager, &m_collection, &m_response};
 };
 
 /*! Quick Test setup that installs the facades on the test engine. */
@@ -100,12 +107,16 @@ class ScreensSetup : public QObject
     Q_OBJECT
 
 public slots:
-    /*! Publishes the facades on \a engine. */
-    void qmlEngineAvailable(QQmlEngine *engine) { m_host.publish(engine->rootContext()); }
+    /*! Creates the facades, which need the application object, and publishes them. */
+    void qmlEngineAvailable(QQmlEngine *engine)
+    {
+        m_host = std::make_unique<ScreensHost>();
+        m_host->publish(engine->rootContext());
+    }
 
 private:
     /*! Host kept alive for the lifetime of the Quick Test setup object. */
-    ScreensHost m_host;
+    std::unique_ptr<ScreensHost> m_host;
 };
 
 QUICK_TEST_MAIN_WITH_SETUP(reqdeck_screens, ScreensSetup)
