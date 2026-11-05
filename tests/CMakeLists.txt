@@ -279,6 +279,18 @@ target_link_libraries(tst_bodyformatter
 
 add_test(NAME BodyFormatter.Unit COMMAND tst_bodyformatter)
 
+qt_add_executable(tst_responseview
+    unit/tst_responseview.cpp
+)
+
+target_link_libraries(tst_responseview
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Test
+)
+
+add_test(NAME ResponseView.Unit COMMAND tst_responseview)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml
