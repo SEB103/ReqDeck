@@ -34,6 +34,7 @@
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/environmentmodel.h"
 #include "qmlapi/environmentvariablesmodel.h"
+#include "qmlapi/historymodel.h"
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/requesteditor.h"
 #include "qmlapi/responseview.h"
@@ -269,6 +270,7 @@ AppEngine::AppEngine(QObject* parent)
     , m_workspaceManager(new WorkspaceManager(this))
     , m_collection(new CollectionTreeModel(m_workspaceManager, this))
     , m_environments(new EnvironmentModel(m_workspaceManager, this))
+    , m_history(new HistoryModel(AppPaths::instance().historyFilePath(), this))
     , m_response(new ResponseView(this))
     , m_requestEditor(new RequestEditor(m_workspaceManager, m_collection, m_response, this))
     , m_appInfo(new AppInfo(this))
@@ -298,6 +300,13 @@ AppEngine::AppEngine(QObject* parent)
     qmlRegisterUncreatableType<EnvironmentModel>("Cpp.WorkspaceManager", 1, 0, "EnvironmentModel", QStringLiteral("EnvironmentModel should not be created in QML."));
     qmlRegisterUncreatableType<EnvironmentVariablesModel>("Cpp.WorkspaceManager", 1, 0, "EnvironmentVariablesModel", QStringLiteral("EnvironmentVariablesModel is exposed by EnvironmentModel."));
     rootContext()->setContextProperty("cppEnvironments", m_environments);
+    qmlRegisterUncreatableType<HistoryModel>("Cpp.WorkspaceManager", 1, 0, "HistoryModel", QStringLiteral("HistoryModel should not be created in QML."));
+    rootContext()->setContextProperty("cppHistory", m_history);
+    connect(m_history, &HistoryModel::storageFailed, this, [](const QString &message) {
+        qWarning().noquote() << message;
+    });
+    connect(m_requestEditor, &RequestEditor::requestFinished, m_history, &HistoryModel::record);
+    m_history->load();
     qmlRegisterUncreatableType<ResponseView>("Cpp.WorkspaceManager", 1, 0, "ResponseView", QStringLiteral("ResponseView should not be created in QML."));
     rootContext()->setContextProperty("cppRequestEditor", m_requestEditor);
     rootContext()->setContextProperty("cppResponse", m_response);

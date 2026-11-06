@@ -344,6 +344,19 @@ target_link_libraries(tst_environmentmodel
 
 add_test(NAME EnvironmentModel.Unit COMMAND tst_environmentmodel)
 
+qt_add_executable(tst_historymodel
+    unit/tst_historymodel.cpp
+)
+
+target_link_libraries(tst_historymodel
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Gui
+        Qt6::Test
+)
+
+add_test(NAME HistoryModel.Unit COMMAND tst_historymodel)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml

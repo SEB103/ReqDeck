@@ -66,6 +66,9 @@ class CollectionTreeTest : public QObject
     Q_OBJECT
 
 private slots:
+    /*! Verifies the name of a request made from another source. */
+    void displayNameCombinesMethodAndUrl();
+
     /*! Verifies that a node is found at any depth. */
     void findsNestedNode();
 
@@ -242,6 +245,20 @@ void CollectionTreeTest::setRequestRefusedForFolder()
     QList<CollectionNode> tree = makeTree();
     QVERIFY(!setNodeRequest(tree, QStringLiteral("f1"), RequestSpec {}));
     QVERIFY(!setNodeRequest(tree, QStringLiteral("nope"), RequestSpec {}));
+}
+
+void CollectionTreeTest::displayNameCombinesMethodAndUrl()
+{
+    RequestSpec request;
+    request.method = HttpMethod::Delete;
+    request.url = QStringLiteral("  http://x\n/y ");
+    QCOMPARE(requestDisplayName(request), QStringLiteral("DELETE http://x /y"));
+
+    request.url.clear();
+    QCOMPARE(requestDisplayName(request), QStringLiteral("DELETE"));
+
+    request.url = QString(500, u'a');
+    QCOMPARE(requestDisplayName(request).size(), 120);
 }
 
 QTEST_GUILESS_MAIN(CollectionTreeTest)

@@ -9,6 +9,7 @@
 
 #include "core/http/requestbuilder.h"
 #include "core/http/requestspec.h"
+#include "core/http/responsedata.h"
 
 class CollectionTreeModel;
 class HttpExecutor;
@@ -222,6 +223,9 @@ signals:
     /** Emitted when the open request or any of its fields changes. */
     void requestChanged();
 
+    /** Emitted after the response of \a request reached the view; \a request is as it was sent. */
+    void requestFinished(const RequestSpec &request, const ResponseData &response);
+
     /** Emitted when busy() changes. */
     void busyChanged();
 
@@ -268,6 +272,9 @@ private:
 
     /** Variables of the running request that had no value. */
     QStringList m_unresolved;
+
+    /** The request as it was sent, which outlives switching to another one. */
+    RequestSpec m_sentRequest;
 
     /** Query parameter rows; owned through the QObject tree. */
     KeyValueModel *m_params {nullptr};

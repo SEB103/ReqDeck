@@ -7,6 +7,9 @@
 #include <utility>
 
 namespace {
+/** Longest name made from a request. */
+constexpr qsizetype kMaxDisplayNameChars = 120;
+
 /*!
  * \internal
  * \brief Returns the list directly holding the node with \a id, or null.
@@ -45,6 +48,20 @@ void assignFreshIds(CollectionNode &node)
         assignFreshIds(child);
 }
 } // namespace
+
+/*!
+ * rief Returns a name for  request made from another source.
+ * \param request The request.
+ * eturn "METHOD url" on one line, or only the method without a URL.
+ */
+QString requestDisplayName(const RequestSpec &request)
+{
+    QString name = QString::fromLatin1(httpMethodVerb(request.method));
+    const QString url = request.url.simplified();
+    if (!url.isEmpty())
+        name += u' ' + url;
+    return name.left(kMaxDisplayNameChars);
+}
 
 /*!
  * \brief Returns the node with \a id below \a nodes.

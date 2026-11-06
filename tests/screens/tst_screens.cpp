@@ -20,6 +20,7 @@
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/environmentmodel.h"
 #include "qmlapi/environmentvariablesmodel.h"
+#include "qmlapi/historymodel.h"
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/requesteditor.h"
 #include "qmlapi/responseview.h"
@@ -86,10 +87,13 @@ public:
     void publish(QQmlContext *context)
     {
         m_server.start();
+        QObject::connect(&m_editor, &RequestEditor::requestFinished, &m_history,
+                         &HistoryModel::record);
         m_manager.setSecretsDir(m_dir.filePath(QStringLiteral("secrets")));
         context->setContextProperty(QStringLiteral("cppWorkspaceManager"), &m_manager);
         context->setContextProperty(QStringLiteral("cppCollection"), &m_collection);
         context->setContextProperty(QStringLiteral("cppEnvironments"), &m_environments);
+        context->setContextProperty(QStringLiteral("cppHistory"), &m_history);
         context->setContextProperty(QStringLiteral("cppRequestEditor"), &m_editor);
         context->setContextProperty(QStringLiteral("cppResponse"), &m_response);
         context->setContextProperty(QStringLiteral("cppTestHost"), this);
@@ -156,6 +160,7 @@ public:
     {
         m_editor.clear();
         m_manager.closeWorkspace();
+        m_history.clear();
 
         WorkspaceData data;
         data.id = newItemId();
@@ -184,6 +189,9 @@ private:
 
     /*! Real environment model. */
     EnvironmentModel m_environments {&m_manager};
+
+    /*! Real history over a temporary file. */
+    HistoryModel m_history {m_dir.filePath(QStringLiteral("history.json"))};
 
     /*! Real response view. */
     ResponseView m_response;

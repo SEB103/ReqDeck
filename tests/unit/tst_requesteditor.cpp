@@ -132,6 +132,15 @@ private slots:
     /*! Verifies that an edit counts without saving first. */
     void sendUsesWorkingCopy();
 
+    /*! Verifies that a finished request is reported with its response. */
+    void finishedRequestIsReported();
+
+    /*! Verifies that the report names the request that was sent. */
+    void finishedReportsSentRequestAfterSwitching();
+
+    /*! Verifies that a request that never left is not reported. */
+    void buildErrorIsNotReported();
+
     /*! Verifies that variables come from the active environment. */
     void sendResolvesActiveEnvironment();
 
@@ -527,6 +536,46 @@ void RequestEditorTest::sendUsesWorkingCopy()
 
     QVERIFY(waitForResponse(*m_response));
     QCOMPARE(m_response->statusCode(), 404);
+}
+
+void RequestEditorTest::finishedRequestIsReported()
+{
+    openRequestAt(QStringLiteral("/status/201"));
+    QSignalSpy finished(m_editor.get(), &RequestEditor::requestFinished);
+
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+
+    QCOMPARE(finished.count(), 1);
+    QCOMPARE(finished.at(0).at(0).value<RequestSpec>().url,
+             m_server.url(QStringLiteral("/status/201")).toString());
+    QCOMPARE(finished.at(0).at(1).value<ResponseData>().statusCode, 201);
+}
+
+void RequestEditorTest::finishedReportsSentRequestAfterSwitching()
+{
+    openRequestAt(QStringLiteral("/delay/100"));
+    const QString sent = m_server.url(QStringLiteral("/delay/100")).toString();
+    QSignalSpy finished(m_editor.get(), &RequestEditor::requestFinished);
+
+    m_editor->send();
+    m_editor->load(QStringLiteral("full"));
+    QVERIFY(waitForResponse(*m_response));
+
+    QCOMPARE(finished.count(), 1);
+    QCOMPARE(finished.at(0).at(0).value<RequestSpec>().url, sent);
+}
+
+void RequestEditorTest::buildErrorIsNotReported()
+{
+    openRequestAt(QStringLiteral("/status/201"));
+    m_editor->setProperty("url", QStringLiteral("{{missing}}/x"));
+    QSignalSpy finished(m_editor.get(), &RequestEditor::requestFinished);
+
+    m_editor->send();
+
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(finished.count(), 0);
 }
 
 void RequestEditorTest::sendResolvesActiveEnvironment()

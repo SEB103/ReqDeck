@@ -297,6 +297,7 @@ void RequestEditor::send()
         return;
     }
     m_unresolved = built.unresolvedVariables;
+    m_sentRequest = m_request;
     m_executor->send(built);
 }
 
@@ -315,6 +316,7 @@ void RequestEditor::cancel()
 void RequestEditor::showResponse(const ResponseData &response)
 {
     m_response->setResponse(response, m_unresolved);
+    emit requestFinished(m_sentRequest, response);
 }
 
 /*!

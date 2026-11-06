@@ -11,6 +11,9 @@
 
 #include "core/workspace/workspacedata.h"
 
+/** Returns a name for \a request made from another source, as "METHOD url", cut at 120 characters. */
+QString requestDisplayName(const RequestSpec &request);
+
 /** Returns the node with \a id below \a nodes, or null. */
 const CollectionNode *findNode(const QList<CollectionNode> &nodes, const QString &id);
 
