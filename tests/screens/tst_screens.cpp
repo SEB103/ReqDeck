@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <QDir>
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickTextDocument>
@@ -129,6 +130,26 @@ public:
 
     /*! Returns the number of requests the mock server received. */
     Q_INVOKABLE int requestCount() const { return m_server.requestCount(); }
+
+    /*! Returns the path of the secrets file of the open workspace. */
+    QString secretsFile() const
+    {
+        return m_dir.filePath(QStringLiteral("secrets/%1.json").arg(m_manager.workspaceData().id));
+    }
+
+    /*! Opens the workspace again with its secrets file blocked by a directory. */
+    Q_INVOKABLE bool reopenWithLockedSecrets()
+    {
+        const QString path = m_manager.activeWorkspacePath();
+        if (!QDir().mkpath(secretsFile()))
+            return false;
+        m_editor.clear();
+        m_manager.closeWorkspace();
+        return m_manager.openWorkspace(path);
+    }
+
+    /*! Removes the block of reopenWithLockedSecrets(). */
+    Q_INVOKABLE bool unlockSecrets() { return QDir().rmdir(secretsFile()); }
 
     /*! Opens a fresh copy of the test workspace, clean and with nothing selected. */
     Q_INVOKABLE bool reset()

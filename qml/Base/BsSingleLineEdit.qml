@@ -18,7 +18,9 @@ import QtQuick.Controls.Material
 
     The host sets \l text and writes back from \l textEdited. Showing a text never
     emits \l textEdited, not even when TextArea changes its line endings, so a text
-    from a file that holds a line break stays as it is until the user edits it.
+    from a file that holds a line break stays as it is until the user edits it. A
+    syntax highlighter recoloring the document makes TextArea report a text change
+    too, so a change counts as an edit only when the text really differs.
 */
 FocusScope {
     id: root
@@ -50,8 +52,10 @@ FocusScope {
             return
         area.shownText = root.text
         area.showingText = true
+        area.lineBreaksPending = false
         area.text = root.text
         area.showingText = false
+        area.documentText = area.text
         flickable.contentX = 0
     }
 
@@ -61,12 +65,16 @@ FocusScope {
         finish first.
     */
     function removeLineBreaks() {
+        if (!area.lineBreaksPending)
+            return
+        area.lineBreaksPending = false
         const text = area.text
         const before = text.slice(0, area.cursorPosition).replace(/[\r\n]/g, "")
         const clean = text.replace(/[\r\n]/g, "")
         area.showingText = true
         area.text = clean
         area.showingText = false
+        area.documentText = area.text
         area.cursorPosition = before.length
         area.shownText = clean
         root.textEdited(clean)
@@ -106,6 +114,12 @@ FocusScope {
             /*! Whether the text is being assigned, not edited. */
             property bool showingText: false
 
+            /*! The text of the document as TextArea reports it, after its own changes. */
+            property string documentText: ""
+
+            /*! Whether an edit brought line breaks that are still to be removed. */
+            property bool lineBreaksPending: false
+
             objectName: "editArea"
 
             focus: true
@@ -115,9 +129,11 @@ FocusScope {
             Accessible.name: root.Accessible.name
             onCursorRectangleChanged: root.followCursor()
             onTextChanged: {
-                if (area.showingText)
+                if (area.showingText || area.text === area.documentText)
                     return
+                area.documentText = area.text
                 if (/[\r\n]/.test(area.text)) {
+                    area.lineBreaksPending = true
                     Qt.callLater(root.removeLineBreaks)
                     return
                 }

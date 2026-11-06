@@ -321,7 +321,7 @@ bool WorkspaceManager::openWorkspace(const QString &pathOrUrl)
 
     setActiveWorkspace(path, result.data);
     emit workspaceReplaced();
-    m_secretsUnread = secrets == SecretStore::ReadStatus::Unreadable;
+    setSecretsUnread(secrets == SecretStore::ReadStatus::Unreadable);
     addOrUpdateRecent(path, name);
     notify(Diagnostics::Info, [=, this] {
         return tr("Opened workspace %1.").arg(name);
@@ -561,7 +561,7 @@ void WorkspaceManager::addOrUpdateRecent(const QString &path, const QString &dis
  */
 void WorkspaceManager::setActiveWorkspace(const QString &path, const WorkspaceData &data)
 {
-    m_secretsUnread = false;
+    setSecretsUnread(false);
     m_activePath = QDir::cleanPath(QFileInfo(path).absoluteFilePath());
     m_data = data;
     setDirty(false);
@@ -583,6 +583,45 @@ void WorkspaceManager::clearActiveWorkspace()
     setDirty(false);
     emit activeWorkspaceChanged();
     emit workspaceReplaced();
+}
+
+/*!
+ * \brief Returns whether the secret values are still to be read.
+ */
+bool WorkspaceManager::secretsUnread() const
+{
+    return m_secretsUnread;
+}
+
+/*!
+ * \brief Reads secret values that could not be read before.
+ *
+ * The values match the stored file, so this is no unsaved change. Rows are
+ * matched by key and position, which is why variables must not change until the
+ * values are read.
+ * \return Whether none are left to read.
+ */
+bool WorkspaceManager::retrySecrets()
+{
+    if (!m_secretsUnread)
+        return true;
+    if (SecretStore(secretsDir()).fillEmptyValues(m_data) == SecretStore::ReadStatus::Unreadable)
+        return false;
+    setSecretsUnread(false);
+    return true;
+}
+
+/*!
+ * \internal
+ * \brief Records whether the secret values are still to be read.
+ * \param unread True when they could not be read.
+ */
+void WorkspaceManager::setSecretsUnread(bool unread)
+{
+    if (m_secretsUnread == unread)
+        return;
+    m_secretsUnread = unread;
+    emit secretsUnreadChanged();
 }
 
 void WorkspaceManager::setDirty(bool dirty)

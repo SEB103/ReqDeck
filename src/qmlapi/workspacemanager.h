@@ -47,6 +47,9 @@ class WorkspaceManager : public QObject
     /** Whether the active workspace has unsaved changes. */
     Q_PROPERTY(bool dirty READ dirty NOTIFY dirtyChanged)
 
+    /** Whether the secret values could not be read when the workspace was opened. */
+    Q_PROPERTY(bool secretsUnread READ secretsUnread NOTIFY secretsUnreadChanged)
+
     /** Recent-workspace entries, newest first, as QVariantMap rows for QML. */
     Q_PROPERTY(QVariantList recentWorkspaces READ recentWorkspaces NOTIFY recentWorkspacesChanged)
 
@@ -72,6 +75,12 @@ public:
 
     /** Returns whether the active workspace has unsaved changes. */
     bool dirty() const;
+
+    /** Returns whether the secret values are still to be read. */
+    bool secretsUnread() const;
+
+    /** Reads secret values that could not be read before; returns whether none are left. */
+    Q_INVOKABLE bool retrySecrets();
 
     /** Returns the recent-workspace rows exposed to QML, newest first. */
     QVariantList recentWorkspaces() const;
@@ -167,6 +176,9 @@ signals:
     /** Emitted when the unsaved-changes state changes. */
     void dirtyChanged();
 
+    /** Emitted when the secret values were read or could not be read. */
+    void secretsUnreadChanged();
+
     /** Emitted when the recent-workspaces list changes. */
     void recentWorkspacesChanged();
 
@@ -223,6 +235,9 @@ protected:
 
     /** Sets the unsaved-changes flag to \a dirty and emits on change. */
     void setDirty(bool dirty);
+
+    /** Records whether the secret values are still to be read. */
+    void setSecretsUnread(bool unread);
 
     /** One recent-workspace entry as stored in settings. */
     struct RecentEntry

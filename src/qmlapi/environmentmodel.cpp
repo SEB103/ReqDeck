@@ -32,6 +32,8 @@ EnvironmentModel::EnvironmentModel(WorkspaceManager *manager, QObject *parent)
             &EnvironmentModel::resetFromWorkspace);
     connect(m_manager, &WorkspaceManager::activeWorkspaceChanged, this,
             &EnvironmentModel::refreshHighlighter);
+    connect(m_manager, &WorkspaceManager::secretsUnreadChanged, this,
+            &EnvironmentModel::refreshHighlighter);
     connect(m_variables, &EnvironmentVariablesModel::edited, this,
             &EnvironmentModel::storeVariables);
     refreshHighlighter();

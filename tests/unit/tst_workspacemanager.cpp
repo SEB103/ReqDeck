@@ -160,6 +160,12 @@ private slots:
     /*! Verifies that a later save recovers secrets that could not be read on open. */
     void unreadableSecretsAreRecoveredOnSave();
 
+    /*! Verifies that retrying changes nothing while the secrets stay unreadable. */
+    void retrySecretsKeepsStateWhileLocked();
+
+    /*! Verifies that retrying fills in the values without counting as a change. */
+    void retrySecretsFillsValuesOnceReadable();
+
     /*! Verifies that recovery keeps a value the user entered in the meantime. */
     void recoveryKeepsReenteredValue();
 
@@ -908,6 +914,53 @@ void WorkspaceManagerTest::unreadableSecretsAreRecoveredOnSave()
              QStringLiteral("stored-one"));
     QVERIFY(readFile(secretsFile).contains("stored-one"));
     QVERIFY(readFile(secretsFile).contains("stored-two"));
+}
+
+void WorkspaceManagerTest::retrySecretsKeepsStateWhileLocked()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    QByteArray secrets;
+    QVERIFY(!makeLockedWorkspace(dir, secrets).isEmpty());
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.openWorkspace(dir.filePath(QStringLiteral("Locked.reqdeck"))));
+    QVERIFY(manager.secretsUnread());
+
+    QVERIFY(!manager.retrySecrets());
+
+    QVERIFY(manager.secretsUnread());
+}
+
+void WorkspaceManagerTest::retrySecretsFillsValuesOnceReadable()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    QByteArray secrets;
+    const QString secretsFile = makeLockedWorkspace(dir, secrets);
+    QVERIFY(!secretsFile.isEmpty());
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.openWorkspace(dir.filePath(QStringLiteral("Locked.reqdeck"))));
+    QSignalSpy unread(&manager, &WorkspaceManager::secretsUnreadChanged);
+
+    QVERIFY(QDir().rmdir(secretsFile));
+    QFile file(secretsFile);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write(secrets);
+    file.close();
+
+    QVERIFY(manager.retrySecrets());
+
+    QVERIFY(!manager.secretsUnread());
+    QCOMPARE(unread.count(), 1);
+    QCOMPARE(manager.workspaceData().environments.at(0).variables.at(1).value,
+             QStringLiteral("stored-one"));
+    QVERIFY(!manager.dirty());
 }
 
 void WorkspaceManagerTest::recoveryKeepsReenteredValue()

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QAbstractItemModelTester>
+#include <QDir>
 #include <QFile>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -109,6 +110,9 @@ private slots:
 
     /*! Verifies that the URL highlight follows the active variables. */
     void highlightFollowsActiveEnvironment();
+
+    /*! Verifies that secrets read late reach the URL highlight. */
+    void retriedSecretsReachHighlight();
 
     /*! Verifies that a secret stays out of the file and comes back. */
     void secretStaysOutOfWorkspaceFile();
@@ -395,6 +399,39 @@ void EnvironmentModelTest::highlightFollowsActiveEnvironment()
 
     m_model->removeEnvironment(0);
     QVERIFY(hasUnderline(document));
+}
+
+void EnvironmentModelTest::retriedSecretsReachHighlight()
+{
+    m_model->setActiveIndex(0);
+    m_model->setEditedRow(0);
+    EnvironmentVariablesModel *variables = m_model->variablesModel();
+    variables->addRow();
+    const QModelIndex row = variables->index(1);
+    variables->setData(row, QStringLiteral("token"), EnvironmentVariablesModel::KeyRole);
+    variables->setData(row, true, EnvironmentVariablesModel::SecretRole);
+    variables->setData(row, QStringLiteral("value"), EnvironmentVariablesModel::ValueRole);
+    QVERIFY(m_manager->saveWorkspace());
+
+    const QString path = m_manager->activeWorkspacePath();
+    const QString secrets = m_dir->filePath(
+        QStringLiteral("secrets/%1.json").arg(m_manager->workspaceData().id));
+    const QString aside = secrets + QStringLiteral(".aside");
+    m_manager->closeWorkspace();
+    QVERIFY(QFile::rename(secrets, aside));
+    QVERIFY(QDir().mkpath(secrets));
+    QVERIFY(m_manager->openWorkspace(path));
+
+    QTextDocument document(QStringLiteral("{{token}}"));
+    m_model->urlHighlighter()->setDocument(&document);
+    m_model->urlHighlighter()->rehighlight();
+    QVERIFY(hasUnderline(document));
+
+    QVERIFY(QDir().rmdir(secrets));
+    QVERIFY(QFile::rename(aside, secrets));
+    QVERIFY(m_manager->retrySecrets());
+
+    QVERIFY(!hasUnderline(document));
 }
 
 void EnvironmentModelTest::secretStaysOutOfWorkspaceFile()

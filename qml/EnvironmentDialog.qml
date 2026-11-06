@@ -38,6 +38,16 @@ Dialog {
         root.showName()
     }
 
+    /*! Moves the editor \a step rows through the list, stopping at its ends. */
+    function moveEdited(step) {
+        root.commitName()
+        const row = cppEnvironments.editedRow + step
+        if (row < 0 || row >= environmentList.count)
+            return
+        cppEnvironments.editedRow = row
+        environmentList.positionViewAtIndex(row, ListView.Contain)
+    }
+
     /*! Gets the name of a new environment ready to be replaced. */
     function focusName() {
         nameField.forceActiveFocus()
@@ -53,6 +63,7 @@ Dialog {
     closePolicy: Popup.CloseOnEscape
 
     onAboutToShow: {
+        cppWorkspaceManager.retrySecrets()
         const first = cppEnvironments.names.length > 0 ? 0 : -1
         cppEnvironments.editedRow = cppEnvironments.activeIndex >= 0 ? cppEnvironments.activeIndex : first
         root.showName()
@@ -87,7 +98,11 @@ Dialog {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
+                activeFocusOnTab: true
                 model: cppEnvironments
+                Accessible.name: qsTr("Environments")
+                Keys.onUpPressed: root.moveEdited(-1)
+                Keys.onDownPressed: root.moveEdited(1)
 
                 ScrollBar.vertical: ScrollBar {}
 
@@ -113,9 +128,22 @@ Dialog {
                     }
                 }
 
+                Rectangle {
+                    objectName: "listFocusFrame"
+
+                    parent: environmentList
+                    anchors.fill: parent
+                    z: 1
+                    visible: environmentList.activeFocus
+                    color: "transparent"
+                    border.color: Base.BsTheme.accent
+                    border.width: 2
+                }
+
                 Label {
                     objectName: "emptyLabel"
 
+                    parent: environmentList
                     anchors.centerIn: parent
                     width: parent.width - 16
                     visible: environmentList.count === 0
@@ -150,7 +178,7 @@ Dialog {
                 ToolButton {
                     objectName: "duplicateEnvironment"
 
-                    enabled: root.hasEnvironment
+                    enabled: root.hasEnvironment && !cppWorkspaceManager.secretsUnread
                     display: AbstractButton.IconOnly
                     icon.source: "qrc:/images/svg/content_copy.svg"
                     icon.width: 20
@@ -201,12 +229,23 @@ Dialog {
                 onEditingFinished: root.commitName()
             }
 
+            Label {
+                objectName: "secretsNote"
+
+                Layout.fillWidth: true
+                visible: cppWorkspaceManager.secretsUnread
+                wrapMode: Text.Wrap
+                text: qsTr("The secret values could not be read, so variables cannot be changed now. Open this dialog again to retry.")
+            }
+
+            // Stored secrets are matched by key and position, so editing rows
+            // before they are read would lose them or give them to the wrong row.
             Base.BsKeyValueTable {
                 objectName: "variablesTable"
 
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                enabled: root.hasEnvironment
+                enabled: root.hasEnvironment && !cppWorkspaceManager.secretsUnread
                 showSecret: true
                 keyPlaceholder: qsTr("Variable")
                 model: cppEnvironments.variablesModel

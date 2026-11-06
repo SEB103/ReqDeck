@@ -342,6 +342,54 @@ Item {
             verify(!cppWorkspaceManager.dirty);
         }
 
+        function test_recoloringLeavesUrlAlone_data() {
+            return [
+                {tag: "line break", url: "http://a\r\nb"},
+                {tag: "no-break space", url: "http://a\u00A0b"}
+            ];
+        }
+
+        /*! Verifies that recoloring a shown URL is not taken for an edit. */
+        function test_recoloringLeavesUrlAlone(data) {
+            const pane = createRequest("r2");
+            cppRequestEditor.url = data.url;
+            waitForRendering(pane);
+            verify(cppWorkspaceManager.saveWorkspace());
+            wait(50);
+            compare(cppRequestEditor.url, data.url);
+            verify(!cppWorkspaceManager.dirty);
+
+            cppEnvironments.activeIndex = 0;
+            wait(50);
+            compare(cppRequestEditor.url, data.url);
+
+            verify(cppWorkspaceManager.saveWorkspace());
+            const dark = cppEnvironments.darkTheme;
+            cppEnvironments.darkTheme = !dark;
+            wait(50);
+            cppEnvironments.darkTheme = dark;
+            wait(50);
+            compare(cppRequestEditor.url, data.url);
+            verify(!cppWorkspaceManager.dirty);
+        }
+
+        /*! Verifies that a request change drops line breaks still to be removed. */
+        function test_shownUrlKeepsLineBreakAfterPendingPaste() {
+            const pane = createRequest("r2");
+            cppRequestEditor.url = "";
+            verify(cppWorkspaceManager.saveWorkspace());
+            cppRequestEditor.load("r1");
+            cppRequestEditor.url = "http://stored\r\nbreak";
+            cppRequestEditor.load("r2");
+            waitForRendering(pane);
+
+            urlArea(pane).insert(0, "a\nb");
+            cppRequestEditor.load("r1");
+            waitForRendering(pane);
+
+            compare(cppRequestEditor.url, "http://stored\r\nbreak");
+        }
+
         /*! Verifies that a long URL shows and edits in reasonable time. */
         function test_longUrlStaysResponsive() {
             const pane = createRequest("r2");
@@ -663,6 +711,64 @@ Item {
 
             tryCompare(host.dialog, "visible", false);
             compare(cppEnvironments.names[0], "x");
+        }
+
+        /*! Verifies that Tab reaches the list and the arrows choose a row. */
+        function test_listWorksByKeyboard() {
+            const host = openDialog();
+            const list = findChild(host, "environmentList");
+
+            findChild(host, "environmentName").forceActiveFocus();
+            for (let step = 0; step < 12 && !list.activeFocus; ++step)
+                keyClick(Qt.Key_Tab);
+            verify(list.activeFocus);
+            verify(findChild(host, "listFocusFrame").visible);
+
+            keyClick(Qt.Key_Down);
+            compare(cppEnvironments.editedRow, 1);
+            compare(findChild(host, "environmentName").text, "Missing");
+
+            keyClick(Qt.Key_Down);
+            compare(cppEnvironments.editedRow, 1);
+
+            keyClick(Qt.Key_Up);
+            keyClick(Qt.Key_Up);
+            compare(cppEnvironments.editedRow, 0);
+        }
+
+        /*! Verifies that the list hint sits inside an empty list. */
+        function test_emptyListShowsHint() {
+            cppEnvironments.removeEnvironment(0);
+            cppEnvironments.removeEnvironment(0);
+
+            const host = openDialog();
+            const hint = findChild(host, "emptyLabel");
+            const list = findChild(host, "environmentList");
+
+            verify(hint.visible);
+            verify(hint.parent === list);
+        }
+
+        /*! Verifies that variables cannot change while their values are unread. */
+        function test_lockedSecretsMakeVariablesReadOnly() {
+            verify(cppTestHost.reopenWithLockedSecrets());
+
+            const host = openDialog();
+            const table = findChild(host, "variablesTable");
+            const note = findChild(host, "secretsNote");
+            compare(table.enabled, false);
+            compare(findChild(host, "duplicateEnvironment").enabled, false);
+            verify(note.visible);
+
+            host.dialog.close();
+            tryCompare(host.dialog, "visible", false);
+            verify(cppTestHost.unlockSecrets());
+
+            host.dialog.open();
+            tryCompare(host.dialog, "opened", true);
+            compare(table.enabled, true);
+            compare(findChild(host, "duplicateEnvironment").enabled, true);
+            compare(note.visible, false);
         }
 
         /*! Verifies that a blank name gives way to the old one. */
