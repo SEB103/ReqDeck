@@ -11,6 +11,7 @@
 #include <QTextLayout>
 #include <QtQuickTest/quicktest.h>
 
+#include <algorithm>
 #include <memory>
 
 #include "core/workspace/workspaceserializer.h"
@@ -53,6 +54,19 @@ static QList<CollectionNode> makeCollection()
     second.name = QStringLiteral("List items");
 
     return {folder, second};
+}
+
+/*!
+ * \internal
+ * \brief Returns an environment defining baseUrl as \a baseUrl.
+ */
+static Environment makeEnvironment(const QString &id, const QString &name, const QString &baseUrl)
+{
+    Environment environment;
+    environment.id = id;
+    environment.name = name;
+    environment.variables = {{QStringLiteral("baseUrl"), baseUrl, true, false}};
+    return environment;
 }
 
 /*!
@@ -102,6 +116,17 @@ public:
         return false;
     }
 
+    /*! Returns whether the first line of \a document has an underlined range. */
+    Q_INVOKABLE bool hasUnderline(QQuickTextDocument *document) const
+    {
+        const QList<QTextLayout::FormatRange> formats =
+            document->textDocument()->firstBlock().layout()->formats();
+        return std::any_of(formats.cbegin(), formats.cend(),
+                           [](const QTextLayout::FormatRange &range) {
+                               return range.format.fontUnderline();
+                           });
+    }
+
     /*! Returns the number of requests the mock server received. */
     Q_INVOKABLE int requestCount() const { return m_server.requestCount(); }
 
@@ -115,6 +140,10 @@ public:
         data.id = newItemId();
         data.displayName = QStringLiteral("Screens");
         data.collection = makeCollection();
+        data.environments = {makeEnvironment(QStringLiteral("e1"), QStringLiteral("Created"),
+                                              m_server.url(QStringLiteral("/status/201")).toString()),
+                             makeEnvironment(QStringLiteral("e2"), QStringLiteral("Missing"),
+                                              m_server.url(QStringLiteral("/status/404")).toString())};
         const QString path = m_dir.filePath(QStringLiteral("screens.reqdeck"));
         return WorkspaceSerializer::save(path, data) && m_manager.openWorkspace(path);
     }

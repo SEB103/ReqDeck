@@ -90,6 +90,15 @@ Item {
     }
 
     Component {
+        id: singleLineEditComponent
+
+        BsSingleLineEdit {
+            width: 300
+            text: "http://example.com"
+        }
+    }
+
+    Component {
         id: statusChipComponent
 
         BsStatusChip {}
@@ -146,6 +155,12 @@ Item {
         }
 
         /*! Verifies that the table shows the rows of its model. */
+        function test_singleLineEditShowsItsText() {
+            const edit = createTemporaryObject(singleLineEditComponent, root);
+            verify(edit !== null);
+            compare(edit.length, 18);
+        }
+
         function test_keyValueTableShowsRows() {
             resetKeyValueModel();
             const table = createTemporaryObject(keyValueTableComponent, root);

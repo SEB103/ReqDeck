@@ -257,6 +257,134 @@ Item {
             verify(!cppWorkspaceManager.dirty);
         }
 
+        /*! Returns the text area inside the URL field of \a pane. */
+        function urlArea(pane) {
+            return findChild(findChild(pane, "urlField"), "editArea");
+        }
+
+        /*! Verifies that Return and Enter add nothing to the URL. */
+        function test_returnAddsNothing() {
+            const field = findChild(createRequest("r1"), "urlField");
+            field.forceActiveFocus();
+
+            keyClick(Qt.Key_Return);
+            keyClick(Qt.Key_Enter);
+
+            compare(cppRequestEditor.url, "http://h/items");
+            verify(!cppWorkspaceManager.dirty);
+        }
+
+        /*! Verifies that Tab leaves the URL field without writing a tab. */
+        function test_tabLeavesTheField() {
+            const field = findChild(createRequest("r1"), "urlField");
+            field.forceActiveFocus();
+            verify(field.activeFocus);
+
+            keyClick(Qt.Key_Tab);
+
+            verify(!field.activeFocus);
+            compare(cppRequestEditor.url, "http://h/items");
+        }
+
+        /*! Verifies that line breaks in inserted text do not reach the URL. */
+        function test_insertedLineBreaksAreRemoved() {
+            const pane = createRequest("r2");
+            const area = urlArea(pane);
+            area.forceActiveFocus();
+
+            area.insert(0, "http://a\r\n/b\n");
+
+            tryCompare(cppRequestEditor, "url", "http://a/b");
+            compare(area.text, "http://a/b");
+            compare(area.cursorPosition, 10);
+        }
+
+        /*! Verifies that showing a URL with a line break changes nothing. */
+        function test_showingRequestLeavesItClean() {
+            const pane = createRequest("r2");
+            cppRequestEditor.url = "http://a\r\nb";
+            verify(cppWorkspaceManager.saveWorkspace());
+
+            cppRequestEditor.load("r1");
+            waitForRendering(pane);
+            cppRequestEditor.load("r2");
+            waitForRendering(pane);
+
+            compare(cppRequestEditor.url, "http://a\r\nb");
+            verify(!cppWorkspaceManager.dirty);
+        }
+
+        /*! Verifies that a long URL shows and edits in reasonable time. */
+        function test_longUrlStaysResponsive() {
+            const pane = createRequest("r2");
+            const field = findChild(pane, "urlField");
+            const started = Date.now();
+
+            cppRequestEditor.url = "http://h/" + "a".repeat(262144);
+            waitForRendering(pane);
+            typeInto(field);
+
+            const elapsed = Date.now() - started;
+            compare(field.length, 262154);
+            verify(elapsed < 10000, "took " + elapsed + " ms");
+        }
+
+        /*! Verifies that the view follows the cursor through a long URL. */
+        function test_urlKeepsCursorVisible() {
+            const pane = createRequest("r2");
+            const field = findChild(pane, "urlField");
+            const area = urlArea(pane);
+            cppRequestEditor.url = "http://h/" + "a".repeat(400);
+            waitForRendering(pane);
+
+            field.forceActiveFocus();
+            field.cursorPosition = field.length;
+            waitForRendering(pane);
+
+            let x = area.mapToItem(field, area.cursorRectangle.x, 0).x;
+            verify(x >= 0 && x <= field.width, "cursor at " + x);
+
+            field.cursorPosition = 0;
+            waitForRendering(pane);
+
+            x = area.mapToItem(field, area.cursorRectangle.x, 0).x;
+            verify(x >= 0 && x <= field.width, "cursor at " + x);
+        }
+
+        /*! Verifies that a reference is marked until it resolves. */
+        function test_unresolvedReferenceIsHighlighted() {
+            const pane = createRequest("r2");
+            const field = findChild(pane, "urlField");
+            cppRequestEditor.url = "{{baseUrl}}/x";
+
+            tryVerify(() => cppTestHost.hasUnderline(field.textDocument));
+
+            cppEnvironments.activeIndex = 0;
+
+            verify(!cppTestHost.hasUnderline(field.textDocument));
+        }
+
+        /*! Verifies that the URL field lines up with the method box. */
+        function test_urlRowIsLevel() {
+            const pane = createRequest("r2");
+            const field = findChild(pane, "urlField");
+            const combo = findChild(pane, "methodCombo");
+
+            compare(field.height, combo.height);
+            compare(field.y, combo.y);
+        }
+
+        /*! Verifies that the URL field never reads its text as markup. */
+        function test_urlIsPlainText() {
+            const pane = createRequest("r2");
+
+            cppRequestEditor.url = "<b>x</b>";
+            waitForRendering(pane);
+
+            compare(urlArea(pane).textFormat, TextEdit.PlainText);
+            compare(findChild(pane, "urlField").length, 8);
+        }
+
         /*! Verifies that typing in the URL field reaches the request. */
         function test_typingUrlWritesThrough() {
             const pane = createRequest("r1");

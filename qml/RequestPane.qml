@@ -24,6 +24,12 @@ import Base as Base
 Item {
     id: root
 
+    Binding {
+        target: cppEnvironments
+        property: "darkTheme"
+        value: Base.BsTheme.dark
+    }
+
     Label {
         objectName: "placeholder"
 
@@ -67,14 +73,15 @@ Item {
                 onActivated: cppRequestEditor.method = currentText
             }
 
-            TextField {
+            Base.BsSingleLineEdit {
                 objectName: "urlField"
 
                 Layout.fillWidth: true
                 placeholderText: qsTr("https://example.com or {{baseUrl}}/path")
-                selectByMouse: true
                 text: cppRequestEditor.url
-                onTextEdited: cppRequestEditor.url = text
+                Accessible.name: qsTr("URL")
+                onTextEdited: (edited) => cppRequestEditor.url = edited
+                Component.onCompleted: cppEnvironments.attachUrlHighlighter(textDocument)
             }
 
             // Taking the focus first commits a field still being edited.

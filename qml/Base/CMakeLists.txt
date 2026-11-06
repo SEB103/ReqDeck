@@ -17,6 +17,7 @@ qt_add_qml_module(Base
         BsMenuItem.qml
         BsNotificationBanner.qml
         BsPane.qml
+        BsSingleLineEdit.qml
         BsStatusBar.qml
         BsStatusChip.qml
         BsTheme.qml
