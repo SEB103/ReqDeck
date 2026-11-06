@@ -331,6 +331,19 @@ target_link_libraries(tst_environmentvariablesmodel
 
 add_test(NAME EnvironmentVariablesModel.Unit COMMAND tst_environmentvariablesmodel)
 
+qt_add_executable(tst_environmentmodel
+    unit/tst_environmentmodel.cpp
+)
+
+target_link_libraries(tst_environmentmodel
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Gui
+        Qt6::Test
+)
+
+add_test(NAME EnvironmentModel.Unit COMMAND tst_environmentmodel)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml

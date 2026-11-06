@@ -16,6 +16,8 @@
 #include "core/workspace/workspaceserializer.h"
 #include "mockhttpserver.h"
 #include "qmlapi/collectiontreemodel.h"
+#include "qmlapi/environmentmodel.h"
+#include "qmlapi/environmentvariablesmodel.h"
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/requesteditor.h"
 #include "qmlapi/responseview.h"
@@ -72,6 +74,7 @@ public:
         m_manager.setSecretsDir(m_dir.filePath(QStringLiteral("secrets")));
         context->setContextProperty(QStringLiteral("cppWorkspaceManager"), &m_manager);
         context->setContextProperty(QStringLiteral("cppCollection"), &m_collection);
+        context->setContextProperty(QStringLiteral("cppEnvironments"), &m_environments);
         context->setContextProperty(QStringLiteral("cppRequestEditor"), &m_editor);
         context->setContextProperty(QStringLiteral("cppResponse"), &m_response);
         context->setContextProperty(QStringLiteral("cppTestHost"), this);
@@ -128,6 +131,9 @@ private:
 
     /*! Real collection model. */
     CollectionTreeModel m_collection {&m_manager};
+
+    /*! Real environment model. */
+    EnvironmentModel m_environments {&m_manager};
 
     /*! Real response view. */
     ResponseView m_response;

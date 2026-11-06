@@ -32,6 +32,8 @@
 #include "localecontroller.h"
 #include "productinfo.h"
 #include "qmlapi/collectiontreemodel.h"
+#include "qmlapi/environmentmodel.h"
+#include "qmlapi/environmentvariablesmodel.h"
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/requesteditor.h"
 #include "qmlapi/responseview.h"
@@ -266,6 +268,7 @@ AppEngine::AppEngine(QObject* parent)
     : QQmlApplicationEngine(parent)
     , m_workspaceManager(new WorkspaceManager(this))
     , m_collection(new CollectionTreeModel(m_workspaceManager, this))
+    , m_environments(new EnvironmentModel(m_workspaceManager, this))
     , m_response(new ResponseView(this))
     , m_requestEditor(new RequestEditor(m_workspaceManager, m_collection, m_response, this))
     , m_appInfo(new AppInfo(this))
@@ -292,6 +295,9 @@ AppEngine::AppEngine(QObject* parent)
     qmlRegisterUncreatableType<KeyValueModel>("Cpp.WorkspaceManager", 1, 0, "KeyValueModel", QStringLiteral("KeyValueModel is exposed by RequestEditor."));
     qmlRegisterUncreatableType<RequestEditor>("Cpp.WorkspaceManager", 1, 0, "RequestEditor", QStringLiteral("RequestEditor should not be created in QML."));
     rootContext()->setContextProperty("cppCollection", m_collection);
+    qmlRegisterUncreatableType<EnvironmentModel>("Cpp.WorkspaceManager", 1, 0, "EnvironmentModel", QStringLiteral("EnvironmentModel should not be created in QML."));
+    qmlRegisterUncreatableType<EnvironmentVariablesModel>("Cpp.WorkspaceManager", 1, 0, "EnvironmentVariablesModel", QStringLiteral("EnvironmentVariablesModel is exposed by EnvironmentModel."));
+    rootContext()->setContextProperty("cppEnvironments", m_environments);
     qmlRegisterUncreatableType<ResponseView>("Cpp.WorkspaceManager", 1, 0, "ResponseView", QStringLiteral("ResponseView should not be created in QML."));
     rootContext()->setContextProperty("cppRequestEditor", m_requestEditor);
     rootContext()->setContextProperty("cppResponse", m_response);

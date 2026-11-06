@@ -82,6 +82,8 @@ target_sources(ReqDeckQmlApi
         qmlapi/bodyhighlighter.h
         qmlapi/collectiontreemodel.cpp
         qmlapi/collectiontreemodel.h
+        qmlapi/environmentmodel.cpp
+        qmlapi/environmentmodel.h
         qmlapi/environmentvariablesmodel.cpp
         qmlapi/environmentvariablesmodel.h
         qmlapi/keyvaluemodel.cpp
