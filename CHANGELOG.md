@@ -57,3 +57,6 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 - Sending requests and a response viewer: status, time, size, headers, and a
   Pretty or Raw body with JSON and XML highlighting; requests can be cancelled,
   and very long or binary bodies are limited in the view.
+- Environments: a selector in the top bar, an editor for names and variables with
+  masked secret values, and `{{variable}}` highlighting in the URL field, where
+  unresolved references are colored and underlined.
