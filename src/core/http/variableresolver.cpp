@@ -89,6 +89,15 @@ QString VariableResolver::resolve(const QString &text, QStringList *unresolved) 
 }
 
 /*!
+ * \brief Returns whether a reference to \a name resolves.
+ * \param name The variable name.
+ */
+bool VariableResolver::contains(const QString &name) const
+{
+    return m_variables.contains(name);
+}
+
+/*!
  * \brief Returns the unique names referenced by \a text in order of appearance.
  * \param text The text to scan.
  */
@@ -102,4 +111,19 @@ QStringList VariableResolver::referencedNames(const QString &text)
             names.append(name);
     }
     return names;
+}
+
+/*!
+ * \brief Returns every reference in \a text in order of appearance.
+ * \param text The text to scan.
+ */
+QList<VariableReference> VariableResolver::references(const QString &text)
+{
+    QList<VariableReference> references;
+    QRegularExpressionMatchIterator it = referencePattern().globalMatch(text);
+    while (it.hasNext()) {
+        const QRegularExpressionMatch match = it.next();
+        references.append({match.capturedStart(), match.capturedLength(), match.captured(1)});
+    }
+    return references;
 }

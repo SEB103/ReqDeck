@@ -11,6 +11,17 @@
 
 #include "core/http/requestspec.h"
 
+/** Place of one {{name}} reference in a text. */
+struct VariableReference
+{
+    /** Position of the opening braces. */
+    qsizetype start {0};
+    /** Length of the reference, braces included. */
+    qsizetype length {0};
+    /** Referenced name. */
+    QString name;
+};
+
 /**
  * Substitutes {{name}} references with variable values.
  *
@@ -39,8 +50,14 @@ public:
      */
     QString resolve(const QString &text, QStringList *unresolved = nullptr) const;
 
+    /** Returns whether a reference to \a name resolves. */
+    bool contains(const QString &name) const;
+
     /** Returns the unique variable names referenced by \a text in order of appearance. */
     static QStringList referencedNames(const QString &text);
+
+    /** Returns every reference in \a text in order of appearance. */
+    static QList<VariableReference> references(const QString &text);
 
 private:
     /** Variable values by name. */

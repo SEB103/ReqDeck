@@ -88,6 +88,8 @@ target_sources(ReqDeckQmlApi
         qmlapi/requesteditor.h
         qmlapi/responseview.cpp
         qmlapi/responseview.h
+        qmlapi/variablehighlighter.cpp
+        qmlapi/variablehighlighter.h
         qmlapi/workspacemanager.cpp
         qmlapi/workspacemanager.h
 )

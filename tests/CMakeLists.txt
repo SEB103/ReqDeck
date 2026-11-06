@@ -305,6 +305,19 @@ target_link_libraries(tst_bodyhighlighter
 
 add_test(NAME BodyHighlighter.Unit COMMAND tst_bodyhighlighter)
 
+qt_add_executable(tst_variablehighlighter
+    unit/tst_variablehighlighter.cpp
+)
+
+target_link_libraries(tst_variablehighlighter
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Gui
+        Qt6::Test
+)
+
+add_test(NAME VariableHighlighter.Unit COMMAND tst_variablehighlighter)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml

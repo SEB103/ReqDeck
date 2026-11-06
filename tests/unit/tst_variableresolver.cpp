@@ -49,6 +49,15 @@ private slots:
 
     /*! Verifies that referencedNames() returns unique names in order. */
     void referencedNamesAreUnique();
+
+    /*! Verifies the position, length, and name of each reference. */
+    void referencesReportPositions();
+
+    /*! Verifies that a malformed name is not a reference. */
+    void referencesSkipInvalidNames();
+
+    /*! Verifies that contains() sees what fromKeyValues() kept. */
+    void containsHonorsEnabledAndKey();
 };
 
 void VariableResolverTest::substitutesKnownNames()
@@ -122,6 +131,36 @@ void VariableResolverTest::referencedNamesAreUnique()
 {
     QCOMPARE(VariableResolver::referencedNames(QStringLiteral("{{a}}{{ b }}{{a}}")),
              QStringList({QStringLiteral("a"), QStringLiteral("b")}));
+}
+
+void VariableResolverTest::referencesReportPositions()
+{
+    const QList<VariableReference> references =
+        VariableResolver::references(QStringLiteral("a{{ x }}b{{y}}"));
+
+    QCOMPARE(references.size(), 2);
+    QCOMPARE(references.at(0).start, qsizetype(1));
+    QCOMPARE(references.at(0).length, qsizetype(7));
+    QCOMPARE(references.at(0).name, QStringLiteral("x"));
+    QCOMPARE(references.at(1).start, qsizetype(9));
+    QCOMPARE(references.at(1).length, qsizetype(5));
+    QCOMPARE(references.at(1).name, QStringLiteral("y"));
+}
+
+void VariableResolverTest::referencesSkipInvalidNames()
+{
+    QVERIFY(VariableResolver::references(QStringLiteral("{{1a}}")).isEmpty());
+}
+
+void VariableResolverTest::containsHonorsEnabledAndKey()
+{
+    const VariableResolver resolver = VariableResolver::fromKeyValues({
+        {QStringLiteral(" a "), QStringLiteral("1"), true},
+        {QStringLiteral("b"), QStringLiteral("2"), false},
+    });
+
+    QVERIFY(resolver.contains(QStringLiteral("a")));
+    QVERIFY(!resolver.contains(QStringLiteral("b")));
 }
 
 QTEST_GUILESS_MAIN(VariableResolverTest)
