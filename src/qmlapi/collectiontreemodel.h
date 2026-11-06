@@ -65,6 +65,9 @@ public:
     /** Adds a folder to the folder \a parentId or the top level; returns its id or "". */
     Q_INVOKABLE QString addFolder(const QString &parentId);
 
+    /** Adds a request holding \a request as last child of \a parentId; returns its id or "". */
+    QString addRequestFrom(const QString &parentId, const RequestSpec &request, const QString &name);
+
     /** Sets the trimmed \a name of the node \a id; a blank name is refused. */
     Q_INVOKABLE bool rename(const QString &id, const QString &name);
 

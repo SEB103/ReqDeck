@@ -8,6 +8,7 @@
 
 #include <memory>
 
+#include "core/workspace/collectiontree.h"
 #include "core/workspace/workspaceserializer.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/workspacemanager.h"
@@ -71,6 +72,12 @@ private slots:
 
     /*! Verifies that a request takes no children. */
     void addRequestUnderRequestRefused();
+
+    /*! Verifies that a request from another source lands in the tree. */
+    void addRequestFromInsertsCopy();
+
+    /*! Verifies that nothing is added without a workspace. */
+    void addRequestFromRefusedWithoutWorkspace();
 
     /*! Verifies that folders stop at the depth the loader accepts. */
     void addFolderRefusedAtDepthLimit();
@@ -182,6 +189,30 @@ void CollectionTreeModelTest::rolesReportNameKindAndMethod()
     QCOMPARE(names.value(CollectionTreeModel::NodeIdRole), QByteArray("nodeId"));
     QCOMPARE(names.value(CollectionTreeModel::IsFolderRole), QByteArray("isFolder"));
     QCOMPARE(names.value(CollectionTreeModel::MethodRole), QByteArray("method"));
+}
+
+void CollectionTreeModelTest::addRequestFromInsertsCopy()
+{
+    RequestSpec request;
+    request.method = HttpMethod::Patch;
+    request.url = QStringLiteral("http://copy");
+
+    const QString id = m_model->addRequestFrom({}, request, QStringLiteral("From elsewhere"));
+
+    QVERIFY(!id.isEmpty());
+    QCOMPARE(m_model->rowCount(), 3);
+    QCOMPARE(m_model->nodeName(id), QStringLiteral("From elsewhere"));
+    const CollectionNode *node = findNode(m_manager->workspaceData().collection, id);
+    QVERIFY(node);
+    QVERIFY(node->request == request);
+    QVERIFY(m_manager->dirty());
+}
+
+void CollectionTreeModelTest::addRequestFromRefusedWithoutWorkspace()
+{
+    m_manager->closeWorkspace();
+
+    QVERIFY(m_model->addRequestFrom({}, RequestSpec {}, QStringLiteral("Name")).isEmpty());
 }
 
 void CollectionTreeModelTest::addRequestInsertsRowAndMarksDirty()

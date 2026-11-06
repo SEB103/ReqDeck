@@ -12,6 +12,7 @@ qt_add_qml_module(MainQml
         AboutDialog.qml
         CollectionPane.qml
         EnvironmentDialog.qml
+        HistoryPane.qml
         LauncherScreen.qml
         Main.qml
         MainScreen.ui.qml

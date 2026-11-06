@@ -132,6 +132,18 @@ public:
                            });
     }
 
+    /*! Adds \a count entries for \a url to the history; \a error makes them failures. */
+    Q_INVOKABLE void addHistory(const QString &url, int count, const QString &error = {})
+    {
+        RequestSpec request;
+        request.url = url;
+        ResponseData response;
+        response.statusCode = error.isEmpty() ? 200 : 0;
+        response.errorString = error;
+        for (int i = 0; i < count; ++i)
+            m_history.record(request, response);
+    }
+
     /*! Returns the number of requests the mock server received. */
     Q_INVOKABLE int requestCount() const { return m_server.requestCount(); }
 

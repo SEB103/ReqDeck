@@ -8,6 +8,7 @@
 
 #include "core/history/historystore.h"
 
+class CollectionTreeModel;
 struct ResponseData;
 
 /** The history of executed requests, newest first, exposed to QML as \c cppHistory. */
@@ -15,6 +16,7 @@ class HistoryModel : public QAbstractListModel
 {
     Q_OBJECT
     Q_DISABLE_COPY_MOVE(HistoryModel)
+    Q_MOC_INCLUDE("qmlapi/collectiontreemodel.h")
 
 public:
     /** Data roles of a row. */
@@ -48,6 +50,9 @@ public:
 
     /** Removes all entries and the file. */
     Q_INVOKABLE void clear();
+
+    /** Adds the entry at \a row to \a collection as a new top-level request; returns its id or "". */
+    Q_INVOKABLE QString openEntry(int row, CollectionTreeModel *collection);
 
     /** Returns the request of \a row, or an empty one for an invalid row. */
     RequestSpec requestAt(int row) const;

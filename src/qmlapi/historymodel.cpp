@@ -5,6 +5,7 @@
 
 #include "core/http/responsedata.h"
 #include "core/workspace/collectiontree.h"
+#include "qmlapi/collectiontreemodel.h"
 
 /*!
  * \brief Creates an empty model over the history file \a filePath.
@@ -123,6 +124,19 @@ void HistoryModel::clear()
     const bool ok = m_store.clear(&errorString);
     endResetModel();
     reportResult(ok, errorString);
+}
+
+/*!
+ * \brief Adds the entry at \a row to \a collection as a new top-level request.
+ * \param row The row.
+ * \param collection The collection of the open workspace.
+ * \return The id of the new request, or an empty string for an invalid row.
+ */
+QString HistoryModel::openEntry(int row, CollectionTreeModel *collection)
+{
+    if (row < 0 || row >= rowCount())
+        return {};
+    return collection->addRequestFrom({}, requestAt(row), displayName(row));
 }
 
 /*!

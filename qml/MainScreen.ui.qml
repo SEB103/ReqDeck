@@ -35,6 +35,9 @@ Pane {
     /*! Exposes the collection pane so Main can connect it to the menu and editor. */
     property alias collectionPane: collectionPane
 
+    /*! Exposes the history pane so Main can show requests made from it. */
+    property alias historyPane: historyPane
+
     /*! Whether child controls should follow the dark theme state. */
     property bool darkTheme: false
 
@@ -163,12 +166,39 @@ Pane {
                 SplitView.preferredWidth: 280
                 SplitView.minimumWidth: 200
                 SplitView.fillHeight: true
-                title: qsTr("Collection")
+                title: qsTr("Workspace")
 
-                CollectionPane {
-                    id: collectionPane
-
+                ColumnLayout {
                     anchors.fill: parent
+                    spacing: 0
+
+                    TabBar {
+                        id: sidebarTabs
+
+                        Layout.fillWidth: true
+
+                        TabButton {
+                            text: qsTr("Collection")
+                        }
+
+                        TabButton {
+                            text: qsTr("History")
+                        }
+                    }
+
+                    StackLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        currentIndex: sidebarTabs.currentIndex
+
+                        CollectionPane {
+                            id: collectionPane
+                        }
+
+                        HistoryPane {
+                            id: historyPane
+                        }
+                    }
                 }
             }
 

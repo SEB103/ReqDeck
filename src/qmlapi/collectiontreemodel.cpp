@@ -142,6 +142,27 @@ QString CollectionTreeModel::addRequest(const QString &parentId)
 }
 
 /*!
+ * \brief Adds a request made from another source as the last child of \a parentId.
+ * \param parentId The folder, or an empty string for the top level.
+ * \param request The content of the new request.
+ * \param name The name of the new request.
+ * \return The id of the request, or an empty string when it cannot go there.
+ */
+QString CollectionTreeModel::addRequestFrom(const QString &parentId, const RequestSpec &request,
+                                            const QString &name)
+{
+    if (!m_manager->hasActiveWorkspace())
+        return {};
+
+    CollectionNode node;
+    node.kind = CollectionNode::Kind::Request;
+    node.id = newItemId();
+    node.name = name;
+    node.request = request;
+    return addNode(parentId, std::move(node));
+}
+
+/*!
  * \brief Adds a new folder as the last child of \a parentId.
  * \param parentId The folder, or an empty string for the top level.
  * \return The id of the folder, or an empty string when it cannot go there.

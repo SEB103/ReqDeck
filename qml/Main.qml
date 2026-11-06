@@ -246,6 +246,14 @@ ApplicationWindow {
     }
 
     Connections {
+        target: mainScreen.historyPane
+
+        function onEntryOpened(id) {
+            mainScreen.collectionPane.finishAdding(id)
+        }
+    }
+
+    Connections {
         target: mainScreen.collectionPane
 
         function onNodeSelected(id) {

@@ -93,6 +93,16 @@ Item {
         }
     }
 
+    Component {
+        id: historyComponent
+
+        HistoryPane {
+            width: 300
+            height: 500
+            onEntryOpened: (id) => cppRequestEditor.load(id)
+        }
+    }
+
     // Connected like Main.qml connects the top bar.
     Component {
         id: selectorComponent
@@ -585,6 +595,174 @@ Item {
 
             compare(host.collection.selectedId, "");
             compare(cppRequestEditor.hasRequest, false);
+        }
+
+        /*! Creates the history pane and waits until its list is laid out. */
+        function createHistory() {
+            const pane = createTemporaryObject(historyComponent, root);
+            verify(pane !== null);
+            waitForRendering(pane);
+            return pane;
+        }
+
+        /*! Double clicks \a row of the history in \a pane. */
+        function openHistoryRow(pane, row) {
+            const item = findChild(pane, "historyList").itemAtIndex(row);
+            mouseDoubleClickSequence(item);
+        }
+
+        /*! Verifies that a sent request shows up with its result. */
+        function test_historyShowsSentRequest() {
+            const url = cppTestHost.serverUrl("/status/201");
+            const host = createSender(url);
+            const pane = createHistory();
+
+            sendAndWait(host);
+            waitForRendering(pane);
+
+            const list = findChild(pane, "historyList");
+            compare(list.count, 1);
+            const row = list.itemAtIndex(0);
+            compare(findChild(row, "historyMethod").text, "GET");
+            compare(findChild(row, "historyUrl").text, url);
+            verify(findChild(row, "historyResult").text.indexOf("201") === 0);
+        }
+
+        /*! Verifies that a failure shows its reason instead of a status. */
+        function test_historyShowsFailure() {
+            cppTestHost.addHistory("http://x", 1, "Connection refused");
+
+            const row = findChild(createHistory(), "historyList").itemAtIndex(0);
+
+            compare(findChild(row, "historyResult").text, "Connection refused");
+        }
+
+        /*! Verifies that opening an entry adds a request and shows it. */
+        function test_openingEntryCreatesRequest() {
+            cppTestHost.addHistory("http://x/items", 1);
+            const pane = createHistory();
+            verify(cppWorkspaceManager.saveWorkspace());
+
+            openHistoryRow(pane, 0);
+
+            compare(cppRequestEditor.url, "http://x/items");
+            compare(cppRequestEditor.name, "GET http://x/items");
+            verify(cppWorkspaceManager.dirty);
+        }
+
+        /*! Verifies that a name being edited is stored before an entry opens. */
+        function test_openingEntryStoresNameBeingEdited() {
+            cppTestHost.addHistory("http://x/items", 1);
+            const request = createRequest("r2");
+            const pane = createHistory();
+            const name = findChild(request, "nameField");
+            name.forceActiveFocus();
+            name.selectAll();
+            keyClick(Qt.Key_X);
+
+            openHistoryRow(pane, 0);
+
+            compare(cppCollection.nodeName("r2"), "x");
+        }
+
+        /*! Verifies what an opened entry carries over. */
+        function test_openedEntryKeepsReferences() {
+            const host = createWired();
+            clickRow(host, 1);
+            cppEnvironments.activeIndex = 0;
+            cppRequestEditor.url = "{{baseUrl}}";
+            cppRequestEditor.authType = 1; // AuthType::Basic
+            cppRequestEditor.authUsername = "{{user}}";
+            cppRequestEditor.authPassword = "literal";
+            sendAndWait(host);
+
+            openHistoryRow(createHistory(), 0);
+
+            compare(cppRequestEditor.url, "{{baseUrl}}");
+            compare(cppRequestEditor.authUsername, "{{user}}");
+            compare(cppRequestEditor.authPassword, "");
+        }
+
+        /*! Verifies keyboard use of the list. */
+        function test_historyWorksByKeyboard() {
+            cppTestHost.addHistory("http://older", 1);
+            cppTestHost.addHistory("http://newer", 1);
+            const list = findChild(createHistory(), "historyList");
+            verify(list.activeFocusOnTab);
+            list.forceActiveFocus();
+
+            keyClick(Qt.Key_Down);
+            keyClick(Qt.Key_Down);
+            keyClick(Qt.Key_Return);
+
+            compare(cppRequestEditor.url, "http://older");
+        }
+
+        /*! Verifies that Return does nothing before a row is chosen. */
+        function test_historyReturnWithoutRowDoesNothing() {
+            cppTestHost.addHistory("http://x", 1);
+            const list = findChild(createHistory(), "historyList");
+            list.forceActiveFocus();
+
+            keyClick(Qt.Key_Return);
+
+            compare(cppRequestEditor.hasRequest, false);
+            compare(cppWorkspaceManager.dirty, false);
+        }
+
+        /*! Verifies that clearing waits for a confirmation. */
+        function test_clearAsksFirst() {
+            cppTestHost.addHistory("http://x", 2);
+            const pane = createHistory();
+            const list = findChild(pane, "historyList");
+            const confirmation = findChild(pane, "clearConfirmation");
+
+            mouseClick(findChild(pane, "clearHistory"));
+
+            tryCompare(confirmation, "opened", true);
+            compare(list.count, 2);
+
+            confirmation.accept();
+
+            compare(list.count, 0);
+            compare(findChild(pane, "clearHistory").enabled, false);
+        }
+
+        /*! Verifies that text from the history file cannot fetch anything. */
+        function test_historyMarkupStaysText() {
+            const requests = cppTestHost.requestCount();
+            const markup = '<img src="' + cppTestHost.serverUrl("/x") + '">';
+            cppTestHost.addHistory(markup, 1);
+            cppTestHost.addHistory(markup, 1, markup);
+
+            const pane = createHistory();
+            wait(200);
+
+            compare(cppTestHost.requestCount(), requests);
+            compare(findChild(findChild(pane, "historyList").itemAtIndex(0), "historyUrl").textFormat,
+                    Text.PlainText);
+        }
+
+        /*! Verifies the hint of an empty history. */
+        function test_emptyHistoryShowsHint() {
+            const pane = createHistory();
+
+            verify(findChild(pane, "emptyHint").visible);
+
+            cppTestHost.addHistory("http://x", 1);
+            compare(findChild(pane, "emptyHint").visible, false);
+        }
+
+        /*! Verifies that a full history shows in reasonable time. */
+        function test_fullHistoryStaysResponsive() {
+            cppTestHost.addHistory("http://h/" + "a".repeat(2000), 200);
+            const started = Date.now();
+
+            const list = findChild(createHistory(), "historyList");
+
+            const elapsed = Date.now() - started;
+            compare(list.count, 200);
+            verify(elapsed < 2000, "took " + elapsed + " ms");
         }
 
         /*! Opens the environment dialog and waits until it is shown. */
