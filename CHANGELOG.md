@@ -60,3 +60,7 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 - Environments: a selector in the top bar, an editor for names and variables with
   masked secret values, and `{{variable}}` highlighting in the URL field, where
   unresolved references are colored and underlined.
+- History of sent requests in the sidebar, kept across runs without response bodies
+  or literal credentials; an entry can be opened as a new request.
+- cURL import with a live check of the command, and Copy as cURL.
+- Keyboard shortcuts, shown in the menus, and Open Samples in the launcher.
