@@ -3,6 +3,9 @@
 
 #include "qmlapi/requesteditor.h"
 
+#include <QClipboard>
+#include <QGuiApplication>
+
 #include "core/http/curlconverter.h"
 #include "core/http/httpexecutor.h"
 #include "core/http/variableresolver.h"
@@ -309,6 +312,20 @@ void RequestEditor::send()
 void RequestEditor::cancel()
 {
     m_executor->abort();
+}
+
+/*!
+ * \brief Copies the open request to the clipboard as a cURL command.
+ *
+ * Variables stay unresolved, so no secret value of an environment gets out.
+ * Credentials typed into the request itself are part of the command.
+ */
+void RequestEditor::copyAsCurl()
+{
+    if (!hasRequest())
+        return;
+    QGuiApplication::clipboard()->setText(CurlConverter::toCurl(m_request));
+    emit copiedToClipboard();
 }
 
 /*!

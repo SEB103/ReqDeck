@@ -164,6 +164,18 @@ Item {
         }
 
         /*! Verifies that the table shows the rows of its model. */
+        /*! Verifies that Copy as cURL needs an open request. */
+        function test_copyCurlFollowsHasRequest() {
+            const menuBar = createTemporaryObject(menuBarComponent, root);
+            verify(menuBar !== null);
+            const item = itemByText(menuByTitle(menuBar, "Request"), "Copy as cURL");
+            compare(item.enabled, false);
+
+            menuBar.hasRequest = true;
+
+            compare(item.enabled, true);
+        }
+
         function test_environmentSelectorShowsActiveRow() {
             const selector = createTemporaryObject(environmentSelectorComponent, root);
             verify(selector !== null);

@@ -48,6 +48,9 @@ MenuBar {
     /*! Whether an item is selected in the collection. */
     property bool hasSelection: false
 
+    /*! Whether a request is open in the editor. */
+    property bool hasRequest: false
+
     /*! Whether the open request can be sent. */
     property bool canSend: false
 
@@ -74,6 +77,9 @@ MenuBar {
 
     /*! Emitted when the user opens the application settings. */
     signal settingsRequested()
+
+    /*! Emitted to copy the open request as a cURL command. */
+    signal copyCurlRequested()
 
     /*! Emitted to import a cURL command. */
     signal importCurlRequested()
@@ -280,7 +286,8 @@ MenuBar {
         BsMenuItem {
             text: qsTr("Copy as c&URL")
             icon.source: "qrc:/images/svg/code.svg"
-            enabled: false
+            enabled: appMenuBar.hasRequest
+            onTriggered: appMenuBar.copyCurlRequested()
         }
     }
 

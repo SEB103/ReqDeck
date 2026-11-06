@@ -65,6 +65,9 @@ Pane {
     /*! Recent-workspace rows forwarded to the menu bar. */
     property var recentWorkspaces: []
 
+    /*! Whether a request is open in the editor. */
+    property bool hasRequest: false
+
     /*! Whether the open request can be sent. */
     property bool canSend: false
 
@@ -107,6 +110,7 @@ Pane {
                     workspaceDirty: main.workspaceDirty
                     recentWorkspaces: main.recentWorkspaces
                     hasSelection: collectionPane.selectedId.length > 0
+                    hasRequest: main.hasRequest
                     canSend: main.canSend
                     canCancel: main.canCancel
                 }

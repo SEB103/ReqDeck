@@ -134,6 +134,7 @@ ApplicationWindow {
         recentWorkspaces: cppWorkspaceManager.recentWorkspaces
         environmentNames: cppEnvironments.names
         activeEnvironmentIndex: cppEnvironments.activeIndex
+        hasRequest: cppRequestEditor.hasRequest
         canSend: cppRequestEditor.canSend
         canCancel: cppRequestEditor.busy
     }
@@ -197,6 +198,10 @@ ApplicationWindow {
             mainWindow.runGuarded(() => cppWorkspaceManager.closeWorkspace())
         }
 
+        function onCopyCurlRequested() {
+            cppRequestEditor.copyAsCurl()
+        }
+
         function onImportCurlRequested() {
             curlImportDialog.parentId = cppCollection.parentForNewItem(mainScreen.collectionPane.selectedId)
             curlImportDialog.open()
@@ -247,6 +252,15 @@ ApplicationWindow {
 
         function onCancelRequested() {
             cppRequestEditor.cancel()
+        }
+    }
+
+    Connections {
+        target: cppRequestEditor
+
+        function onCopiedToClipboard() {
+            mainWindow.showNotification(1, // Diagnostics::Info
+                                        qsTr("Copied the request as a cURL command."))
         }
     }
 

@@ -263,6 +263,7 @@ target_link_libraries(tst_requesteditor
     PRIVATE
         ReqDeckQmlApi
         ReqDeckTestSupport
+        Qt6::Gui
         Qt6::Test
 )
 

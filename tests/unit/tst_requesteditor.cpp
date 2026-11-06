@@ -3,10 +3,13 @@
 
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QClipboard>
+#include <QGuiApplication>
 #include <QtTest>
 
 #include <memory>
 
+#include "core/http/curlconverter.h"
 #include "core/workspace/collectiontree.h"
 #include "core/workspace/collectiontree.h"
 #include "core/workspace/workspaceserializer.h"
@@ -132,6 +135,12 @@ private slots:
 
     /*! Verifies that an edit counts without saving first. */
     void sendUsesWorkingCopy();
+
+    /*! Verifies that the open request reaches the clipboard unresolved. */
+    void copyAsCurlWritesClipboard();
+
+    /*! Verifies that nothing is copied without an open request. */
+    void copyAsCurlWithoutRequestDoesNothing();
 
     /*! Verifies that a command becomes a request in the collection. */
     void importCurlAddsRequest();
@@ -554,6 +563,34 @@ void RequestEditorTest::sendUsesWorkingCopy()
     QCOMPARE(m_response->statusCode(), 404);
 }
 
+void RequestEditorTest::copyAsCurlWritesClipboard()
+{
+    m_editor->load(QStringLiteral("full"));
+    QSignalSpy copied(m_editor.get(), &RequestEditor::copiedToClipboard);
+
+    m_editor->copyAsCurl();
+
+    QCOMPARE(copied.count(), 1);
+    const QString command = QGuiApplication::clipboard()->text();
+    QVERIFY(command.contains(QStringLiteral("{{baseUrl}}/items")));
+    const CurlConverter::ParseResult parsed = CurlConverter::parse(command);
+    QVERIFY(parsed.ok);
+    QCOMPARE(parsed.request.method, HttpMethod::Post);
+    QVERIFY(parsed.request.url.startsWith(QStringLiteral("{{baseUrl}}/items")));
+}
+
+void RequestEditorTest::copyAsCurlWithoutRequestDoesNothing()
+{
+    QGuiApplication::clipboard()->setText(QStringLiteral("before"));
+    m_editor->clear();
+    QSignalSpy copied(m_editor.get(), &RequestEditor::copiedToClipboard);
+
+    m_editor->copyAsCurl();
+
+    QCOMPARE(copied.count(), 0);
+    QCOMPARE(QGuiApplication::clipboard()->text(), QStringLiteral("before"));
+}
+
 void RequestEditorTest::importCurlAddsRequest()
 {
     const QString id = m_editor->importCurl(
@@ -827,6 +864,18 @@ void RequestEditorTest::sendDoesNotMarkDirty()
     QVERIFY(!m_manager->dirty());
 }
 
-QTEST_GUILESS_MAIN(RequestEditorTest)
+/*!
+ * \brief Runs the tests on the offscreen platform.
+ *
+ * Its clipboard lives in this process, so the tests leave the clipboard of the
+ * desktop alone.
+ */
+int main(int argc, char *argv[])
+{
+    qputenv("QT_QPA_PLATFORM", "offscreen");
+    QGuiApplication application(argc, argv);
+    RequestEditorTest test;
+    return QTest::qExec(&test, argc, argv);
+}
 
 #include "tst_requesteditor.moc"

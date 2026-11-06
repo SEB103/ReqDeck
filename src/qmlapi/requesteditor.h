@@ -220,6 +220,9 @@ public:
     /** Cancels the running request. */
     Q_INVOKABLE void cancel();
 
+    /** Copies the open request to the clipboard as a cURL command. */
+    Q_INVOKABLE void copyAsCurl();
+
     /** Checks a cURL \a command; the map holds ok, error, summary, and ignored. */
     Q_INVOKABLE QVariantMap checkCurl(const QString &command) const;
 
@@ -232,6 +235,9 @@ signals:
 
     /** Emitted after the response of \a request reached the view; \a request is as it was sent. */
     void requestFinished(const RequestSpec &request, const ResponseData &response);
+
+    /** Emitted after copyAsCurl() wrote to the clipboard. */
+    void copiedToClipboard();
 
     /** Emitted when busy() changes. */
     void busyChanged();
