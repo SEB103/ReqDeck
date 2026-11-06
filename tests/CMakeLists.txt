@@ -318,6 +318,19 @@ target_link_libraries(tst_variablehighlighter
 
 add_test(NAME VariableHighlighter.Unit COMMAND tst_variablehighlighter)
 
+qt_add_executable(tst_environmentvariablesmodel
+    unit/tst_environmentvariablesmodel.cpp
+)
+
+target_link_libraries(tst_environmentvariablesmodel
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Gui
+        Qt6::Test
+)
+
+add_test(NAME EnvironmentVariablesModel.Unit COMMAND tst_environmentvariablesmodel)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml
