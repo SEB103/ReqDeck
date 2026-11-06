@@ -75,6 +75,9 @@ class ResponseView : public QObject
     /** Whether the body can be formatted. */
     Q_PROPERTY(bool canPretty READ canPretty NOTIFY responseChanged)
 
+    /** Whether the body has a run too long to wrap at word boundaries. */
+    Q_PROPERTY(bool wrapAnywhere READ wrapAnywhere NOTIFY responseChanged)
+
     /** Whether formatted text is preferred; stays set across responses. */
     Q_PROPERTY(bool pretty READ pretty WRITE setPretty NOTIFY responseChanged)
 
@@ -135,6 +138,9 @@ public:
 
     /** Returns whether the body can be formatted. */
     bool canPretty() const;
+
+    /** Returns whether the body has a run too long to wrap at word boundaries. */
+    bool wrapAnywhere() const;
 
     /** Returns whether formatted text is preferred. */
     bool pretty() const;
@@ -206,6 +212,9 @@ private:
 
     /** Warning text. */
     QString m_warningText;
+
+    /** Whether the body has a run too long to wrap at word boundaries. */
+    bool m_wrapAnywhere {false};
 
     /** Whether a result is available. */
     bool m_hasResponse {false};

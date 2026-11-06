@@ -36,6 +36,8 @@ QByteArray reasonPhrase(int status)
         return QByteArrayLiteral("Not Found");
     case 500:
         return QByteArrayLiteral("Internal Server Error");
+    case 503:
+        return QByteArrayLiteral("Service Unavailable");
     default:
         return QByteArrayLiteral("Status");
     }
@@ -253,6 +255,32 @@ void MockHttpServer::route(QTcpSocket *socket, const Request &request)
         QTimer::singleShot(path.mid(7).toInt(), socket, [socket, head]() {
             writeResponse(socket, 200, {{"Content-Type", "text/plain"}}, "delayed", head);
         });
+        return;
+    }
+
+    if (path == "/markup") {
+        // A page would load this image; an HTTP client must only show the text.
+        const QByteArray pixel = "<img src=\"http://127.0.0.1:" + QByteArray::number(port())
+                                 + "/pixel.png\">";
+        writeResponse(socket, 200, {{"Content-Type", "text/plain"}, {"X-Markup", pixel}}, "ok", head);
+        return;
+    }
+
+    if (path.startsWith("/long/")) {
+        writeResponse(socket, 200, {{"Content-Type", "text/plain"}},
+                      QByteArray(path.mid(6).toInt(), 'x'), head);
+        return;
+    }
+
+    if (path.startsWith("/json/")) {
+        QByteArray body = "[";
+        const int rows = path.mid(6).toInt();
+        for (int row = 0; row < rows; ++row) {
+            if (row > 0)
+                body += ',';
+            body += "{\"id\":" + QByteArray::number(row) + ",\"name\":\"row\"}";
+        }
+        writeResponse(socket, 200, {{"Content-Type", "application/json"}}, body + "]", head);
         return;
     }
 

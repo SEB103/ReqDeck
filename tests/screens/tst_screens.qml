@@ -4,6 +4,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtTest
+import Base
 import ReqDeck
 
 /*!
@@ -607,6 +608,98 @@ Item {
 
             const list = findChild(host.response, "headersList");
             verify(list.count >= 3);
+        }
+
+        /*! Verifies that a header value cannot make the application load anything. */
+        function test_headerMarkupStaysText() {
+            const host = createSender(cppTestHost.serverUrl("/markup"));
+            sendAndWait(host);
+            const requests = cppTestHost.requestCount();
+
+            findChild(host.response, "responseTabs").currentIndex = 1;
+            waitForRendering(host);
+            wait(300);
+
+            compare(cppTestHost.requestCount(), requests);
+            const list = findChild(host.response, "headersList");
+            let shown = "";
+            for (let row = 0; row < list.count; ++row) {
+                const value = findChild(list.itemAtIndex(row), "headerValue");
+                if (value.text.indexOf("<img") >= 0)
+                    shown = value.text;
+                compare(value.textFormat, Text.PlainText);
+                compare(findChild(list.itemAtIndex(row), "headerName").textFormat, Text.PlainText);
+            }
+            verify(shown.length > 0);
+        }
+
+        /*! Verifies that other text from outside is plain too. */
+        function test_serverAndFileTextIsPlain() {
+            const host = createSender(cppTestHost.serverUrl("/status/200"));
+            cppRequestEditor.name = "<b>name</b>";
+            sendAndWait(host);
+
+            compare(findChild(findChild(host.response, "statusChip"), "label").textFormat, Text.PlainText);
+            compare(findChild(host.response, "requestNameLabel").textFormat, Text.PlainText);
+            compare(findChild(host.response, "errorLabel").textFormat, Text.PlainText);
+            compare(findChild(host.response, "warningLabel").textFormat, Text.PlainText);
+            const row = findChild(host.collection, "tree").itemAtCell(0, 1);
+            compare(findChild(row, "nodeName").textFormat, Text.PlainText);
+        }
+
+        /*! Verifies that a long unbroken body keeps the window responsive. */
+        function test_longUnbrokenBodyStaysResponsive() {
+            const host = createSender(cppTestHost.serverUrl("/long/262144"));
+            const started = Date.now();
+
+            sendAndWait(host);
+
+            const elapsed = Date.now() - started;
+            compare(findChild(host.response, "bodyArea").wrapMode, TextEdit.WrapAnywhere);
+            verify(elapsed < 10000, "took " + elapsed + " ms");
+        }
+
+        /*! Verifies that a theme switch recolors a large body without a hang. */
+        function test_themeSwitchStaysResponsive() {
+            const host = createSender(cppTestHost.serverUrl("/json/3000"));
+            sendAndWait(host);
+            const area = findChild(host.response, "bodyArea");
+            verify(area.length > 50000);
+            verify(cppTestHost.isColoredBelowFirstLine(area.textDocument));
+            const shownText = area.text;
+
+            const started = Date.now();
+            BsTheme.dark = !BsTheme.dark;
+            waitForRendering(host);
+            const elapsed = Date.now() - started;
+            BsTheme.dark = false;
+
+            verify(elapsed < 5000, "took " + elapsed + " ms");
+            compare(area.text, shownText);
+            verify(cppTestHost.isColoredBelowFirstLine(area.textDocument));
+        }
+
+        /*! Verifies that the header row stays inside a narrow pane. */
+        function test_narrowPaneKeepsDetailsInside() {
+            const host = createSender(cppTestHost.serverUrl("/status/503"));
+            sendAndWait(host);
+            host.response.width = 244;
+            waitForRendering(host);
+
+            for (const name of ["statusChip", "timeLabel", "sizeLabel", "responseTabs"]) {
+                const item = findChild(host.response, name);
+                const right = item.mapToItem(host.response, item.width, 0).x;
+                verify(right <= 244, name + " ends at " + right);
+            }
+        }
+
+        /*! Verifies that a body that cannot be formatted wraps and offers no switch. */
+        function test_brokenJsonStaysReadable() {
+            const host = createSender(cppTestHost.serverUrl("/truncated"));
+            sendAndWait(host);
+
+            compare(findChild(host.response, "prettySwitch").visible, false);
+            compare(findChild(host.response, "bodyArea").wrapMode, TextEdit.Wrap);
         }
 
         /*! Verifies that binary data is described, not shown. */

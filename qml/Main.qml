@@ -451,6 +451,7 @@ ApplicationWindow {
         Label {
             width: parent.width
             wrapMode: Text.Wrap
+            textFormat: Text.PlainText
             text: qsTr("The workspace \"%1\" has unsaved changes. Save them before continuing?")
                       .arg(cppWorkspaceManager.activeWorkspaceName)
         }
@@ -472,6 +473,7 @@ ApplicationWindow {
             id: workspaceErrorLabel
 
             width: parent.width
+            textFormat: Text.PlainText
             wrapMode: Text.Wrap
         }
     }

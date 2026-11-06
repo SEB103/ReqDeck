@@ -23,8 +23,11 @@ public:
     /** Sets what to color, as a BodyKind value. */
     void setKind(int kind);
 
-    /** Selects the palette for a dark background. */
+    /** Selects the palette for a dark background and recolors the document. */
     void setDark(bool dark);
+
+    /** Selects the palette for text set afterwards; existing text keeps its colors. */
+    void selectPalette(bool dark);
 
 protected:
     /** Colors the block \a text. */

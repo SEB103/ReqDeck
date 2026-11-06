@@ -41,6 +41,22 @@ private slots:
     /*! Verifies an empty body. */
     void emptyBodyIsText();
 
+    /*! Verifies that wide encodings are text although they contain NUL bytes. */
+    void decodesWideEncodings_data();
+    /*! Runs one wide encoding case. */
+    void decodesWideEncodings();
+
+    /*! Verifies that bytes that are not UTF-8 stay readable in text types. */
+    void textTypesAreNeverBinaryForInvalidBytes_data();
+    /*! Runs one invalid bytes case. */
+    void textTypesAreNeverBinaryForInvalidBytes();
+
+    /*! Verifies spaces around the equals sign of the charset parameter. */
+    void charsetParameterMayContainSpaces();
+
+    /*! Verifies the encoding named in an XML declaration. */
+    void xmlDeclarationEncodingIsHonored();
+
     /*! Verifies the layout of pretty JSON. */
     void prettyJsonIndents();
 
@@ -61,6 +77,17 @@ private slots:
 
     /*! Verifies that text that is no XML stays as it is. */
     void prettyXmlReturnsInvalidInputUnchanged();
+
+    /*! Verifies that formatting changes whitespace between elements only. */
+    void prettyXmlKeepsTheDocument_data();
+    /*! Runs one fidelity case. */
+    void prettyXmlKeepsTheDocument();
+
+    /*! Verifies the indentation of comments and nested elements. */
+    void prettyXmlIndentsStructure();
+
+    /*! Verifies that deep nesting cannot blow up the formatted text. */
+    void prettyJsonGivesUpOnHugeOutput();
 };
 
 void BodyFormatterTest::detectsKindFromContentType_data()
@@ -166,6 +193,68 @@ void BodyFormatterTest::emptyBodyIsText()
     QVERIFY(decoded.text.isEmpty());
 }
 
+void BodyFormatterTest::decodesWideEncodings_data()
+{
+    QTest::addColumn<QByteArray>("body");
+    QTest::addColumn<QString>("contentType");
+
+    const QByteArray le = QByteArray::fromHex("4D00FC00");
+    const QByteArray be = QByteArray::fromHex("004D00FC");
+    QTest::newRow("bom-le") << QByteArray::fromHex("FFFE") + le << QString();
+    QTest::newRow("bom-be") << QByteArray::fromHex("FEFF") + be << QString();
+    QTest::newRow("declared-le") << le << QStringLiteral("text/plain; charset=utf-16le");
+    QTest::newRow("declared-be") << be << QStringLiteral("text/plain; charset=UTF-16BE");
+    QTest::newRow("declared-bom") << QByteArray::fromHex("FFFE") + le
+                                  << QStringLiteral("text/plain; charset=utf-16");
+    QTest::newRow("utf-32") << QByteArray::fromHex("4D000000FC000000")
+                            << QStringLiteral("text/plain; charset=utf-32le");
+}
+
+void BodyFormatterTest::decodesWideEncodings()
+{
+    QFETCH(QByteArray, body);
+    QFETCH(QString, contentType);
+
+    const DecodedBody decoded = decodeBody(body, contentType);
+    QCOMPARE(decoded.kind, BodyKind::Text);
+    QCOMPARE(decoded.text, QStringLiteral("M\u00FC"));
+}
+
+void BodyFormatterTest::textTypesAreNeverBinaryForInvalidBytes_data()
+{
+    QTest::addColumn<QString>("contentType");
+
+    QTest::newRow("text") << QStringLiteral("text/plain");
+    QTest::newRow("unknown-charset") << QStringLiteral("application/x-thing; charset=bogus");
+    QTest::newRow("json") << QStringLiteral("application/json");
+    QTest::newRow("xml") << QStringLiteral("application/xml");
+}
+
+void BodyFormatterTest::textTypesAreNeverBinaryForInvalidBytes()
+{
+    QFETCH(QString, contentType);
+
+    const DecodedBody decoded = decodeBody(QByteArray::fromHex("4DFC"), contentType);
+    QVERIFY(decoded.kind != BodyKind::Binary);
+    QCOMPARE(decoded.text, QStringLiteral("M\u00FC"));
+}
+
+void BodyFormatterTest::charsetParameterMayContainSpaces()
+{
+    const DecodedBody decoded = decodeBody(QByteArray::fromHex("4DFC"),
+                                           QStringLiteral("text/plain; charset = iso-8859-1"));
+    QCOMPARE(decoded.text, QStringLiteral("M\u00FC"));
+}
+
+void BodyFormatterTest::xmlDeclarationEncodingIsHonored()
+{
+    const QByteArray body = "<?xml version=\"1.0\" encoding=\"windows-1251\"?><a>"
+                            + QByteArray::fromHex("C0") + "</a>";
+    const DecodedBody decoded = decodeBody(body, QStringLiteral("text/xml"));
+    QCOMPARE(decoded.kind, BodyKind::Xml);
+    QVERIFY(decoded.text.contains(QStringLiteral("<a>\u0410</a>")));
+}
+
 void BodyFormatterTest::prettyJsonIndents()
 {
     QCOMPARE(prettyJson(QStringLiteral("{\"a\":[1,2],\"b\":{\"c\":true}}")),
@@ -209,6 +298,52 @@ void BodyFormatterTest::prettyXmlReturnsInvalidInputUnchanged()
 {
     const QString text = QStringLiteral("<a><b></a>");
     QCOMPARE(prettyXml(text), text);
+}
+
+void BodyFormatterTest::prettyXmlKeepsTheDocument_data()
+{
+    QTest::addColumn<QString>("text");
+
+    QTest::newRow("declaration")
+        << QStringLiteral("<?xml version=\"1.0\" encoding=\"ISO-8859-1\" standalone=\"yes\"?>\n<a/>");
+    QTest::newRow("only-whitespace") << QStringLiteral("<a> </a>");
+    QTest::newRow("preserve")
+        << QStringLiteral("<a xml:space=\"preserve\"> <b/>  <c/> </a>");
+    QTest::newRow("prefixes")
+        << QStringLiteral("<p:a xmlns:p=\"u\" xmlns:q=\"u\">\n  <p:b>1</p:b>\n</p:a>");
+    QTest::newRow("attlist")
+        << QStringLiteral("<!DOCTYPE a [<!ATTLIST a b CDATA \"def\">]>\n<a/>");
+    QTest::newRow("references") << QStringLiteral("<a>&#65;&#xA0;&apos;</a>");
+    QTest::newRow("single-quotes") << QStringLiteral("<a b='say \"hi\"'/>");
+    QTest::newRow("mixed") << QStringLiteral("<p>a <b>c</b> d</p>");
+    QTest::newRow("cdata") << QStringLiteral("<a><![CDATA[ <x> ]]></a>");
+    QTest::newRow("attribute-order") << QStringLiteral("<a z=\"1\"  y=\"2\"/>");
+    QTest::newRow("non-ascii") << QStringLiteral("<a>M\u00FC \u20AC \U0001F600</a>");
+}
+
+void BodyFormatterTest::prettyXmlKeepsTheDocument()
+{
+    QFETCH(QString, text);
+
+    QCOMPARE(prettyXml(text), text);
+}
+
+void BodyFormatterTest::prettyXmlIndentsStructure()
+{
+    QCOMPARE(prettyXml(QStringLiteral("<?xml version=\"1.0\"?><a><!-- n --><b><c/></b><?pi x?></a>")),
+             QStringLiteral("<?xml version=\"1.0\"?>\n<a>\n  <!-- n -->\n  <b>\n    <c/>\n  </b>\n"
+                            "  <?pi x?>\n</a>"));
+}
+
+void BodyFormatterTest::prettyJsonGivesUpOnHugeOutput()
+{
+    const QString nesting(1000, u'[');
+    const QString closing(1000, u']');
+    QString elements = QStringLiteral("1");
+    elements += QStringLiteral(",1").repeated(200000);
+    const QString text = nesting + elements + closing;
+
+    QCOMPARE(prettyJson(text), text);
 }
 
 QTEST_GUILESS_MAIN(BodyFormatterTest)

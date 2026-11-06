@@ -86,6 +86,7 @@ Rectangle {
         Label {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
+            textFormat: Text.PlainText
             text: root.message
             font.pixelSize: 12
             elide: Text.ElideRight

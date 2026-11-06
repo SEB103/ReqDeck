@@ -48,6 +48,9 @@ Rectangle {
         objectName: "label"
 
         anchors.centerIn: parent
+        width: Math.min(implicitWidth, root.width - 16)
+        elide: Text.ElideRight
+        textFormat: Text.PlainText
         text: root.text
         font.bold: true
         color: root.classColor

@@ -10,6 +10,30 @@
 namespace {
 /*!
  * \internal
+ * \brief Longest run of non-space characters wrapped at word boundaries.
+ *
+ * Looking for a break opportunity is quadratic in the length of such a run: a
+ * text item needs more than a minute for 1 MiB without spaces.
+ */
+constexpr qsizetype kMaxWordWrappedRun = 1024;
+
+/*!
+ * \internal
+ * \brief Returns whether \a text has a run longer than kMaxWordWrappedRun.
+ */
+bool hasLongRun(QStringView text)
+{
+    qsizetype run = 0;
+    for (const QChar c : text) {
+        run = c.isSpace() ? 0 : run + 1;
+        if (run > kMaxWordWrappedRun)
+            return true;
+    }
+    return false;
+}
+
+/*!
+ * \internal
  * \brief Returns the warning for \a names; empty when there are none.
  */
 QString unresolvedWarning(const QStringList &names)
@@ -136,12 +160,22 @@ bool ResponseView::truncated() const
  * \brief Returns whether the body can be formatted.
  *
  * Text beyond the display limit is not formatted: nobody could see the result,
- * and formatting would only make it longer.
+ * and formatting would only make it longer. Text that formatting leaves as it
+ * is, because it is broken or already formatted, offers no choice either, and it
+ * must not lose line wrapping for nothing.
  */
 bool ResponseView::canPretty() const
 {
     return (m_body.kind == BodyKind::Json || m_body.kind == BodyKind::Xml)
-           && m_body.text.size() <= kMaxDisplayChars;
+           && m_body.text.size() <= kMaxDisplayChars && formattedBody() != m_body.text;
+}
+
+/*!
+ * \brief Returns whether the body has a run too long to wrap at word boundaries.
+ */
+bool ResponseView::wrapAnywhere() const
+{
+    return m_wrapAnywhere;
 }
 
 bool ResponseView::pretty() const
@@ -167,7 +201,7 @@ void ResponseView::setDarkTheme(bool dark)
     if (m_darkTheme == dark)
         return;
     m_darkTheme = dark;
-    m_highlighter->setDark(dark);
+    m_highlighter->selectPalette(dark);
     emit darkThemeChanged();
 }
 
@@ -213,6 +247,7 @@ void ResponseView::setResponse(const ResponseData &response, const QStringList &
     m_hasResponse = true;
     m_body = decodeBody(response.body, response.contentType);
     m_highlighter->setKind(int(m_body.kind));
+    m_wrapAnywhere = hasLongRun(QStringView(m_body.text).first(qMin(m_body.text.size(), kMaxDisplayChars)));
     m_response = response;
     m_response.body.clear();
     m_warningText = unresolvedWarning(unresolvedVariables);
@@ -266,6 +301,7 @@ void ResponseView::resetResult()
     m_body = DecodedBody();
     m_formatted.clear();
     m_hasFormatted = false;
+    m_wrapAnywhere = false;
     m_errorText.clear();
     m_warningText.clear();
     m_hasResponse = false;

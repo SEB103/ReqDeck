@@ -68,16 +68,29 @@ void BodyHighlighter::setKind(int kind)
 }
 
 /*!
- * \brief Selects the palette for a dark background.
+ * \brief Selects the palette for a dark background and recolors the document.
+ *
+ * Recoloring a document shown by a text item is quadratic in its lines: 200 KB
+ * of formatted JSON takes half a minute. A view uses selectPalette() and sets
+ * its text again, which is as fast as showing it the first time.
  * \param dark True for the dark palette.
  */
 void BodyHighlighter::setDark(bool dark)
 {
     if (m_dark == dark)
         return;
+    selectPalette(dark);
+    rehighlight();
+}
+
+/*!
+ * \brief Selects the palette for text set afterwards.
+ * \param dark True for the dark palette.
+ */
+void BodyHighlighter::selectPalette(bool dark)
+{
     m_dark = dark;
     updateFormats();
-    rehighlight();
 }
 
 /*!

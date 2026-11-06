@@ -55,6 +55,7 @@ Item {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
+            textFormat: Text.PlainText
             text: qsTr("Sending %1…").arg(cppResponse.requestName)
         }
 
@@ -73,13 +74,17 @@ Item {
         visible: cppResponse.hasResponse
         spacing: 6
 
-        RowLayout {
+        // The details wrap, so that they stay inside a narrow pane.
+        Flow {
+            id: details
+
             Layout.fillWidth: true
             spacing: 10
 
             Base.BsStatusChip {
                 objectName: "statusChip"
 
+                width: Math.min(implicitWidth, details.width)
                 visible: cppResponse.statusCode > 0
                 statusClass: cppResponse.statusClass
                 text: (cppResponse.statusCode + " " + cppResponse.reasonPhrase).trim()
@@ -98,16 +103,16 @@ Item {
                 visible: cppResponse.statusCode > 0
                 text: cppResponse.sizeText
             }
+        }
 
-            Label {
-                objectName: "requestNameLabel"
+        Label {
+            objectName: "requestNameLabel"
 
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignRight
-                elide: Text.ElideRight
-                opacity: 0.6
-                text: cppResponse.requestName
-            }
+            Layout.fillWidth: true
+            elide: Text.ElideRight
+            opacity: 0.6
+            textFormat: Text.PlainText
+            text: cppResponse.requestName
         }
 
         Label {
@@ -116,7 +121,8 @@ Item {
             Layout.fillWidth: true
             visible: cppResponse.errorText.length > 0
             wrapMode: Text.Wrap
-            color: Material.color(Material.Red)
+            color: Material.color(Material.Red, Base.BsTheme.dark ? Material.Shade300 : Material.Shade800)
+            textFormat: Text.PlainText
             text: cppResponse.errorText
         }
 
@@ -126,7 +132,8 @@ Item {
             Layout.fillWidth: true
             visible: cppResponse.warningText.length > 0
             wrapMode: Text.Wrap
-            color: Material.color(Material.Orange)
+            color: Material.color(Material.Orange, Base.BsTheme.dark ? Material.Shade300 : Material.Shade900)
+            textFormat: Text.PlainText
             text: cppResponse.warningText
         }
 
@@ -187,18 +194,52 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
 
+                    // Text and wrap mode are set here, not bound: separate
+                    // bindings would lay out a large body twice. The empty text
+                    // in between avoids that, and it colors a body in the new
+                    // palette much faster than recoloring it in place.
                     TextArea {
                         id: bodyArea
+
+                        /*! Returns the wrap mode for the body that is shown now. */
+                        function wrapModeForBody() {
+                            if (cppResponse.pretty && cppResponse.canPretty)
+                                return TextEdit.NoWrap
+                            return cppResponse.wrapAnywhere ? TextEdit.WrapAnywhere : TextEdit.Wrap
+                        }
+
+                        /*! Shows the current body; \a always also when it looks unchanged. */
+                        function showBody(always) {
+                            const body = cppResponse.bodyText
+                            const wrap = bodyArea.wrapModeForBody()
+                            if (!always && body === bodyArea.text && wrap === bodyArea.wrapMode)
+                                return
+                            bodyArea.text = ""
+                            bodyArea.wrapMode = wrap
+                            bodyArea.text = body
+                        }
 
                         objectName: "bodyArea"
 
                         readOnly: true
                         selectByMouse: true
                         font.family: "Consolas"
-                        wrapMode: cppResponse.pretty && cppResponse.canPretty ? TextEdit.NoWrap
-                                                                              : TextEdit.Wrap
-                        text: cppResponse.bodyText
-                        Component.onCompleted: cppResponse.attachHighlighter(bodyArea.textDocument)
+                        Component.onCompleted: {
+                            cppResponse.attachHighlighter(bodyArea.textDocument)
+                            bodyArea.showBody(false)
+                        }
+
+                        Connections {
+                            target: cppResponse
+
+                            function onResponseChanged() {
+                                bodyArea.showBody(false)
+                            }
+
+                            function onDarkThemeChanged() {
+                                bodyArea.showBody(true)
+                            }
+                        }
                     }
                 }
             }
@@ -221,15 +262,21 @@ Item {
                     spacing: 8
 
                     Label {
+                        objectName: "headerName"
+
                         Layout.preferredWidth: parent.width * 0.4
                         elide: Text.ElideRight
                         font.bold: true
+                        textFormat: Text.PlainText
                         text: headerRow.key
                     }
 
                     Label {
+                        objectName: "headerValue"
+
                         Layout.fillWidth: true
                         wrapMode: Text.WrapAnywhere
+                        textFormat: Text.PlainText
                         text: headerRow.value
                     }
                 }

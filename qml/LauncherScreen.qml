@@ -184,6 +184,7 @@ Pane {
                             spacing: 2
 
                             Label {
+                                textFormat: Text.PlainText
                                 text: recentRow.modelData.displayName.length > 0
                                       ? recentRow.modelData.displayName
                                       : recentRow.modelData.path
@@ -195,6 +196,7 @@ Pane {
                             }
 
                             Label {
+                                textFormat: Text.PlainText
                                 text: recentRow.modelData.available
                                       ? recentRow.modelData.path
                                       : qsTr("Unavailable — %1").arg(recentRow.modelData.path)

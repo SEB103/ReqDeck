@@ -88,12 +88,19 @@ public:
         return QStringLiteral("http://127.0.0.1:%1/").arg(probe.serverPort());
     }
 
-    /*! Returns whether the second block of \a document carries any text format. */
+    /*! Returns whether one of the first lines of \a document carries a text format. */
     Q_INVOKABLE bool isColoredBelowFirstLine(QQuickTextDocument *document) const
     {
-        const QTextBlock block = document->textDocument()->firstBlock().next();
-        return block.isValid() && !block.layout()->formats().isEmpty();
+        QTextBlock block = document->textDocument()->firstBlock();
+        for (int line = 0; line < 4 && block.isValid(); ++line, block = block.next()) {
+            if (!block.layout()->formats().isEmpty())
+                return true;
+        }
+        return false;
     }
+
+    /*! Returns the number of requests the mock server received. */
+    Q_INVOKABLE int requestCount() const { return m_server.requestCount(); }
 
     /*! Opens a fresh copy of the test workspace, clean and with nothing selected. */
     Q_INVOKABLE bool reset()

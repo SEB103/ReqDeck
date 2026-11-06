@@ -236,6 +236,7 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.leftMargin: 6
                         anchors.rightMargin: 6
+                        textFormat: Text.PlainText
                         text: logDelegate.category.length > 0
                               ? qsTr("%1  %2  %3: %4").arg(logDelegate.timestamp)
                                                       .arg(logDelegate.levelName)

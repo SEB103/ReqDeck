@@ -63,6 +63,16 @@ private slots:
     /*! Verifies that plain text offers no Pretty. */
     void plainTextCannotBePretty();
 
+    /*! Verifies that a body that cannot be formatted offers no Pretty. */
+    void unformattableBodyCannotBePretty_data();
+    /*! Runs one unformattable case. */
+    void unformattableBodyCannotBePretty();
+
+    /*! Verifies when the view must break lines inside words. */
+    void wrapAnywhereFollowsLongestUnbrokenRun_data();
+    /*! Runs one wrap case. */
+    void wrapAnywhereFollowsLongestUnbrokenRun();
+
     /*! Verifies the display limit. */
     void longTextIsCutAtDisplayLimit();
 
@@ -211,6 +221,49 @@ void ResponseViewTest::plainTextCannotBePretty()
     view.setResponse(makeResponse("hello", QStringLiteral("text/plain")), {});
     QVERIFY(!view.property("canPretty").toBool());
     QCOMPARE(view.property("bodyText").toString(), QStringLiteral("hello"));
+}
+
+void ResponseViewTest::unformattableBodyCannotBePretty_data()
+{
+    QTest::addColumn<QByteArray>("body");
+    QTest::addColumn<QString>("contentType");
+
+    QTest::newRow("broken-json") << QByteArray("{oops") << QStringLiteral("application/json");
+    QTest::newRow("ndjson") << QByteArray("{}\n{}") << QStringLiteral("application/x-ndjson");
+    QTest::newRow("empty") << QByteArray() << QStringLiteral("application/json");
+    QTest::newRow("broken-xml") << QByteArray("<a>") << QStringLiteral("application/xml");
+}
+
+void ResponseViewTest::unformattableBodyCannotBePretty()
+{
+    QFETCH(QByteArray, body);
+    QFETCH(QString, contentType);
+
+    ResponseView view;
+    view.setResponse(makeResponse(body, contentType), {});
+    QVERIFY(!view.property("canPretty").toBool());
+}
+
+void ResponseViewTest::wrapAnywhereFollowsLongestUnbrokenRun_data()
+{
+    QTest::addColumn<QByteArray>("body");
+    QTest::addColumn<bool>("wrapAnywhere");
+
+    QTest::newRow("prose") << QByteArray("some words").repeated(1000) << false;
+    QTest::newRow("spaced") << QByteArray("word ").repeated(100000) << false;
+    QTest::newRow("short-run") << QByteArray(1024, 'x') << false;
+    QTest::newRow("long-run") << QByteArray(1025, 'x') << true;
+    QTest::newRow("late-run") << QByteArray("a b\n") + QByteArray(2000, 'x') << true;
+}
+
+void ResponseViewTest::wrapAnywhereFollowsLongestUnbrokenRun()
+{
+    QFETCH(QByteArray, body);
+    QFETCH(bool, wrapAnywhere);
+
+    ResponseView view;
+    view.setResponse(makeResponse(body, QStringLiteral("text/plain")), {});
+    QCOMPARE(view.property("wrapAnywhere").toBool(), wrapAnywhere);
 }
 
 void ResponseViewTest::longTextIsCutAtDisplayLimit()

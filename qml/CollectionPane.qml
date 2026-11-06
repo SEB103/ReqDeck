@@ -171,7 +171,10 @@ Item {
                 }
 
                 Label {
+                    objectName: "nodeName"
+
                     Layout.fillWidth: true
+                    textFormat: Text.PlainText
                     text: nodeDelegate.name
                     elide: Text.ElideRight
                 }
@@ -298,6 +301,7 @@ Item {
             objectName: "deleteLabel"
 
             width: deleteDialog.availableWidth
+            textFormat: Text.PlainText
             wrapMode: Text.Wrap
         }
     }

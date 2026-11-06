@@ -25,7 +25,8 @@ QT_END_NAMESPACE
  * /redirect-loop (302 to itself), /redirect-to?url=<encoded URL> (302 to that
  * URL), /delay/<ms>, /response-headers (repeated X-Dup header), /set-cookie
  * (Set-Cookie: sid=server), /truncated (announces 100 body bytes, sends 10),
- * /binary (eight bytes with NUL bytes);
+ * /binary (eight bytes with NUL bytes), /markup (an img tag as header value),
+ * /long/<n> (n unbroken characters), /json/<n> (a JSON array of n objects);
  * anything else is 404. Every response carries Connection: close.
  */
 class MockHttpServer : public QObject

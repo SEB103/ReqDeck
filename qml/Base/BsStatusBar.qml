@@ -76,6 +76,7 @@ Rectangle {
         Label {
             Layout.alignment: Qt.AlignVCenter
             Layout.maximumWidth: 320
+            textFormat: Text.PlainText
             text: root.workspaceName.length > 0 ? root.workspaceName : qsTr("No workspace")
             font.pixelSize: 12
             font.weight: root.workspaceName.length > 0 ? Font.DemiBold : Font.Normal
@@ -102,13 +103,15 @@ Rectangle {
         Label {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
+            textFormat: Text.PlainText
             text: root.message
             font.pixelSize: 12
             horizontalAlignment: Text.AlignRight
             elide: Text.ElideRight
             color: root.messageColor
             ToolTip.visible: messageHover.hovered && root.message.length > 0
-            ToolTip.text: root.message
+            // A tool tip always detects rich text, so the message is escaped.
+            ToolTip.text: "<span>" + root.message.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</span>"
 
             HoverHandler {
                 id: messageHover
