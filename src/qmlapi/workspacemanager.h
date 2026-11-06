@@ -100,6 +100,12 @@ public:
     /** Sets the directory of the secret values; an empty string restores the default. */
     void setSecretsDir(const QString &directory);
 
+    /** Sets the file of the samples workspace; an empty path means the seeded one. */
+    void setSamplesPath(const QString &path);
+
+    /** Opens the samples workspace; failures are reported like those of openWorkspace(). */
+    Q_INVOKABLE bool openSamples();
+
     /** Returns the configured directory of the secret values, or AppPaths::secretsDir(). */
     QString secretsDir() const;
 
@@ -258,6 +264,9 @@ protected:
 
     /** Configured directory of the secret values; empty selects the default. */
     QString m_secretsDir;
+
+    /** Configured file of the samples workspace; empty means the seeded one. */
+    QString m_samplesPath;
 
     /** Absolute .reqdeck path of the active workspace; empty when none is active. */
     QString m_activePath;

@@ -216,6 +216,28 @@ void WorkspaceManager::setSecretsDir(const QString &directory)
 }
 
 /*!
+ * \brief Sets the file of the samples workspace.
+ * \param path The file, or an empty string for the seeded one.
+ */
+void WorkspaceManager::setSamplesPath(const QString &path)
+{
+    m_samplesPath = path;
+}
+
+/*!
+ * \brief Opens the samples workspace.
+ *
+ * The samples are an ordinary workspace in the user's data, so changes to them
+ * can be saved.
+ * \return Whether the workspace was opened.
+ */
+bool WorkspaceManager::openSamples()
+{
+    return openWorkspace(m_samplesPath.isEmpty() ? AppPaths::instance().samplesWorkspacePath()
+                                                 : m_samplesPath);
+}
+
+/*!
  * \brief Returns the configured directory of the secret values, or the default.
  */
 QString WorkspaceManager::secretsDir() const

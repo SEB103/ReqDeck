@@ -235,6 +235,14 @@ Pane {
                 Item { Layout.fillWidth: true }
 
                 Button {
+                    objectName: "openSamplesButton"
+
+                    flat: true
+                    text: qsTr("Open Samples")
+                    onClicked: cppWorkspaceManager.openSamples()
+                }
+
+                Button {
                     text: qsTr("Open Workspace…")
                     onClicked: launcher.openWorkspaceRequested()
                 }

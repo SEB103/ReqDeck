@@ -160,6 +160,12 @@ private slots:
     /*! Verifies that a later save recovers secrets that could not be read on open. */
     void unreadableSecretsAreRecoveredOnSave();
 
+    /*! Verifies that the seeded samples open like any workspace. */
+    void openSamplesOpensSeededWorkspace();
+
+    /*! Verifies that missing samples are reported, not ignored. */
+    void openSamplesMissingFileReportsError();
+
     /*! Verifies that retrying changes nothing while the secrets stay unreadable. */
     void retrySecretsKeepsStateWhileLocked();
 
@@ -860,6 +866,42 @@ QString WorkspaceManagerTest::makeLockedWorkspace(QTemporaryDir &dir, QByteArray
     if (!QFile::remove(secretsFile) || !QDir().mkpath(secretsFile))
         return {};
     return secretsFile;
+}
+
+void WorkspaceManagerTest::openSamplesOpensSeededWorkspace()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("Samples.reqdeck"));
+    WorkspaceData data;
+    data.id = newItemId();
+    data.displayName = QStringLiteral("Samples");
+    QVERIFY(WorkspaceSerializer::save(path, data));
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    manager.setSamplesPath(path);
+
+    QVERIFY(manager.openSamples());
+
+    QCOMPARE(manager.activeWorkspaceName(), QStringLiteral("Samples"));
+    QVERIFY(!manager.dirty());
+}
+
+void WorkspaceManagerTest::openSamplesMissingFileReportsError()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSamplesPath(dir.filePath(QStringLiteral("missing.reqdeck")));
+    QSignalSpy errorSpy(&manager, &WorkspaceManager::workspaceError);
+
+    QVERIFY(!manager.openSamples());
+
+    QCOMPARE(errorSpy.count(), 1);
+    QVERIFY(!manager.hasActiveWorkspace());
 }
 
 void WorkspaceManagerTest::unreadableSecretsBlockSave()
