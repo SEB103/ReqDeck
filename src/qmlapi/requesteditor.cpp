@@ -3,8 +3,10 @@
 
 #include "qmlapi/requesteditor.h"
 
+#include "core/http/curlconverter.h"
 #include "core/http/httpexecutor.h"
 #include "core/http/variableresolver.h"
+#include "core/workspace/collectiontree.h"
 #include "core/workspace/workspacedata.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/keyvaluemodel.h"
@@ -307,6 +309,36 @@ void RequestEditor::send()
 void RequestEditor::cancel()
 {
     m_executor->abort();
+}
+
+/*!
+ * \brief Checks a cURL \a command.
+ * \param command The command.
+ * \return A map with \c ok, \c error, \c summary (the name the request would get),
+ * and \c ignored (the options without an equivalent).
+ */
+QVariantMap RequestEditor::checkCurl(const QString &command) const
+{
+    const CurlConverter::ParseResult result = CurlConverter::parse(command);
+    return {{QStringLiteral("ok"), result.ok},
+            {QStringLiteral("error"), result.errorString},
+            {QStringLiteral("summary"), result.ok ? requestDisplayName(result.request) : QString()},
+            {QStringLiteral("ignored"), result.ignoredOptions}};
+}
+
+/*!
+ * \brief Adds a request made from a cURL \a command.
+ * \param command The command.
+ * \param parentId The folder, or an empty string for the top level.
+ * \return The id of the request, or an empty string when nothing was added.
+ */
+QString RequestEditor::importCurl(const QString &command, const QString &parentId)
+{
+    const CurlConverter::ParseResult result = CurlConverter::parse(command);
+    if (!result.ok)
+        return {};
+    return m_collection->addRequestFrom(parentId, result.request,
+                                        requestDisplayName(result.request));
 }
 
 /*!

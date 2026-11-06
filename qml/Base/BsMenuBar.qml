@@ -75,6 +75,9 @@ MenuBar {
     /*! Emitted when the user opens the application settings. */
     signal settingsRequested()
 
+    /*! Emitted to import a cURL command. */
+    signal importCurlRequested()
+
     /*! Emitted when the user selects Quit. */
     signal quitRequested()
 
@@ -210,7 +213,8 @@ MenuBar {
         BsMenuItem {
             text: qsTr("&Import cURL…")
             icon.source: "qrc:/images/svg/code.svg"
-            enabled: false
+            enabled: appMenuBar.hasWorkspace
+            onTriggered: appMenuBar.importCurlRequested()
         }
 
         MenuSeparator {}

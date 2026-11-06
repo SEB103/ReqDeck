@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "core/workspace/collectiontree.h"
+#include "core/workspace/collectiontree.h"
 #include "core/workspace/workspaceserializer.h"
 #include "mockhttpserver.h"
 #include "qmlapi/collectiontreemodel.h"
@@ -131,6 +132,21 @@ private slots:
 
     /*! Verifies that an edit counts without saving first. */
     void sendUsesWorkingCopy();
+
+    /*! Verifies that a command becomes a request in the collection. */
+    void importCurlAddsRequest();
+
+    /*! Verifies that a broken command adds nothing. */
+    void importCurlRefusesBrokenCommand();
+
+    /*! Verifies that nothing is added without a workspace. */
+    void importCurlAddsNothingWithoutWorkspace();
+
+    /*! Verifies what the check reports. */
+    void checkCurlReportsOutcome();
+
+    /*! Verifies that options without an equivalent are listed. */
+    void checkCurlListsIgnoredOptions();
 
     /*! Verifies that a finished request is reported with its response. */
     void finishedRequestIsReported();
@@ -536,6 +552,54 @@ void RequestEditorTest::sendUsesWorkingCopy()
 
     QVERIFY(waitForResponse(*m_response));
     QCOMPARE(m_response->statusCode(), 404);
+}
+
+void RequestEditorTest::importCurlAddsRequest()
+{
+    const QString id = m_editor->importCurl(
+        QStringLiteral("curl -X POST http://x/items -H 'A: b' -d '{}'"), QStringLiteral("folder"));
+
+    QVERIFY(!id.isEmpty());
+    const CollectionNode *node = findNode(m_manager->workspaceData().collection, id);
+    QVERIFY(node);
+    QCOMPARE(node->name, QStringLiteral("POST http://x/items"));
+    QCOMPARE(node->request.url, QStringLiteral("http://x/items"));
+    QCOMPARE(node->request.headers.constFirst().key, QStringLiteral("A"));
+    QCOMPARE(m_collection->parentForNewItem(id), QStringLiteral("folder"));
+    QVERIFY(m_manager->dirty());
+}
+
+void RequestEditorTest::importCurlRefusesBrokenCommand()
+{
+    QVERIFY(m_editor->importCurl(QStringLiteral("not a command"), {}).isEmpty());
+    QVERIFY(!m_manager->dirty());
+}
+
+void RequestEditorTest::importCurlAddsNothingWithoutWorkspace()
+{
+    m_manager->closeWorkspace();
+
+    QVERIFY(m_editor->importCurl(QStringLiteral("curl http://x"), {}).isEmpty());
+}
+
+void RequestEditorTest::checkCurlReportsOutcome()
+{
+    const QVariantMap good = m_editor->checkCurl(QStringLiteral("curl -X PUT http://x"));
+    QCOMPARE(good.value(QStringLiteral("ok")).toBool(), true);
+    QCOMPARE(good.value(QStringLiteral("summary")).toString(), QStringLiteral("PUT http://x"));
+
+    const QVariantMap bad = m_editor->checkCurl(QStringLiteral("not a command"));
+    QCOMPARE(bad.value(QStringLiteral("ok")).toBool(), false);
+    QVERIFY(!bad.value(QStringLiteral("error")).toString().isEmpty());
+}
+
+void RequestEditorTest::checkCurlListsIgnoredOptions()
+{
+    const QVariantMap result = m_editor->checkCurl(QStringLiteral("curl --compressed http://x"));
+
+    QCOMPARE(result.value(QStringLiteral("ok")).toBool(), true);
+    QCOMPARE(result.value(QStringLiteral("ignored")).toStringList(),
+             QStringList({QStringLiteral("--compressed")}));
 }
 
 void RequestEditorTest::finishedRequestIsReported()

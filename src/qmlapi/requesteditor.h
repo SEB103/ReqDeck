@@ -6,6 +6,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QVariantMap>
 
 #include "core/http/requestbuilder.h"
 #include "core/http/requestspec.h"
@@ -218,6 +219,12 @@ public:
 
     /** Cancels the running request. */
     Q_INVOKABLE void cancel();
+
+    /** Checks a cURL \a command; the map holds ok, error, summary, and ignored. */
+    Q_INVOKABLE QVariantMap checkCurl(const QString &command) const;
+
+    /** Adds a request made from a cURL \a command to \a parentId; returns its id or "". */
+    Q_INVOKABLE QString importCurl(const QString &command, const QString &parentId);
 
 signals:
     /** Emitted when the open request or any of its fields changes. */

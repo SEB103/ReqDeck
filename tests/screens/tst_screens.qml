@@ -103,6 +103,24 @@ Item {
         }
     }
 
+    Component {
+        id: curlComponent
+
+        Item {
+            property alias dialog: curlDialog
+
+            anchors.fill: parent
+
+            CurlImportDialog {
+                id: curlDialog
+
+                width: 640
+                height: 420
+                onImported: (id) => cppRequestEditor.load(id)
+            }
+        }
+    }
+
     // Connected like Main.qml connects the top bar.
     Component {
         id: selectorComponent
@@ -763,6 +781,113 @@ Item {
             const elapsed = Date.now() - started;
             compare(list.count, 200);
             verify(elapsed < 2000, "took " + elapsed + " ms");
+        }
+
+        /*! Opens the import dialog and waits until it is shown. */
+        function openCurl() {
+            const host = createTemporaryObject(curlComponent, root);
+            verify(host !== null);
+            host.dialog.open();
+            tryCompare(host.dialog, "opened", true);
+            return host;
+        }
+
+        /*! Puts \a command into the dialog of \a host and waits for the check. */
+        function enterCommand(host, command) {
+            findChild(host, "curlInput").text = command;
+            wait(0);
+            waitForRendering(findChild(host, "curlInput"));
+        }
+
+        /*! Verifies that Import needs a valid command, and imports it. */
+        function test_curlDialogEnablesImportForValidCommand() {
+            const host = openCurl();
+            const button = findChild(host, "importButton");
+            compare(button.enabled, false);
+
+            enterCommand(host, "curl -X DELETE http://x/items/1");
+            compare(button.enabled, true);
+            verify(findChild(host, "curlStatus").text.indexOf("DELETE http://x/items/1") >= 0);
+
+            mouseClick(button);
+
+            tryCompare(host.dialog, "visible", false);
+            compare(cppRequestEditor.method, "DELETE");
+            compare(cppRequestEditor.url, "http://x/items/1");
+        }
+
+        /*! Verifies that a broken command says why. */
+        function test_curlDialogShowsError() {
+            const host = openCurl();
+
+            enterCommand(host, "not a command");
+
+            compare(findChild(host, "importButton").enabled, false);
+            verify(findChild(host, "curlStatus").text.length > 0);
+            verify(findChild(host, "curlStatus").text.indexOf("Paste") < 0);
+        }
+
+        /*! Verifies that options without an equivalent are named. */
+        function test_curlDialogShowsIgnoredOptions() {
+            const host = openCurl();
+
+            enterCommand(host, "curl --compressed http://x");
+
+            verify(findChild(host, "curlStatus").text.indexOf("--compressed") >= 0);
+            compare(findChild(host, "importButton").enabled, true);
+        }
+
+        /*! Verifies that a pasted command cannot fetch anything. */
+        function test_curlDialogShowsMarkupAsText() {
+            const requests = cppTestHost.requestCount();
+            const host = openCurl();
+
+            enterCommand(host, "curl 'http://x/<img src=\"" + cppTestHost.serverUrl("/x") + "\">'");
+            wait(200);
+
+            compare(cppTestHost.requestCount(), requests);
+            compare(findChild(host, "curlStatus").textFormat, Text.PlainText);
+            compare(findChild(host, "curlInput").textFormat, TextEdit.PlainText);
+        }
+
+        /*! Verifies that a huge paste neither hangs nor crashes the dialog. */
+        function test_curlDialogSurvivesLongPaste() {
+            const host = openCurl();
+            const started = Date.now();
+
+            enterCommand(host, "curl http://x -d '" + "a".repeat(262144) + "'");
+
+            const elapsed = Date.now() - started;
+            compare(findChild(host, "importButton").enabled, true);
+            verify(elapsed < 5000, "took " + elapsed + " ms");
+        }
+
+        /*! Verifies that a name being edited is stored when the dialog takes the focus. */
+        function test_curlImportStoresNameBeingEdited() {
+            const pane = createRequest("r2");
+            const name = findChild(pane, "nameField");
+            name.forceActiveFocus();
+            name.selectAll();
+            keyClick(Qt.Key_X);
+
+            openCurl();
+
+            compare(cppCollection.nodeName("r2"), "x");
+        }
+
+        /*! Verifies that the dialog forgets the last command. */
+        function test_curlDialogStartsEmpty() {
+            const host = openCurl();
+            enterCommand(host, "curl http://x");
+            host.dialog.reject();
+            tryCompare(host.dialog, "visible", false);
+
+            host.dialog.open();
+            tryCompare(host.dialog, "opened", true);
+            waitForRendering(findChild(host, "curlInput"));
+
+            compare(findChild(host, "curlInput").text, "");
+            compare(findChild(host, "importButton").enabled, false);
         }
 
         /*! Opens the environment dialog and waits until it is shown. */

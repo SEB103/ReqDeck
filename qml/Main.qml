@@ -197,6 +197,11 @@ ApplicationWindow {
             mainWindow.runGuarded(() => cppWorkspaceManager.closeWorkspace())
         }
 
+        function onImportCurlRequested() {
+            curlImportDialog.parentId = cppCollection.parentForNewItem(mainScreen.collectionPane.selectedId)
+            curlImportDialog.open()
+        }
+
         function onSettingsRequested() {
             settingsDialog.open()
         }
@@ -573,6 +578,14 @@ ApplicationWindow {
 
         width: Math.min(mainWindow.width - 80, 760)
         height: Math.min(mainWindow.height - 80, 520)
+    }
+
+    CurlImportDialog {
+        id: curlImportDialog
+
+        width: Math.min(mainWindow.width - 80, 680)
+        height: Math.min(mainWindow.height - 80, 440)
+        onImported: (id) => mainScreen.collectionPane.finishAdding(id)
     }
 
     AboutDialog {

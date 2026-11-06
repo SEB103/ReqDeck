@@ -11,6 +11,7 @@ qt_add_qml_module(MainQml
     QML_FILES
         AboutDialog.qml
         CollectionPane.qml
+        CurlImportDialog.qml
         EnvironmentDialog.qml
         HistoryPane.qml
         LauncherScreen.qml
