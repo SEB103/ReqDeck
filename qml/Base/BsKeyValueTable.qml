@@ -16,13 +16,17 @@ import QtQuick.Layouts
     Used for query parameters, headers, and form fields. The \l model needs the
     roles \c key, \c value, and \c enabled, and the invokable functions
     \c addRow() and \c removeRow(row). Edits are written to the model as the user
-    types, never when the model itself changes.
+    types, never when the model itself changes. With \l showSecret, the model also
+    needs the role \c secret, and the values of secret rows are masked.
 */
 ColumnLayout {
     id: root
 
     /*! Model holding the rows. */
     property var model: null
+
+    /*! Whether each row offers a Secret box. */
+    property bool showSecret: false
 
     /*! Placeholder of the key fields. */
     property string keyPlaceholder: qsTr("Key")
@@ -78,8 +82,18 @@ ColumnLayout {
                 Layout.preferredWidth: 2
                 placeholderText: root.valuePlaceholder
                 selectByMouse: true
+                echoMode: root.showSecret && row.model.secret ? TextInput.Password : TextInput.Normal
                 text: row.model.value
                 onTextEdited: row.model.value = text
+            }
+
+            CheckBox {
+                objectName: "secretBox"
+
+                visible: root.showSecret
+                checked: root.showSecret && row.model.secret
+                text: qsTr("Secret")
+                onToggled: row.model.secret = checked
             }
 
             ToolButton {

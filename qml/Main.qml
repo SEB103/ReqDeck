@@ -265,6 +265,10 @@ ApplicationWindow {
             cppEnvironments.activeIndex = index
         }
 
+        function onManageEnvironmentsRequested() {
+            environmentDialog.open()
+        }
+
         function onSaveWorkspaceRequested() {
             cppWorkspaceManager.saveWorkspace()
         }
@@ -554,6 +558,13 @@ ApplicationWindow {
         title: qsTr("Select Default Workspaces Folder")
         currentFolder: Qt.resolvedUrl("file:///" + cppWorkspaceManager.defaultWorkspacesDir)
         onAccepted: cppWorkspaceManager.setDefaultWorkspacesDir(selectedFolder)
+    }
+
+    EnvironmentDialog {
+        id: environmentDialog
+
+        width: Math.min(mainWindow.width - 80, 760)
+        height: Math.min(mainWindow.height - 80, 520)
     }
 
     AboutDialog {

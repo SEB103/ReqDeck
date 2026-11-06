@@ -190,6 +190,16 @@ Item {
         }
 
         /*! Verifies that typing and toggling reach the model. */
+        function test_tableHidesSecretColumnByDefault() {
+            resetKeyValueModel();
+            const table = createTemporaryObject(keyValueTableComponent, root);
+            verify(table !== null);
+            waitForRendering(table);
+
+            compare(rowChild(table, 0, "secretBox").visible, false);
+            compare(rowChild(table, 0, "valueField").echoMode, TextInput.Normal);
+        }
+
         function test_keyValueTableEditsWriteToModel() {
             resetKeyValueModel();
             const table = createTemporaryObject(keyValueTableComponent, root);

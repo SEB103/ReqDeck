@@ -76,6 +76,23 @@ Item {
         }
     }
 
+    Component {
+        id: dialogComponent
+
+        Item {
+            property alias dialog: environmentDialog
+
+            anchors.fill: parent
+
+            EnvironmentDialog {
+                id: environmentDialog
+
+                width: 760
+                height: 500
+            }
+        }
+    }
+
     // Connected like Main.qml connects the top bar.
     Component {
         id: selectorComponent
@@ -520,6 +537,202 @@ Item {
 
             compare(host.collection.selectedId, "");
             compare(cppRequestEditor.hasRequest, false);
+        }
+
+        /*! Opens the environment dialog and waits until it is shown. */
+        function openDialog() {
+            const host = createTemporaryObject(dialogComponent, root);
+            verify(host !== null);
+            host.dialog.open();
+            tryCompare(host.dialog, "opened", true);
+            waitForRendering(findChild(host, "environmentList"));
+            return host;
+        }
+
+        /*! Replaces the name in the dialog of \a host by the letter x, uncommitted. */
+        function typeName(host) {
+            const field = findChild(host, "environmentName");
+            field.forceActiveFocus();
+            field.selectAll();
+            keyClick(Qt.Key_X);
+        }
+
+        /*! Returns the child \a name of the first row of the variable table. */
+        function firstVariableChild(host, name) {
+            const rows = findChild(findChild(host, "variablesTable"), "rows");
+            return findChild(rows.itemAtIndex(0), name);
+        }
+
+        /*! Verifies that the dialog starts at the active environment. */
+        function test_dialogStartsAtActiveEnvironment() {
+            cppEnvironments.activeIndex = 1;
+
+            const host = openDialog();
+
+            compare(cppEnvironments.editedRow, 1);
+            compare(findChild(host, "environmentName").text, "Missing");
+            compare(firstVariableChild(host, "keyField").text, "baseUrl");
+        }
+
+        /*! Verifies that a secret value is masked and stays in the table. */
+        function test_secretValueIsMasked() {
+            const host = openDialog();
+            const value = firstVariableChild(host, "valueField");
+            const box = firstVariableChild(host, "secretBox");
+            verify(box.visible);
+            compare(value.echoMode, TextInput.Normal);
+            const text = value.text;
+
+            mouseClick(box);
+
+            compare(value.echoMode, TextInput.Password);
+            compare(value.text, text);
+        }
+
+        /*! Verifies that the table gets the room the list does not need. */
+        function test_variableFieldsHaveRoom() {
+            const host = openDialog();
+
+            compare(findChild(host, "environmentList").width, 220);
+            verify(firstVariableChild(host, "valueField").width > 120);
+        }
+
+        /*! Verifies that a row added in the dialog reaches the workspace. */
+        function test_addedVariableReachesWorkspace() {
+            const host = openDialog();
+
+            mouseClick(findChild(findChild(host, "variablesTable"), "addButton"));
+
+            compare(cppEnvironments.variablesModel.rowCount(), 2);
+            verify(cppWorkspaceManager.dirty);
+        }
+
+        /*! Verifies that names from a file cannot fetch anything. */
+        function test_environmentNameStaysText() {
+            const requests = cppTestHost.requestCount();
+            const name = '<img src="' + cppTestHost.serverUrl("/x") + '">';
+            verify(cppEnvironments.renameEnvironment(0, name));
+
+            const selector = createSelector();
+            selector.popup.open();
+            tryCompare(selector.popup, "opened", true);
+            waitForRendering(selector);
+            selector.popup.close();
+            tryCompare(selector.popup, "visible", false);
+
+            const host = openDialog();
+            mouseClick(findChild(host, "removeEnvironment"));
+            const confirmation = findChild(host, "removeConfirmation");
+            tryCompare(confirmation, "opened", true);
+            waitForRendering(findChild(host, "environmentList"));
+            wait(200);
+            confirmation.reject();
+
+            compare(cppTestHost.requestCount(), requests);
+        }
+
+        /*! Verifies that choosing another row stores the name being typed. */
+        function test_renameCommitsWhenSelectingAnother() {
+            const host = openDialog();
+            typeName(host);
+
+            mouseClick(findChild(host, "environmentList").itemAtIndex(1));
+
+            compare(cppEnvironments.names[0], "x");
+            compare(cppEnvironments.editedRow, 1);
+            compare(findChild(host, "environmentName").text, "Missing");
+        }
+
+        /*! Verifies that the Close button stores the name being typed. */
+        function test_renameCommitsOnClose() {
+            const host = openDialog();
+            typeName(host);
+
+            mouseClick(host.dialog.standardButton(Dialog.Close));
+
+            tryCompare(host.dialog, "visible", false);
+            compare(cppEnvironments.names[0], "x");
+        }
+
+        /*! Verifies that Escape stores the name being typed. */
+        function test_renameCommitsOnEscape() {
+            const host = openDialog();
+            typeName(host);
+
+            keyClick(Qt.Key_Escape);
+
+            tryCompare(host.dialog, "visible", false);
+            compare(cppEnvironments.names[0], "x");
+        }
+
+        /*! Verifies that a blank name gives way to the old one. */
+        function test_blankNameIsRestored() {
+            const host = openDialog();
+            const field = findChild(host, "environmentName");
+            field.forceActiveFocus();
+            field.selectAll();
+            keyClick(Qt.Key_Delete);
+            compare(field.text, "");
+
+            keyClick(Qt.Key_Return);
+
+            compare(field.text, "Created");
+            compare(cppEnvironments.names[0], "Created");
+        }
+
+        /*! Verifies that removing waits for a confirmation. */
+        function test_removeAsksFirst() {
+            const host = openDialog();
+            const confirmation = findChild(host, "removeConfirmation");
+
+            mouseClick(findChild(host, "removeEnvironment"));
+
+            tryCompare(confirmation, "opened", true);
+            compare(cppEnvironments.names.length, 2);
+
+            confirmation.accept();
+
+            compare(cppEnvironments.names, ["Missing"]);
+        }
+
+        /*! Verifies a workspace without environments. */
+        function test_emptyWorkspaceDialogIsUsable() {
+            cppEnvironments.removeEnvironment(0);
+            cppEnvironments.removeEnvironment(0);
+
+            const host = openDialog();
+            const table = findChild(host, "variablesTable");
+            const name = findChild(host, "environmentName");
+            compare(cppEnvironments.editedRow, -1);
+            compare(table.enabled, false);
+            compare(name.enabled, false);
+
+            mouseClick(findChild(host, "addEnvironment"));
+
+            compare(cppEnvironments.editedRow, 0);
+            compare(table.enabled, true);
+            verify(name.activeFocus);
+            compare(name.selectedText, "New environment");
+        }
+
+        /*! Verifies that a copy opens in the dialog. */
+        function test_duplicateShowsTheCopy() {
+            const host = openDialog();
+
+            mouseClick(findChild(host, "duplicateEnvironment"));
+
+            compare(cppEnvironments.editedRow, 2);
+            compare(findChild(host, "environmentName").text, "Created copy");
+        }
+
+        /*! Verifies that a closed dialog holds on to nothing. */
+        function test_closeForgetsEditedRow() {
+            const host = openDialog();
+
+            host.dialog.close();
+
+            tryCompare(host.dialog, "visible", false);
+            compare(cppEnvironments.editedRow, -1);
         }
 
         /*! Creates the wired environment selector with the focus. */
