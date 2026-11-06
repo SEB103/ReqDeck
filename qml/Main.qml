@@ -37,6 +37,23 @@ ApplicationWindow {
     property int statusMessageLevel: 1
 
     /*!
+        Stores a name or timeout still being edited: a shortcut leaves the focus
+        where it is, unlike a click on a menu.
+    */
+    function commitFocusedEdit() {
+        const focused = mainWindow.activeFocusItem
+        mainScreen.forceActiveFocus(Qt.ShortcutFocusReason)
+        if (focused)
+            focused.forceActiveFocus(Qt.ShortcutFocusReason)
+    }
+
+    /*! Saves the workspace with everything the user has typed so far. */
+    function saveWorkspace() {
+        mainWindow.commitFocusedEdit()
+        cppWorkspaceManager.saveWorkspace()
+    }
+
+    /*!
         Records the outcome \a message at severity \a level.
 
         Every outcome lands in the status bar; the banner additionally surfaces
@@ -187,7 +204,7 @@ ApplicationWindow {
         }
 
         function onSaveWorkspaceRequested() {
-            cppWorkspaceManager.saveWorkspace()
+            mainWindow.saveWorkspace()
         }
 
         function onSaveWorkspaceAsRequested() {
@@ -255,6 +272,43 @@ ApplicationWindow {
         }
     }
 
+    Shortcut {
+        sequence: "Ctrl+N"
+        enabled: cppWorkspaceManager.hasActiveWorkspace
+        onActivated: {
+            mainWindow.commitFocusedEdit()
+            mainScreen.collectionPane.addRequest()
+        }
+    }
+
+    Shortcut {
+        sequence: "Ctrl+O"
+        onActivated: {
+            mainWindow.commitFocusedEdit()
+            mainWindow.runGuarded(() => openWorkspaceDialog.open())
+        }
+    }
+
+    Shortcut {
+        sequence: "Ctrl+S"
+        enabled: cppWorkspaceManager.hasActiveWorkspace
+        onActivated: mainWindow.saveWorkspace()
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Shift+S"
+        enabled: cppWorkspaceManager.hasActiveWorkspace
+        onActivated: {
+            mainWindow.commitFocusedEdit()
+            saveWorkspaceDialog.open()
+        }
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Q"
+        onActivated: mainWindow.close()
+    }
+
     Connections {
         target: cppRequestEditor
 
@@ -297,7 +351,7 @@ ApplicationWindow {
         }
 
         function onSaveWorkspaceRequested() {
-            cppWorkspaceManager.saveWorkspace()
+            mainWindow.saveWorkspace()
         }
 
         function onSettingsRequested() {

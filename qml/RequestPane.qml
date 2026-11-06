@@ -24,10 +24,29 @@ import Base as Base
 Item {
     id: root
 
+    /*!
+        Sends the open request from a shortcut.
+        Taking the focus stores a name or timeout still being edited, and giving it
+        back keeps the user where they were typing.
+    */
+    function sendNow() {
+        const focused = root.Window.activeFocusItem
+        root.forceActiveFocus(Qt.ShortcutFocusReason)
+        cppRequestEditor.send()
+        if (focused)
+            focused.forceActiveFocus(Qt.ShortcutFocusReason)
+    }
+
     Binding {
         target: cppEnvironments
         property: "darkTheme"
         value: Base.BsTheme.dark
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+Return", "Ctrl+Enter"]
+        enabled: cppRequestEditor.canSend
+        onActivated: root.sendNow()
     }
 
     Label {

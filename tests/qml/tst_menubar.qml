@@ -164,6 +164,19 @@ Item {
         }
 
         /*! Verifies that the table shows the rows of its model. */
+        /*! Verifies that the menu items name their shortcuts. */
+        function test_menuItemShowsShortcut() {
+            const menuBar = createTemporaryObject(menuBarComponent, root);
+            verify(menuBar !== null);
+
+            compare(itemByText(menuByTitle(menuBar, "Request"), "Send").shortcutText, "Ctrl+Enter");
+            compare(itemByText(menuByTitle(menuBar, "Request"), "New Request").shortcutText, "Ctrl+N");
+            compare(itemByText(menuByTitle(menuBar, "File"), "Save").shortcutText, "Ctrl+S");
+            compare(itemByText(menuByTitle(menuBar, "File"), "Save As…").shortcutText, "Ctrl+Shift+S");
+            compare(itemByText(menuByTitle(menuBar, "File"), "Open Workspace…").shortcutText, "Ctrl+O");
+            compare(itemByText(menuByTitle(menuBar, "File"), "Quit").shortcutText, "Ctrl+Q");
+        }
+
         /*! Verifies that Copy as cURL needs an open request. */
         function test_copyCurlFollowsHasRequest() {
             const menuBar = createTemporaryObject(menuBarComponent, root);

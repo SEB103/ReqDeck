@@ -890,6 +890,124 @@ Item {
             compare(findChild(host, "importButton").enabled, false);
         }
 
+        /*! Presses the send shortcut and waits for the result. */
+        function pressSend() {
+            keyClick(Qt.Key_Return, Qt.ControlModifier);
+            tryCompare(cppResponse, "busy", false, 10000);
+        }
+
+        /*! Verifies that the shortcut sends and leaves the focus where it was. */
+        function test_shortcutSendsFromUrlField() {
+            const host = createSender(cppTestHost.serverUrl("/status/201"));
+            const field = findChild(host.request, "urlField");
+            field.forceActiveFocus();
+
+            pressSend();
+
+            compare(cppResponse.statusCode, 201);
+            verify(field.activeFocus);
+            compare(cppRequestEditor.url, cppTestHost.serverUrl("/status/201"));
+        }
+
+        /*! Verifies that the keypad Enter key sends too. */
+        function test_shortcutSendsWithEnterKey() {
+            const host = createSender(cppTestHost.serverUrl("/status/202"));
+            findChild(host.request, "urlField").forceActiveFocus();
+
+            keyClick(Qt.Key_Enter, Qt.ControlModifier);
+            tryCompare(cppResponse, "busy", false, 10000);
+
+            compare(cppResponse.statusCode, 202);
+        }
+
+        /*! Verifies that the shortcut works from the raw body, which takes Return. */
+        function test_shortcutSendsFromRawBody() {
+            const host = createSender(cppTestHost.serverUrl("/status/201"));
+            cppRequestEditor.bodyMode = 1; // BodyMode::Raw
+            findChild(host.request, "tabs").currentIndex = 2;
+            waitForRendering(host);
+            const area = findChild(host.request, "rawBodyArea");
+            area.forceActiveFocus();
+            verify(area.activeFocus);
+
+            pressSend();
+
+            compare(cppResponse.statusCode, 201);
+            compare(area.text, "");
+        }
+
+        /*! Verifies that a name being edited is stored before sending. */
+        function test_shortcutStoresNameBeingEdited() {
+            const host = createSender(cppTestHost.serverUrl("/status/201"));
+            const name = findChild(host.request, "nameField");
+            name.forceActiveFocus();
+            name.selectAll();
+            keyClick(Qt.Key_X);
+
+            pressSend();
+
+            compare(cppCollection.nodeName("r2"), "x");
+            verify(name.activeFocus);
+        }
+
+        /*! Verifies that a timeout being edited is stored before sending. */
+        function test_shortcutStoresTimeoutBeingEdited() {
+            const host = createSender(cppTestHost.serverUrl("/status/201"));
+            findChild(host.request, "tabs").currentIndex = 2;
+            waitForRendering(host);
+            const box = findChild(host.request, "timeoutBox");
+            box.forceActiveFocus();
+            keyClick(Qt.Key_A, Qt.ControlModifier);
+            keyClick(Qt.Key_7);
+
+            pressSend();
+
+            compare(cppRequestEditor.timeoutMs, 7);
+        }
+
+        /*! Verifies that a running request is not sent twice. */
+        function test_shortcutIgnoredWhileBusy() {
+            const host = createSender(cppTestHost.serverUrl("/delay/300"));
+            findChild(host.request, "urlField").forceActiveFocus();
+            const requests = cppTestHost.requestCount();
+
+            keyClick(Qt.Key_Return, Qt.ControlModifier);
+            verify(cppResponse.busy);
+            keyClick(Qt.Key_Return, Qt.ControlModifier);
+            tryCompare(cppResponse, "busy", false, 10000);
+
+            compare(cppTestHost.requestCount(), requests + 1);
+        }
+
+        /*! Verifies that nothing happens without an open request. */
+        function test_shortcutIgnoredWithoutRequest() {
+            const pane = createTemporaryObject(requestComponent, root);
+            const requests = cppTestHost.requestCount();
+
+            keyClick(Qt.Key_Return, Qt.ControlModifier);
+            wait(50);
+
+            verify(pane !== null);
+            compare(cppResponse.busy, false);
+            compare(cppResponse.hasResponse, false);
+            compare(cppTestHost.requestCount(), requests);
+        }
+
+        /*! Verifies that a modal dialog blocks the shortcut. */
+        function test_shortcutIgnoredUnderModalDialog() {
+            createSender(cppTestHost.serverUrl("/status/201"));
+            const requests = cppTestHost.requestCount();
+            const host = openDialog();
+
+            keyClick(Qt.Key_Return, Qt.ControlModifier);
+            wait(50);
+
+            compare(cppResponse.busy, false);
+            compare(cppTestHost.requestCount(), requests);
+            host.dialog.close();
+            tryCompare(host.dialog, "visible", false);
+        }
+
         /*! Opens the environment dialog and waits until it is shown. */
         function openDialog() {
             const host = createTemporaryObject(dialogComponent, root);

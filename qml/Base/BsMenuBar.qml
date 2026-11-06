@@ -156,6 +156,7 @@ MenuBar {
 
         BsMenuItem {
             text: qsTr("&Open Workspace…")
+            shortcutText: "Ctrl+O"
             icon.source: "qrc:/images/svg/folder_open.svg"
             onTriggered: appMenuBar.openWorkspaceRequested()
         }
@@ -195,6 +196,7 @@ MenuBar {
 
         BsMenuItem {
             text: qsTr("&Save")
+            shortcutText: "Ctrl+S"
             icon.source: "qrc:/images/svg/save.svg"
             enabled: appMenuBar.hasWorkspace && appMenuBar.workspaceDirty
             onTriggered: appMenuBar.saveWorkspaceRequested()
@@ -202,6 +204,7 @@ MenuBar {
 
         BsMenuItem {
             text: qsTr("Save &As…")
+            shortcutText: "Ctrl+Shift+S"
             icon.source: "qrc:/images/svg/save_as.svg"
             enabled: appMenuBar.hasWorkspace
             onTriggered: appMenuBar.saveWorkspaceAsRequested()
@@ -235,6 +238,7 @@ MenuBar {
 
         BsMenuItem {
             text: qsTr("&Quit")
+            shortcutText: "Ctrl+Q"
             icon.source: "qrc:/images/svg/exit_to_app.svg"
             onTriggered: appMenuBar.quitRequested()
         }
@@ -246,6 +250,7 @@ MenuBar {
 
         BsMenuItem {
             text: qsTr("&New Request")
+            shortcutText: "Ctrl+N"
             icon.source: "qrc:/images/svg/note_add.svg"
             enabled: appMenuBar.hasWorkspace
             onTriggered: appMenuBar.newRequestRequested()
@@ -262,6 +267,7 @@ MenuBar {
 
         BsMenuItem {
             text: qsTr("&Send")
+            shortcutText: "Ctrl+Enter"
             icon.source: "qrc:/images/svg/play_arrow.svg"
             enabled: appMenuBar.canSend
             onTriggered: appMenuBar.sendRequested()
