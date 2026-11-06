@@ -53,6 +53,12 @@ Pane {
     /*! Whether the open workspace has unsaved changes. */
     property bool workspaceDirty: false
 
+    /*! Names of the environments forwarded to the top bar. */
+    property var environmentNames: []
+
+    /*! Row of the active environment forwarded to the top bar. */
+    property int activeEnvironmentIndex: -1
+
     /*! Recent-workspace rows forwarded to the menu bar. */
     property var recentWorkspaces: []
 
@@ -108,6 +114,8 @@ Pane {
                     Layout.alignment: Qt.AlignVCenter
                     darkTheme: main.darkTheme
                     canSave: main.hasWorkspace && main.workspaceDirty
+                    environmentNames: main.environmentNames
+                    activeEnvironmentIndex: main.activeEnvironmentIndex
                 }
             }
 

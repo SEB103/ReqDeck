@@ -90,6 +90,15 @@ Item {
     }
 
     Component {
+        id: environmentSelectorComponent
+
+        BsEnvironmentSelector {
+            names: ["A", "B"]
+            activeIndex: 1
+        }
+    }
+
+    Component {
         id: singleLineEditComponent
 
         BsSingleLineEdit {
@@ -155,6 +164,12 @@ Item {
         }
 
         /*! Verifies that the table shows the rows of its model. */
+        function test_environmentSelectorShowsActiveRow() {
+            const selector = createTemporaryObject(environmentSelectorComponent, root);
+            verify(selector !== null);
+            compare(selector.currentText, "B");
+        }
+
         function test_singleLineEditShowsItsText() {
             const edit = createTemporaryObject(singleLineEditComponent, root);
             verify(edit !== null);

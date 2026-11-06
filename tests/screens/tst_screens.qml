@@ -76,6 +76,17 @@ Item {
         }
     }
 
+    // Connected like Main.qml connects the top bar.
+    Component {
+        id: selectorComponent
+
+        BsEnvironmentSelector {
+            names: cppEnvironments.names
+            activeIndex: cppEnvironments.activeIndex
+            onEnvironmentSelected: (index) => cppEnvironments.activeIndex = index
+        }
+    }
+
     SignalSpy {
         id: selectedSpy
 
@@ -509,6 +520,91 @@ Item {
 
             compare(host.collection.selectedId, "");
             compare(cppRequestEditor.hasRequest, false);
+        }
+
+        /*! Creates the wired environment selector with the focus. */
+        function createSelector() {
+            const selector = createTemporaryObject(selectorComponent, root);
+            verify(selector !== null);
+            selector.forceActiveFocus();
+            return selector;
+        }
+
+        /*! Verifies that the selector offers no environment first. */
+        function test_selectorShowsNoneFirst() {
+            const selector = createSelector();
+
+            compare(selector.count, 3);
+            compare(selector.currentIndex, 0);
+            compare(selector.displayText, "No environment");
+        }
+
+        /*! Verifies that the selector shows an environment activated elsewhere. */
+        function test_selectorFollowsActiveIndex() {
+            const selector = createSelector();
+
+            cppEnvironments.activeIndex = 1;
+
+            compare(selector.currentText, "Missing");
+        }
+
+        /*! Verifies that a changed list keeps the active environment selected. */
+        function test_selectorKeepsSelectionWhenNamesChange() {
+            const selector = createSelector();
+            cppEnvironments.activeIndex = 1;
+
+            verify(cppEnvironments.renameEnvironment(1, "Renamed"));
+            compare(selector.currentIndex, 2);
+            compare(selector.currentText, "Renamed");
+
+            cppEnvironments.addEnvironment();
+            compare(selector.currentText, "Renamed");
+
+            cppEnvironments.removeEnvironment(0);
+            compare(cppEnvironments.activeIndex, 0);
+            compare(selector.currentIndex, 1);
+            compare(selector.currentText, "Renamed");
+        }
+
+        /*! Verifies that removing the active environment shows none. */
+        function test_selectorShowsNoneAfterRemoval() {
+            const selector = createSelector();
+            cppEnvironments.activeIndex = 1;
+
+            cppEnvironments.removeEnvironment(1);
+
+            compare(selector.currentIndex, 0);
+            compare(selector.displayText, "No environment");
+        }
+
+        /*! Verifies the rows the selector reports, without its first row. */
+        function test_selectorEmitsIndexWithoutNoneRow() {
+            createSelector();
+
+            keyClick(Qt.Key_Down);
+            compare(cppEnvironments.activeIndex, 0);
+
+            keyClick(Qt.Key_Down);
+            compare(cppEnvironments.activeIndex, 1);
+
+            keyClick(Qt.Key_Up);
+            keyClick(Qt.Key_Up);
+            compare(cppEnvironments.activeIndex, -1);
+        }
+
+        /*! Verifies that the selector decides where a request goes. */
+        function test_switchingEnvironmentChangesTarget() {
+            const host = createSender("{{baseUrl}}");
+            const selector = createSelector();
+
+            keyClick(Qt.Key_Down);
+            sendAndWait(host);
+            compare(cppResponse.statusCode, 201);
+
+            selector.forceActiveFocus();
+            keyClick(Qt.Key_Down);
+            sendAndWait(host);
+            compare(cppResponse.statusCode, 404);
         }
 
         /*! Verifies that a new item can reach the top level after a selection. */

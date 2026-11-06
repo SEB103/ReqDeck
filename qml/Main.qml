@@ -132,6 +132,8 @@ ApplicationWindow {
         hasWorkspace: cppWorkspaceManager.hasActiveWorkspace
         workspaceDirty: cppWorkspaceManager.dirty
         recentWorkspaces: cppWorkspaceManager.recentWorkspaces
+        environmentNames: cppEnvironments.names
+        activeEnvironmentIndex: cppEnvironments.activeIndex
         canSend: cppRequestEditor.canSend
         canCancel: cppRequestEditor.busy
     }
@@ -258,6 +260,10 @@ ApplicationWindow {
 
     Connections {
         target: mainScreen.topActions
+
+        function onEnvironmentSelected(index) {
+            cppEnvironments.activeIndex = index
+        }
 
         function onSaveWorkspaceRequested() {
             cppWorkspaceManager.saveWorkspace()
