@@ -128,6 +128,59 @@ Item {
         Main {}
     }
 
+    Component {
+        id: helpTargetsComponent
+
+        Item {
+            property alias field: helpField
+            property alias inner: innerItem
+            property alias plain: plainItem
+            property alias disabledButton: offButton
+
+            property string helpTopic: "outer"
+
+            width: 400
+            height: 300
+
+            Rectangle {
+                id: innerItem
+
+                property string helpTopic: "inner"
+
+                width: 100
+                height: 100
+
+                Rectangle {
+                    id: plainItem
+
+                    x: 10
+                    y: 10
+                    width: 30
+                    height: 30
+                }
+            }
+
+            TextField {
+                id: helpField
+
+                property string helpTopic: "field"
+
+                x: 200
+                width: 150
+            }
+
+            Button {
+                id: offButton
+
+                property string helpTopic: "disabled"
+
+                y: 200
+                enabled: false
+                text: "Off"
+            }
+        }
+    }
+
     // Connected like Main.qml connects the top bar.
     Component {
         id: selectorComponent
@@ -1340,6 +1393,91 @@ Item {
             const status = findChild(host, "curlStatus").text;
             verify(status.indexOf("http://x/a%2Fb?c=%1") >= 0, status);
             verify(status.indexOf("--compressed") >= 0, status);
+        }
+
+        /*! Creates the items used by the help tests. */
+        function createHelpTargets() {
+            const targets = createTemporaryObject(helpTargetsComponent, root);
+            verify(targets !== null);
+            waitForRendering(targets);
+            return targets;
+        }
+
+        /*! Returns the scene position of the middle of \a item. */
+        function sceneCenter(item) {
+            return item.mapToItem(null, item.width / 2, item.height / 2);
+        }
+
+        /*! Verifies that the innermost element with a topic wins. */
+        function test_topicAtFindsDeepestElement() {
+            const targets = createHelpTargets();
+
+            compare(cppHelpLocator.topicAt(root.Window.window, sceneCenter(targets.field)), "field");
+            compare(cppHelpLocator.topicAt(root.Window.window, targets.mapToItem(null, 300, 250)), "outer");
+        }
+
+        /*! Verifies that an element without a topic takes its parent's. */
+        function test_topicAtWalksUpToParent() {
+            const targets = createHelpTargets();
+
+            compare(cppHelpLocator.topicAt(root.Window.window, sceneCenter(targets.plain)), "inner");
+        }
+
+        /*! Verifies that a disabled button still explains itself. */
+        function test_topicAtFindsDisabledButton() {
+            const targets = createHelpTargets();
+
+            compare(cppHelpLocator.topicAt(root.Window.window, sceneCenter(targets.disabledButton)), "disabled");
+        }
+
+        /*! Verifies that elements in an open dialog are found above the screen. */
+        function test_topicAtFindsItemInDialog() {
+            const host = openDialog();
+            const list = findChild(host, "environmentList");
+
+            compare(cppHelpLocator.topicAt(root.Window.window, sceneCenter(list)), "environments.list");
+        }
+
+        /*! Verifies that the pointer decides after the mouse moved. */
+        function test_pointerWinsAfterMouseMove() {
+            const targets = createHelpTargets();
+            targets.field.forceActiveFocus();
+            keyClick(Qt.Key_A);
+
+            mouseMove(targets.inner, 50, 50);
+
+            compare(cppHelpLocator.currentTopic(root.Window.window), "inner");
+        }
+
+        /*! Verifies that the focus decides after a key press. */
+        function test_focusWinsAfterKeyPress() {
+            const targets = createHelpTargets();
+            mouseMove(targets.inner, 50, 50);
+
+            targets.field.forceActiveFocus();
+            keyClick(Qt.Key_A);
+
+            compare(cppHelpLocator.topicForFocus(root.Window.window), "field");
+            compare(cppHelpLocator.currentTopic(root.Window.window), "field");
+        }
+
+        /*! Verifies that F1 itself does not count as using the keyboard. */
+        function test_f1KeyDoesNotChangeTheChoice() {
+            const targets = createHelpTargets();
+            targets.field.forceActiveFocus();
+            mouseMove(targets.inner, 50, 50);
+
+            keyClick(Qt.Key_F1);
+
+            compare(cppHelpLocator.currentTopic(root.Window.window), "inner");
+        }
+
+        /*! Verifies the general page when nothing has a topic. */
+        function test_noTopicGivesStart() {
+            const targets = createHelpTargets();
+            mouseMove(root, root.width - 2, root.height - 2);
+
+            compare(cppHelpLocator.currentTopic(root.Window.window), "start");
         }
 
         /*! Opens the environment dialog and waits until it is shown. */

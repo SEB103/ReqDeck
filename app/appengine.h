@@ -12,6 +12,7 @@ class AppInfo;
 class CollectionTreeModel;
 class EnvironmentModel;
 class HelpLibrary;
+class HelpLocator;
 class HistoryModel;
 class LicenseModel;
 class LocaleController;
@@ -30,6 +31,7 @@ QT_END_NAMESPACE
  *
  * Exposes the services to QML as context properties: \c cppAppEngine,
  * \c cppWorkspaceManager, \c cppCollection, \c cppEnvironments, \c cppHistory, \c cppHelp,
+ * \c cppHelpLocator,
  * \c cppRequestEditor, \c cppResponse,
  * \c cppAppInfo, \c cppLicenseModel, and, once injected, \c cppLocale and
  * \c cppUpdate. It also
@@ -90,6 +92,9 @@ private:
 
     /** Environments of the active workspace exposed to QML as \c cppEnvironments; owned by this engine. */
     EnvironmentModel* m_environments = nullptr;
+
+    /** Finder of the element F1 refers to, exposed to QML as \c cppHelpLocator; owned by this engine. */
+    HelpLocator* m_helpLocator = nullptr;
 
     /** Help topics exposed to QML as \c cppHelp; owned by this engine. */
     HelpLibrary* m_help = nullptr;

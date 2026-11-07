@@ -94,6 +94,9 @@ Dialog {
             ListView {
                 id: environmentList
 
+                /*! Topic of F1 help. */
+                property string helpTopic: "environments.list"
+
                 objectName: "environmentList"
 
                 Layout.fillWidth: true
