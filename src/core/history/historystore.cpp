@@ -181,6 +181,24 @@ void redactUserInfo(QString &url)
 
 /*!
  * \internal
+ * \brief Returns "a=b&c=d" text \a pairs with the literal credentials cleared.
+ */
+QString redactedPairs(const QString &pairs)
+{
+    QStringList parts = pairs.split(u'&');
+    for (QString &part : parts) {
+        const qsizetype equals = part.indexOf(u'=');
+        if (equals < 0 || !isCredentialName(QStringView(part).first(equals)))
+            continue;
+        QString value = part.sliced(equals + 1);
+        clearLiteral(value);
+        part = part.first(equals + 1) + value;
+    }
+    return parts.join(u'&');
+}
+
+/*!
+ * \internal
  * \brief Clears the literal values of query parameters of \a url named like credentials.
  */
 void redactQuery(QString &url)
@@ -193,16 +211,59 @@ void redactQuery(QString &url)
     if (end < 0)
         end = url.size();
 
-    QStringList parts = url.sliced(query + 1, end - query - 1).split(u'&');
-    for (QString &part : parts) {
-        const qsizetype equals = part.indexOf(u'=');
-        if (equals < 0 || !isCredentialName(QStringView(part).first(equals)))
+    url.replace(query + 1, end - query - 1, redactedPairs(url.sliced(query + 1, end - query - 1)));
+}
+
+/*!
+ * \internal
+ * \brief Returns JSON \a text with the values of keys named like credentials cleared.
+ *
+ * The text is edited in place instead of being parsed and written again, which
+ * would change the order of the keys and the formatting. String and number values
+ * are covered at any depth; a number becomes an empty string. Possessive
+ * quantifiers keep the pattern linear on long strings.
+ */
+QString redactedJson(const QString &text)
+{
+    static const QRegularExpression pattern(QStringLiteral(
+        R"re("((?:[^"\\]++|\\.)*+)"\s*+:\s*+("(?:[^"\\]++|\\.)*+"|-?\d[\d.eE+\-]*+))re"));
+
+    QString result;
+    qsizetype position = 0;
+    QRegularExpressionMatchIterator it = pattern.globalMatch(text);
+    while (it.hasNext()) {
+        const QRegularExpressionMatch match = it.next();
+        if (!isCredentialName(match.capturedView(1)))
             continue;
-        QString value = part.sliced(equals + 1);
-        clearLiteral(value);
-        part = part.first(equals + 1) + value;
+
+        const qsizetype start = match.capturedStart(2);
+        result += QStringView(text).sliced(position, start - position);
+        position = match.capturedEnd(2);
+
+        const QString value = match.captured(2);
+        QString inner = value.startsWith(u'"') ? value.sliced(1, value.size() - 2) : QString();
+        clearLiteral(inner);
+        result += u'"' + inner + u'"';
     }
-    url.replace(query + 1, end - query - 1, parts.join(u'&'));
+    result += QStringView(text).sliced(position);
+    return result;
+}
+
+/*!
+ * \internal
+ * \brief Clears literal credentials from a raw body, judged by its first character.
+ *
+ * JSON and "a=b&c=d" text are covered. XML and other text stay as they are.
+ */
+void redactRawBody(QString &raw)
+{
+    const QString trimmed = raw.trimmed();
+    if (trimmed.isEmpty() || trimmed.startsWith(u'<'))
+        return;
+    if (trimmed.startsWith(u'{') || trimmed.startsWith(u'['))
+        raw = redactedJson(raw);
+    else
+        raw = redactedPairs(raw);
 }
 
 /*!
@@ -346,11 +407,11 @@ bool HistoryStore::add(HistoryEntry entry, QString *errorString)
     if (!entry.timestamp.isValid())
         entry.timestamp = QDateTime::currentDateTimeUtc();
 
-    entry.request = redacted(entry.request);
     if (entry.request.body.raw.size() > kMaxStoredBodyChars) {
         entry.request.body.raw.clear();
         entry.bodyOmitted = true;
     }
+    entry.request = redacted(entry.request);
 
     if (m_unread) {
         const QList<HistoryEntry> pending = m_entries;
@@ -416,11 +477,11 @@ void HistoryStore::dropOldest()
  *
  * The history is a plain file next to the application data, so passwords,
  * tokens, API keys, credentials in the URL, and the values of headers, parameters,
- * and form fields named like credentials are removed unless they only reference
- * variables: a reference discloses nothing and still works when the request is
- * repeated. Fields of an inactive auth type are cleared as well. Names are a
- * heuristic, and a raw body is kept as it is, because it is what makes a request
- * worth repeating.
+ * form fields, and JSON or "a=b&c=d" raw bodies named like credentials are removed
+ * unless they only reference variables: a reference discloses nothing and still
+ * works when the request is repeated. Fields of an inactive auth type are cleared
+ * as well. Names are a heuristic, and XML or other raw text stays as it is, because
+ * a body is what makes a request worth repeating.
  * \param spec The request as edited by the user.
  */
 RequestSpec HistoryStore::redacted(const RequestSpec &spec)
@@ -439,6 +500,7 @@ RequestSpec HistoryStore::redacted(const RequestSpec &spec)
     clearCredentialRows(result.queryParams);
     clearCredentialRows(result.headers);
     clearCredentialRows(result.body.form);
+    redactRawBody(result.body.raw);
 
     for (KeyValue &header : result.headers) {
         if (startsWithAuthScheme(header.value))

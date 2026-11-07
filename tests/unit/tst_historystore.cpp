@@ -95,6 +95,14 @@ private slots:
     /*! Verifies a token standing in the place of a user name, as in curl -u token: */
     void redactsTokenInUsername();
 
+    /*! Verifies what is left of a raw body holding credentials. */
+    void redactsRawBody_data();
+    /*! Runs one raw body case. */
+    void redactsRawBody();
+
+    /*! Verifies a credential after a long value, near the size limit. */
+    void redactsLongRawBody();
+
     /*! Verifies that ordinary rows stay as they are. */
     void keepsOrdinaryRows();
 
@@ -340,6 +348,58 @@ void HistoryStoreTest::redactsTokenInUsername()
     spec.auth.password.clear();
     spec.auth.username = QStringLiteral("{{user}}");
     QCOMPARE(HistoryStore::redacted(spec).auth.username, QStringLiteral("{{user}}"));
+}
+
+void HistoryStoreTest::redactsRawBody_data()
+{
+    QTest::addColumn<QString>("raw");
+    QTest::addColumn<QString>("expected");
+
+    QTest::newRow("json") << QStringLiteral(R"({"user":"bob","password":"x"})")
+                          << QStringLiteral(R"({"user":"bob","password":""})");
+    QTest::newRow("nested") << QStringLiteral(R"({"a":{"b":[{"api_key":"x"}]},"n":1})")
+                            << QStringLiteral(R"({"a":{"b":[{"api_key":""}]},"n":1})");
+    QTest::newRow("array") << QStringLiteral(R"([{"token":"x"}])")
+                           << QStringLiteral(R"([{"token":""}])");
+    QTest::newRow("reference") << QStringLiteral(R"({"password":"{{pw}}"})")
+                               << QStringLiteral(R"({"password":"{{pw}}"})");
+    QTest::newRow("number") << QStringLiteral(R"({"otp_token":123456})")
+                            << QStringLiteral(R"({"otp_token":""})");
+    QTest::newRow("formatting") << QStringLiteral("{ \"a\" : 1,\n  \"password\" : \"x\" }")
+                                << QStringLiteral("{ \"a\" : 1,\n  \"password\" : \"\" }");
+    QTest::newRow("escaped quote") << QStringLiteral(R"({"password":"a\"b","n":"c"})")
+                                   << QStringLiteral(R"({"password":"","n":"c"})");
+    QTest::newRow("ordinary json") << QStringLiteral(R"({"user":"bob","age":7})")
+                                   << QStringLiteral(R"({"user":"bob","age":7})");
+    QTest::newRow("form") << QStringLiteral("user=bob&token=abc")
+                          << QStringLiteral("user=bob&token=");
+    QTest::newRow("form reference") << QStringLiteral("token={{t}}&a=b")
+                                    << QStringLiteral("token={{t}}&a=b");
+    QTest::newRow("xml") << QStringLiteral("<password>x</password>")
+                         << QStringLiteral("<password>x</password>");
+    QTest::newRow("text") << QStringLiteral("hello world") << QStringLiteral("hello world");
+}
+
+void HistoryStoreTest::redactsRawBody()
+{
+    QFETCH(QString, raw);
+    QFETCH(QString, expected);
+
+    RequestSpec spec;
+    spec.body.mode = BodyMode::Raw;
+    spec.body.raw = raw;
+
+    QCOMPARE(HistoryStore::redacted(spec).body.raw, expected);
+}
+
+void HistoryStoreTest::redactsLongRawBody()
+{
+    const QString filler(HistoryStore::kMaxStoredBodyChars - 40, u'a');
+    RequestSpec spec;
+    spec.body.raw = QStringLiteral(R"({"a":"%1","password":"x"})").arg(filler);
+
+    QCOMPARE(HistoryStore::redacted(spec).body.raw,
+             QStringLiteral(R"({"a":"%1","password":""})").arg(filler));
 }
 
 void HistoryStoreTest::keepsOrdinaryRows()

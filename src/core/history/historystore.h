@@ -71,8 +71,9 @@ public:
     void dropOldest();
 
     /**
-     * Returns \a spec with literal credentials cleared in auth fields, the URL, and
-     * rows named like credentials; {{variable}} references stay. A raw body is kept.
+     * Returns \a spec with literal credentials cleared in auth fields, the URL, rows
+     * named like credentials, and JSON or form raw bodies; {{variable}} references
+     * stay. XML and other raw text are kept.
      */
     static RequestSpec redacted(const RequestSpec &spec);
 
