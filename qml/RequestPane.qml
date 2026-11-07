@@ -69,14 +69,19 @@ Item {
         visible: cppRequestEditor.hasRequest
         spacing: 6
 
-        TextField {
+        Base.BsInlineTitle {
+            id: nameTitle
+
             objectName: "nameField"
 
             Layout.fillWidth: true
-            placeholderText: qsTr("Request name")
-            selectByMouse: true
             text: cppRequestEditor.name
-            onEditingFinished: cppRequestEditor.name = text
+            Accessible.name: qsTr("Request name")
+            // The editor refuses a blank name and reports no change then.
+            onEditingFinished: {
+                cppRequestEditor.name = text
+                nameTitle.text = Qt.binding(() => cppRequestEditor.name)
+            }
         }
 
         RowLayout {
@@ -84,18 +89,41 @@ Item {
             spacing: 6
 
             ComboBox {
+                id: methodCombo
+
                 objectName: "methodCombo"
 
-                Layout.preferredWidth: 120
+                Layout.preferredWidth: 108
+                Material.foreground: Base.BsTheme.methodColor(cppRequestEditor.method)
+                font.bold: true
                 model: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
                 currentIndex: Math.max(0, indexOfValue(cppRequestEditor.method))
                 onActivated: cppRequestEditor.method = currentText
+
+                delegate: ItemDelegate {
+                    id: methodOption
+
+                    required property string modelData
+                    required property int index
+
+                    width: ListView.view.width
+                    highlighted: methodCombo.highlightedIndex === methodOption.index
+
+                    contentItem: Label {
+                        verticalAlignment: Text.AlignVCenter
+                        font.bold: true
+                        color: Base.BsTheme.methodColor(methodOption.modelData)
+                        text: methodOption.modelData
+                    }
+                }
             }
 
             Base.BsSingleLineEdit {
                 objectName: "urlField"
 
                 Layout.fillWidth: true
+                font.family: "Consolas"
+                font.pixelSize: 14
                 placeholderText: qsTr("https://example.com or {{baseUrl}}/path")
                 text: cppRequestEditor.url
                 Accessible.name: qsTr("URL")
@@ -107,6 +135,11 @@ Item {
             Button {
                 objectName: "sendButton"
 
+                Layout.preferredHeight: methodCombo.height
+                topInset: 0
+                bottomInset: 0
+                Material.roundedScale: Material.ExtraSmallScale
+                Material.elevation: 0
                 highlighted: true
                 text: cppRequestEditor.busy ? qsTr("Cancel") : qsTr("Send")
                 onClicked: {

@@ -31,6 +31,9 @@ FocusScope {
     /*! Text shown while the control is empty. */
     property alias placeholderText: area.placeholderText
 
+    /*! Font of the text. */
+    property alias font: area.font
+
     /*! Position of the cursor. */
     property alias cursorPosition: area.cursorPosition
 

@@ -221,6 +221,100 @@ Item {
             verify(field.height <= 48, "height " + field.height);
         }
 
+        /*! Verifies that the name stores on leaving and gives way when blank. */
+        function test_inlineNameStoresAndRestores() {
+            const pane = createRequest("r2");
+            const name = findChild(pane, "nameField");
+            name.forceActiveFocus();
+            name.selectAll();
+            keyClick(Qt.Key_Delete);
+            keyClick(Qt.Key_Return);
+            compare(name.text, "List items");
+
+            name.selectAll();
+            keyClick(Qt.Key_X);
+            findChild(pane, "methodCombo").forceActiveFocus();
+            compare(cppCollection.nodeName("r2"), "x");
+            compare(cppRequestEditor.name, "x");
+
+            cppRequestEditor.load("r1");
+            compare(name.text, "Create item");
+        }
+
+        /*! Verifies that the name is a title, not a boxed field. */
+        function test_nameIsCompactTitle() {
+            const pane = createRequest("r2");
+            const name = findChild(pane, "nameField");
+
+            compare(name.height, 30);
+            compare(name.placeholderText, "");
+            compare(name.Accessible.name, "Request name");
+        }
+
+        /*! Verifies that a long name leaves the rows below where they are. */
+        function test_longNameKeepsLayout() {
+            const pane = createRequest("r2");
+            const url = findChild(pane, "urlField");
+            const y = url.y;
+
+            cppRequestEditor.name = "n".repeat(300);
+            waitForRendering(pane);
+
+            compare(findChild(pane, "nameField").height, 30);
+            compare(url.y, y);
+        }
+
+        /*! Verifies that the URL reads like code. */
+        function test_urlUsesMonospace() {
+            compare(findChild(createRequest("r2"), "urlField").font.family, "Consolas");
+        }
+
+        /*! Verifies that Send lines up with the URL. */
+        function test_sendButtonIsLevelWithUrl() {
+            const pane = createRequest("r2");
+            const send = findChild(pane, "sendButton");
+            const url = findChild(pane, "urlField");
+
+            compare(send.height, url.height);
+            compare(send.y, url.y);
+            compare(send.topInset, 0);
+        }
+
+        /*! Verifies that the method box shows the color of its method. */
+        function test_methodBoxShowsMethodColor() {
+            const pane = createRequest("r1");
+            const combo = findChild(pane, "methodCombo");
+
+            verify(Qt.colorEqual(combo.contentItem.color, BsTheme.methodColor("POST")));
+        }
+
+        /*! Verifies that each offered method has its own color. */
+        function test_methodOptionsUseTheirColors() {
+            const combo = findChild(createRequest("r2"), "methodCombo");
+            combo.popup.open();
+            tryCompare(combo.popup, "opened", true);
+
+            const option = combo.popup.contentItem.itemAtIndex(4);
+
+            verify(Qt.colorEqual(option.contentItem.color, BsTheme.methodColor("DELETE")));
+            combo.popup.close();
+            tryCompare(combo.popup, "visible", false);
+        }
+
+        /*! Verifies that the request row still fits a narrow pane. */
+        function test_requestRowFitsNarrowPane() {
+            const pane = createRequest("r2");
+            pane.width = 400;
+            waitForRendering(pane);
+            const combo = findChild(pane, "methodCombo");
+            const url = findChild(pane, "urlField");
+            const send = findChild(pane, "sendButton");
+
+            verify(url.width >= 120, "url " + url.width);
+            verify(send.mapToItem(pane, send.width, 0).x <= pane.width);
+            verify(combo.mapToItem(pane, 0, 0).x >= 0);
+        }
+
         /*! Verifies that a method is shown in its own color. */
         function test_treeShowsMethodColor() {
             const tree = findChild(createCollection(), "tree");

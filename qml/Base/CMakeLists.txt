@@ -11,6 +11,7 @@ qt_add_qml_module(Base
     CLASS_NAME BasePlugin
     QML_FILES
         BsEnvironmentSelector.qml
+        BsInlineTitle.qml
         BsKeyValueTable.qml
         BsLanguageSelector.qml
         BsLogPanel.qml
