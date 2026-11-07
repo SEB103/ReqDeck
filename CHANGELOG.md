@@ -64,3 +64,5 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
   or literal credentials; an entry can be opened as a new request.
 - cURL import with a live check of the command, and Copy as cURL.
 - Keyboard shortcuts, shown in the menus, and Open Samples in the launcher.
+- New look: colors for methods and status, compact headers and tabs, an inline
+  request title, line numbers in the response, and tables with column titles.

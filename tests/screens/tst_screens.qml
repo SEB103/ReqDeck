@@ -309,15 +309,18 @@ Item {
         /*! Verifies that the request row still fits a narrow pane. */
         function test_requestRowFitsNarrowPane() {
             const pane = createRequest("r2");
-            pane.width = 400;
+            pane.width = 300; // SplitView.minimumWidth of the request pane
             waitForRendering(pane);
             const combo = findChild(pane, "methodCombo");
             const url = findChild(pane, "urlField");
             const send = findChild(pane, "sendButton");
+            const tabs = findChild(pane, "tabs");
 
-            verify(url.width >= 120, "url " + url.width);
-            verify(send.mapToItem(pane, send.width, 0).x <= pane.width);
+            verify(url.width >= 70, "url " + url.width);
+            verify(send.mapToItem(pane, send.width, 0).x <= pane.width,
+                   "send ends at " + send.mapToItem(pane, send.width, 0).x);
             verify(combo.mapToItem(pane, 0, 0).x >= 0);
+            verify(tabs.mapToItem(pane, tabs.width, 0).x <= pane.width);
         }
 
         /*! Verifies that a method is shown in its own color. */

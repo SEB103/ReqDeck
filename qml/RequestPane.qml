@@ -364,6 +364,8 @@ Item {
                     spacing: 6
 
                     Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
                         text: qsTr("Timeout in ms (0 = default)")
                     }
 

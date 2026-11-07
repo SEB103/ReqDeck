@@ -93,7 +93,7 @@ FocusScope {
             flickable.contentX = right - flickable.width
     }
 
-    implicitWidth: 200
+    implicitWidth: 80
     implicitHeight: area.implicitHeight - area.topInset
     onTextChanged: root.showText()
     Component.onCompleted: root.showText()
