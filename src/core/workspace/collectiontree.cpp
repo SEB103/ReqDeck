@@ -7,7 +7,10 @@
 #include <utility>
 
 namespace {
-/** Longest name made from a request. */
+/*!
+ * \internal
+ * \brief Longest name made from a request.
+ */
 constexpr qsizetype kMaxDisplayNameChars = 120;
 
 /*!
@@ -50,9 +53,9 @@ void assignFreshIds(CollectionNode &node)
 } // namespace
 
 /*!
- * rief Returns a name for  request made from another source.
+ * \brief Returns a name for \a request made from another source.
  * \param request The request.
- * eturn "METHOD url" on one line, or only the method without a URL.
+ * \return "METHOD url" on one line, or only the method without a URL.
  */
 QString requestDisplayName(const RequestSpec &request)
 {

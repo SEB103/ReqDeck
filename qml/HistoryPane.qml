@@ -39,6 +39,28 @@ Item {
             root.entryOpened(id)
     }
 
+    /*!
+        Opens the current row on a plain Return or Enter from \a event.
+        A combination is left alone: when the send shortcut is disabled, Ctrl+Return
+        arrives here, and it must not add a request.
+    */
+    function openFromKey(event) {
+        if ((event.modifiers & ~Qt.KeypadModifier) !== Qt.NoModifier) {
+            event.accepted = false
+            return
+        }
+        root.openRow(historyList.currentIndex)
+    }
+
+    /*! Returns the result of an entry; \a error wins, also after a status line. */
+    function resultText(statusCode, elapsedMs, error) {
+        if (statusCode === 0)
+            return error
+        if (error.length > 0)
+            return qsTr("%1 · %2").arg(statusCode).arg(error)
+        return qsTr("%1 · %2 ms").arg(statusCode).arg(elapsedMs)
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 4
@@ -57,8 +79,8 @@ Item {
             Accessible.name: qsTr("History")
             Keys.onUpPressed: historyList.currentIndex = Math.max(0, historyList.currentIndex - 1)
             Keys.onDownPressed: historyList.currentIndex = Math.min(historyList.count - 1, historyList.currentIndex + 1)
-            Keys.onReturnPressed: root.openRow(historyList.currentIndex)
-            Keys.onEnterPressed: root.openRow(historyList.currentIndex)
+            Keys.onReturnPressed: (event) => root.openFromKey(event)
+            Keys.onEnterPressed: (event) => root.openFromKey(event)
 
             ScrollBar.vertical: ScrollBar {}
 
@@ -120,9 +142,7 @@ Item {
                             elide: Text.ElideRight
                             opacity: 0.7
                             font.pixelSize: 11
-                            text: entry.statusCode > 0
-                                  ? qsTr("%1 · %2 ms").arg(entry.statusCode).arg(entry.elapsedMs)
-                                  : entry.errorString
+                            text: root.resultText(entry.statusCode, entry.elapsedMs, entry.errorString)
                         }
 
                         Label {

@@ -182,13 +182,14 @@ public:
                            });
     }
 
-    /*! Adds \a count entries for \a url to the history; \a error makes them failures. */
-    Q_INVOKABLE void addHistory(const QString &url, int count, const QString &error = {})
+    /*! Adds \a count entries for \a url with \a error and, if given, \a status. */
+    Q_INVOKABLE void addHistory(const QString &url, int count, const QString &error = {},
+                                int status = 0)
     {
         RequestSpec request;
         request.url = url;
         ResponseData response;
-        response.statusCode = error.isEmpty() ? 200 : 0;
+        response.statusCode = status > 0 ? status : (error.isEmpty() ? 200 : 0);
         response.errorString = error;
         for (int i = 0; i < count; ++i)
             m_history.record(request, response);

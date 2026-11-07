@@ -92,8 +92,8 @@ void HistoryModel::load()
  *
  * Rows are reported one by one, so a list being read keeps its place and its
  * current entry. Only when the store merges entries it could not read before does
- * the model reset. The store writes on the GUI thread: 74 ms at worst for 200
- * entries of maximum size.
+ * the model reset. The store writes on the GUI thread, which took about 200 ms
+ * for 200 entries of maximum size, depending on the machine and on the content.
  * \param request The request as it was sent; the store redacts it.
  * \param response The outcome; a request the user cancelled is left out.
  */

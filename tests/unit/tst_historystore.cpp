@@ -84,6 +84,17 @@ private slots:
     /*! Verifies rows whose names say they hold credentials. */
     void redactsCredentialRows();
 
+    /*! Verifies the usual short and vendor names of credentials. */
+    void redactsCommonCredentialNames_data();
+    /*! Runs one name case. */
+    void redactsCommonCredentialNames();
+
+    /*! Verifies that a value shows it is a credential whatever its header is called. */
+    void redactsHeaderValuesWithAuthScheme();
+
+    /*! Verifies a token standing in the place of a user name, as in curl -u token: */
+    void redactsTokenInUsername();
+
     /*! Verifies that ordinary rows stay as they are. */
     void keepsOrdinaryRows();
 
@@ -233,6 +244,14 @@ void HistoryStoreTest::redactsUrlCredentials_data()
     QTest::newRow("at in query") << QStringLiteral("http://h/x?mail=a@b")
                                  << QStringLiteral("http://h/x?mail=a@b");
     QTest::newRow("plain") << QStringLiteral("http://h:8080/x") << QStringLiteral("http://h:8080/x");
+    QTest::newRow("no scheme") << QStringLiteral("admin:pw@example.com/x")
+                               << QStringLiteral("example.com/x");
+    QTest::newRow("no scheme, port") << QStringLiteral("example.com:8080/x")
+                                     << QStringLiteral("example.com:8080/x");
+    QTest::newRow("no scheme, reference") << QStringLiteral("{{baseUrl}}/x")
+                                          << QStringLiteral("{{baseUrl}}/x");
+    QTest::newRow("mixed user") << QStringLiteral("https://tok{{x}}@h/y")
+                                << QStringLiteral("https://h/y");
 }
 
 void HistoryStoreTest::redactsUrlCredentials()
@@ -266,10 +285,68 @@ void HistoryStoreTest::redactsCredentialRows()
     QVERIFY(result.body.form.at(1).value.isEmpty());
 }
 
+void HistoryStoreTest::redactsCommonCredentialNames_data()
+{
+    QTest::addColumn<QString>("name");
+
+    QTest::newRow("key") << QStringLiteral("key");
+    QTest::newRow("auth") << QStringLiteral("auth");
+    QTest::newRow("pass") << QStringLiteral("pass");
+    QTest::newRow("sig") << QStringLiteral("sig");
+    QTest::newRow("signature") << QStringLiteral("X-Signature");
+    QTest::newRow("access key") << QStringLiteral("aws_access_key");
+    QTest::newRow("jwt") << QStringLiteral("jwt");
+    QTest::newRow("x-auth") << QStringLiteral("X-Auth");
+    QTest::newRow("authentication") << QStringLiteral("Authentication");
+}
+
+void HistoryStoreTest::redactsCommonCredentialNames()
+{
+    QFETCH(QString, name);
+
+    RequestSpec spec;
+    spec.queryParams = {{name, QStringLiteral("literal"), true}};
+
+    QVERIFY(HistoryStore::redacted(spec).queryParams.at(0).value.isEmpty());
+}
+
+void HistoryStoreTest::redactsHeaderValuesWithAuthScheme()
+{
+    RequestSpec spec;
+    spec.headers = {{QStringLiteral("X-Whatever"), QStringLiteral("Bearer abc"), true},
+                    {QStringLiteral("X-Other"), QStringLiteral("basic abc"), true},
+                    {QStringLiteral("X-Reference"), QStringLiteral("Bearer {{t}}"), true},
+                    {QStringLiteral("X-Word"), QStringLiteral("Token"), true}};
+
+    const RequestSpec result = HistoryStore::redacted(spec);
+
+    QVERIFY(result.headers.at(0).value.isEmpty());
+    QVERIFY(result.headers.at(1).value.isEmpty());
+    QCOMPARE(result.headers.at(2).value, QStringLiteral("Bearer {{t}}"));
+    QCOMPARE(result.headers.at(3).value, QStringLiteral("Token"));
+}
+
+void HistoryStoreTest::redactsTokenInUsername()
+{
+    RequestSpec spec;
+    spec.auth.type = AuthType::Basic;
+    spec.auth.username = QStringLiteral("sk_live_x");
+
+    QVERIFY(HistoryStore::redacted(spec).auth.username.isEmpty());
+
+    spec.auth.password = QStringLiteral("pw");
+    QCOMPARE(HistoryStore::redacted(spec).auth.username, QStringLiteral("sk_live_x"));
+
+    spec.auth.password.clear();
+    spec.auth.username = QStringLiteral("{{user}}");
+    QCOMPARE(HistoryStore::redacted(spec).auth.username, QStringLiteral("{{user}}"));
+}
+
 void HistoryStoreTest::keepsOrdinaryRows()
 {
     RequestSpec spec;
-    spec.queryParams = {{QStringLiteral("author"), QStringLiteral("Ann"), true}};
+    spec.queryParams = {{QStringLiteral("author"), QStringLiteral("Ann"), true},
+                        {QStringLiteral("monkey"), QStringLiteral("Bob"), true}};
     spec.headers = {{QStringLiteral("Accept"), QStringLiteral("*/*"), true}};
     spec.body.form = {{QStringLiteral("name"), QStringLiteral("Bob"), true}};
 

@@ -29,13 +29,27 @@ constexpr int kHistorySchemaVersion = 1;
  * \internal
  * \brief Parts of header, parameter, and field names that mark a credential.
  */
-constexpr std::array<QLatin1StringView, 11> kCredentialNameParts {
-    QLatin1StringView("authorization"), QLatin1StringView("cookie"),
+constexpr std::array<QLatin1StringView, 17> kCredentialNameParts {
+    QLatin1StringView("authorization"), QLatin1StringView("authentication"),
+    QLatin1StringView("x-auth"),        QLatin1StringView("cookie"),
     QLatin1StringView("token"),         QLatin1StringView("secret"),
     QLatin1StringView("password"),      QLatin1StringView("passwd"),
     QLatin1StringView("pwd"),           QLatin1StringView("apikey"),
     QLatin1StringView("api-key"),       QLatin1StringView("api_key"),
-    QLatin1StringView("session"),
+    QLatin1StringView("access_key"),    QLatin1StringView("accesskey"),
+    QLatin1StringView("session"),       QLatin1StringView("signature"),
+    QLatin1StringView("jwt"),
+};
+
+/*!
+ * \internal
+ * \brief Short names that mark a credential only as a whole name: "key", not "monkey".
+ */
+constexpr std::array<QLatin1StringView, 4> kCredentialNames {
+    QLatin1StringView("key"),
+    QLatin1StringView("auth"),
+    QLatin1StringView("pass"),
+    QLatin1StringView("sig"),
 };
 
 /*!
@@ -92,9 +106,28 @@ void clearLiteral(QString &value)
  */
 bool isCredentialName(QStringView name)
 {
-    return std::any_of(kCredentialNameParts.cbegin(), kCredentialNameParts.cend(),
-                       [name](QLatin1StringView part) {
-                           return name.contains(part, Qt::CaseInsensitive);
+    const QStringView trimmed = name.trimmed();
+    return std::any_of(kCredentialNames.cbegin(), kCredentialNames.cend(),
+                       [trimmed](QLatin1StringView candidate) {
+                           return trimmed.compare(candidate, Qt::CaseInsensitive) == 0;
+                       })
+        || std::any_of(kCredentialNameParts.cbegin(), kCredentialNameParts.cend(),
+                       [trimmed](QLatin1StringView part) {
+                           return trimmed.contains(part, Qt::CaseInsensitive);
+                       });
+}
+
+/*!
+ * \internal
+ * \brief Returns whether \a value has the form of a credential, as in "Bearer abc".
+ */
+bool startsWithAuthScheme(QStringView value)
+{
+    return std::any_of(kAuthSchemes.cbegin(), kAuthSchemes.cend(),
+                       [value](QLatin1StringView scheme) {
+                           return value.size() > scheme.size() + 1
+                               && value.startsWith(scheme, Qt::CaseInsensitive)
+                               && value.at(scheme.size()).isSpace();
                        });
 }
 
@@ -115,15 +148,14 @@ void clearCredentialRows(QList<KeyValue> &rows)
  * \brief Removes literal credentials from the user information of \a url.
  *
  * User information without a reference goes whole: a token often stands in the
- * place of the user name. With a reference, only a literal password goes.
+ * place of the user name. With a reference, a literal password goes, and so does
+ * a user name mixing a reference with a literal part. A URL without a scheme counts
+ * too, because RequestBuilder prepends one and sends the credentials.
  */
 void redactUserInfo(QString &url)
 {
     const qsizetype scheme = url.indexOf(QLatin1StringView("://"));
-    if (scheme < 0)
-        return;
-
-    const qsizetype start = scheme + 3;
+    const qsizetype start = scheme < 0 ? 0 : scheme + 3;
     qsizetype end = start;
     while (end < url.size() && url.at(end) != u'/' && url.at(end) != u'?' && url.at(end) != u'#')
         ++end;
@@ -132,14 +164,16 @@ void redactUserInfo(QString &url)
         return;
 
     QString info = url.sliced(start, at - start);
-    if (VariableResolver::references(info).isEmpty()) {
+    const qsizetype colon = info.indexOf(u':');
+    if (colon < 0)
+        clearLiteral(info);
+    if (info.isEmpty() || VariableResolver::references(info).isEmpty()) {
         url.remove(start, at - start + 1);
         return;
     }
-
-    const qsizetype colon = info.indexOf(u':');
     if (colon < 0)
         return;
+
     QString password = info.sliced(colon + 1);
     clearLiteral(password);
     url.replace(start, at - start, info.first(colon + 1) + password);
@@ -396,11 +430,20 @@ RequestSpec HistoryStore::redacted(const RequestSpec &spec)
     clearLiteral(result.auth.token);
     clearLiteral(result.auth.apiKeyValue);
 
+    // Basic without a password has the secret in the user name, as in curl -u token:
+    if (spec.auth.type == AuthType::Basic && spec.auth.password.isEmpty())
+        clearLiteral(result.auth.username);
+
     redactUserInfo(result.url);
     redactQuery(result.url);
     clearCredentialRows(result.queryParams);
     clearCredentialRows(result.headers);
     clearCredentialRows(result.body.form);
+
+    for (KeyValue &header : result.headers) {
+        if (startsWithAuthScheme(header.value))
+            clearLiteral(header.value);
+    }
 
     const QString apiKeyName = spec.auth.apiKeyName.trimmed();
     if (!apiKeyName.isEmpty()) {

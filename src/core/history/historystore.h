@@ -23,7 +23,7 @@ struct HistoryEntry
     int statusCode {0};
     /** Duration of the request in milliseconds. */
     qint64 elapsedMs {0};
-    /** Transport failure text; empty when the server answered. */
+    /** Transport failure text, also after a status line; empty when the transfer completed. */
     QString errorString;
     /** Whether the raw body was too large to keep. */
     bool bodyOmitted {false};

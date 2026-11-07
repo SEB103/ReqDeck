@@ -661,6 +661,44 @@ Item {
             compare(findChild(row, "historyResult").text, "Connection refused");
         }
 
+        /*! Verifies that a failure after the status line does not read as success. */
+        function test_historyShowsFailureAfterStatus() {
+            cppTestHost.addHistory("http://x", 1, "Connection closed", 200);
+
+            const row = findChild(createHistory(), "historyList").itemAtIndex(0);
+
+            const result = findChild(row, "historyResult").text;
+            verify(result.indexOf("200") === 0, result);
+            verify(result.indexOf("Connection closed") > 0, result);
+        }
+
+        /*! Verifies that the send shortcut does not open the chosen entry. */
+        function test_historyControlReturnOpensNothing() {
+            cppTestHost.addHistory("http://x", 1);
+            const list = findChild(createHistory(), "historyList");
+            list.forceActiveFocus();
+            keyClick(Qt.Key_Down);
+            compare(list.currentIndex, 0);
+
+            keyClick(Qt.Key_Return, Qt.ControlModifier);
+            keyClick(Qt.Key_Enter, Qt.ControlModifier);
+
+            compare(cppWorkspaceManager.dirty, false);
+            compare(cppRequestEditor.hasRequest, false);
+        }
+
+        /*! Verifies that the keypad Enter key opens the chosen entry. */
+        function test_historyKeypadEnterOpensEntry() {
+            cppTestHost.addHistory("http://x", 1);
+            const list = findChild(createHistory(), "historyList");
+            list.forceActiveFocus();
+            keyClick(Qt.Key_Down);
+
+            keyClick(Qt.Key_Enter, Qt.KeypadModifier);
+
+            compare(cppRequestEditor.url, "http://x");
+        }
+
         /*! Verifies that opening an entry adds a request and shows it. */
         function test_openingEntryCreatesRequest() {
             cppTestHost.addHistory("http://x/items", 1);
@@ -1014,7 +1052,7 @@ Item {
             tryCompare(host.dialog, "visible", false);
         }
 
-        /*! Creates the application window with r2 open at  url and a name being typed. */
+        /*! Creates the application window with r2 open at \a url and a name being typed. */
         function createMainTypingName(url) {
             const window = createTemporaryObject(mainComponent, root);
             verify(window !== null);
