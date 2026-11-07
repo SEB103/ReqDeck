@@ -358,6 +358,22 @@ target_link_libraries(tst_historymodel
 
 add_test(NAME HistoryModel.Unit COMMAND tst_historymodel)
 
+qt_add_executable(tst_helplibrary
+    unit/tst_helplibrary.cpp
+)
+
+target_compile_definitions(tst_helplibrary
+    PRIVATE REQDECK_HELP_DIR="${CMAKE_SOURCE_DIR}/resources/help"
+)
+
+target_link_libraries(tst_helplibrary
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Test
+)
+
+add_test(NAME HelpLibrary.Unit COMMAND tst_helplibrary)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml
@@ -399,6 +415,7 @@ target_sources(tst_screens
 )
 
 target_compile_definitions(tst_screens
+    PRIVATE REQDECK_HELP_DIR="${CMAKE_SOURCE_DIR}/resources/help"
     PRIVATE QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/screens"
 )
 

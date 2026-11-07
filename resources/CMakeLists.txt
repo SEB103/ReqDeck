@@ -50,6 +50,17 @@ qt_add_resources(appReqDeck "application_resources"
 # distribution and REUSE); they are embedded here so the About dialog has no
 # runtime dependency on any deployed folder. BASE is the project root, so the
 # files keep their LICENSES/ path under the /licenses resource prefix.
+# Help topics and guide chapters, one file per language; the PDF guide made from
+# them is installed next to the executable instead.
+qt_add_resources(appReqDeck "help_resources"
+    PREFIX "/help"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/help"
+
+    FILES
+        help/help.en.json
+        help/help.ru.json
+)
+
 qt_add_resources(appReqDeck "license_resources"
     PREFIX "/licenses"
     BASE "${CMAKE_SOURCE_DIR}"

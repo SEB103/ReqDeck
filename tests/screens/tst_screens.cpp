@@ -24,6 +24,7 @@
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/environmentmodel.h"
 #include "qmlapi/environmentvariablesmodel.h"
+#include "qmlapi/helplibrary.h"
 #include "qmlapi/historymodel.h"
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/requesteditor.h"
@@ -98,6 +99,7 @@ public:
         context->setContextProperty(QStringLiteral("cppCollection"), &m_collection);
         context->setContextProperty(QStringLiteral("cppEnvironments"), &m_environments);
         context->setContextProperty(QStringLiteral("cppHistory"), &m_history);
+        context->setContextProperty(QStringLiteral("cppHelp"), &m_help);
         context->setContextProperty(QStringLiteral("cppRequestEditor"), &m_editor);
         context->setContextProperty(QStringLiteral("cppResponse"), &m_response);
         context->setContextProperty(QStringLiteral("cppTestHost"), this);
@@ -252,6 +254,9 @@ private:
 
     /*! Real environment model. */
     EnvironmentModel m_environments {&m_manager};
+
+    /*! Real help topics in English, read from the source tree. */
+    HelpLibrary m_help {QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR)};
 
     /*! Real history over a temporary file. */
     HistoryModel m_history {m_dir.filePath(QStringLiteral("history.json"))};

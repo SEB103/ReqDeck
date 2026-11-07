@@ -1,0 +1,541 @@
+{
+    "schema": 1,
+    "language": "en",
+    "topics": {
+        "start": {
+            "title": "Getting started",
+            "what": "ReqDeck sends requests to web services (APIs) and shows what they answer.",
+            "why": "You can try an API without writing code, and keep the requests you need.",
+            "example": "Open Samples on the start screen, pick \"List users\", and press Send.",
+            "next": "Point at any field or button and press F1 to learn what it does.",
+            "chapter": "first-request"
+        },
+        "menu": {
+            "title": "Menu",
+            "what": "All commands of ReqDeck, grouped by what they work on.",
+            "why": "Commands you do not see as buttons are here, with their shortcuts.",
+            "example": "File > Import cURL turns a copied command into a request.",
+            "next": "Most commands also have a shortcut, shown next to them.",
+            "chapter": "first-request"
+        },
+        "topbar.environment": {
+            "title": "Environment",
+            "what": "Chooses which set of variables your requests use right now.",
+            "why": "The same requests can go to a test server or to the real one without changes.",
+            "example": "Switch from \"Staging\" to \"Production\", and {{baseUrl}} points to the other server.",
+            "next": "Use the button next to it to create or edit environments.",
+            "chapter": "variables"
+        },
+        "topbar.manageEnvironments": {
+            "title": "Manage environments",
+            "what": "Opens the list of environments and their variables.",
+            "why": "Here you define values such as addresses and keys once, for all requests.",
+            "example": "Add a variable baseUrl with the value https://httpbin.org.",
+            "next": "Then write {{baseUrl}}/get in the URL of a request.",
+            "chapter": "variables"
+        },
+        "topbar.save": {
+            "title": "Save workspace",
+            "what": "Writes all requests and environments to the workspace file.",
+            "why": "Changes live only in memory until you save them.",
+            "example": "Press Ctrl+S after editing a request.",
+            "next": "The status bar shows when the workspace has unsaved changes.",
+            "chapter": "first-request"
+        },
+        "topbar.settings": {
+            "title": "Settings",
+            "what": "Opens the settings of the application.",
+            "why": "Here you choose the language, the folder for new workspaces, and update checks.",
+            "example": "Pick the folder where new workspaces are created.",
+            "next": "Settings apply at once.",
+            "chapter": "first-request"
+        },
+        "collection.tree": {
+            "title": "Collection",
+            "what": "Your saved requests, sorted into folders.",
+            "why": "You do not have to type a request again: click it and send it.",
+            "example": "Right-click to add a request or a folder, rename, duplicate, or delete.",
+            "next": "Click a request to open it in the middle pane.",
+            "chapter": "first-request"
+        },
+        "sidebar.tabs": {
+            "title": "Collection and History",
+            "what": "Switches the left pane between your saved requests and the requests you sent.",
+            "why": "History lets you find a request you sent earlier, even if you never saved it.",
+            "example": "Open History to see the last requests with their status.",
+            "next": "Double-click an entry in History to make a request from it.",
+            "chapter": "history"
+        },
+        "history.list": {
+            "title": "History",
+            "what": "The requests you sent, newest first, with their status and time.",
+            "why": "You can repeat or inspect what you did before.",
+            "example": "Green 200 means success, orange 404 means \"not found\", red means a failure.",
+            "next": "Double-click an entry, or select it and press Return, to make a request from it. Passwords are not kept.",
+            "chapter": "history"
+        },
+        "history.clear": {
+            "title": "Clear history",
+            "what": "Removes all entries from the history.",
+            "why": "Useful when the list gets long or holds requests you do not need.",
+            "example": "ReqDeck asks before it removes anything.",
+            "next": "Your saved requests are not affected.",
+            "chapter": "history"
+        },
+        "request.name": {
+            "title": "Request name",
+            "what": "The name under which the request appears in the collection.",
+            "why": "A clear name helps you find the request later.",
+            "example": "\"Create user\" or \"List orders\".",
+            "next": "Click the name to change it; it is stored when you leave the field.",
+            "chapter": "first-request"
+        },
+        "request.method": {
+            "title": "Method",
+            "what": "What the request asks the server to do.",
+            "why": "The same address can mean different actions depending on the method.",
+            "example": "GET reads, POST creates, PUT or PATCH changes, DELETE removes.",
+            "next": "Most APIs say in their documentation which method to use.",
+            "chapter": "requests"
+        },
+        "request.url": {
+            "title": "Address (URL)",
+            "what": "Where the request goes, like the address of a website in a browser.",
+            "why": "It names the server and the thing you want from it.",
+            "example": "https://httpbin.org/get, or with a variable: {{baseUrl}}/users",
+            "next": "Press Send or Ctrl+Enter. A red, underlined {{name}} is a variable without a value.",
+            "chapter": "first-request"
+        },
+        "request.send": {
+            "title": "Send",
+            "what": "Sends the request and waits for the answer.",
+            "why": "The answer appears on the right: status, time, size, and content.",
+            "example": "Press Ctrl+Enter from any field of the request.",
+            "next": "While the request runs, the button cancels it.",
+            "chapter": "first-request"
+        },
+        "request.tabs": {
+            "title": "Parts of a request",
+            "what": "Params, Headers, Body, and Auth are the parts a request can carry besides its address.",
+            "why": "Each part answers a different question: what to filter, how to talk, what to send, who you are.",
+            "example": "Add a parameter page=2 in Params to ask for the second page.",
+            "next": "Many requests need only the URL; the other parts are optional.",
+            "chapter": "requests"
+        },
+        "request.params": {
+            "title": "Parameters",
+            "what": "Name and value pairs added to the address after a question mark.",
+            "why": "They tell the server what exactly you want, for example a search word or a page.",
+            "example": "q = coffee becomes ?q=coffee at the end of the URL.",
+            "next": "Clear the box at the start of a row to leave that parameter out for now.",
+            "chapter": "requests"
+        },
+        "request.headers": {
+            "title": "Headers",
+            "what": "Extra information sent with the request, as name and value pairs.",
+            "why": "Servers use headers to learn the format you send and accept, or who you are.",
+            "example": "Accept = application/json asks for an answer in JSON.",
+            "next": "For a login, use the Auth tab instead of typing the header by hand.",
+            "chapter": "requests"
+        },
+        "request.body": {
+            "title": "Body",
+            "what": "Content sent with the request, usually when you create or change something.",
+            "why": "POST, PUT, and PATCH requests often carry the new data here.",
+            "example": "{\"name\": \"Ann\"} as JSON to create a user.",
+            "next": "Choose the kind of body first; GET requests usually have none.",
+            "chapter": "requests"
+        },
+        "request.bodyMode": {
+            "title": "Kind of body",
+            "what": "Chooses how the content is sent: none, raw text, or form fields.",
+            "why": "The server expects one form, and the API documentation names it.",
+            "example": "Raw with JSON for most modern APIs; Form for classic web forms.",
+            "next": "The matching Content-Type header is added for you.",
+            "chapter": "requests"
+        },
+        "request.rawType": {
+            "title": "Format of the text",
+            "what": "Says whether the raw text is JSON, XML, or plain text.",
+            "why": "It sets the Content-Type header, so the server knows how to read the body.",
+            "example": "JSON for {\"name\": \"Ann\"}.",
+            "next": "Type the text in the field below.",
+            "chapter": "requests"
+        },
+        "request.rawBody": {
+            "title": "Body text",
+            "what": "The exact text sent as the body.",
+            "why": "Here you write the data the server should receive.",
+            "example": "{\"title\": \"Buy milk\", \"done\": false}",
+            "next": "Variables such as {{userId}} work here too.",
+            "chapter": "requests"
+        },
+        "request.form": {
+            "title": "Form fields",
+            "what": "Name and value pairs sent like a web form.",
+            "why": "Some servers expect data this way instead of JSON.",
+            "example": "username = ann, remember = true",
+            "next": "Clear the box at the start of a row to leave that field out.",
+            "chapter": "requests"
+        },
+        "request.authType": {
+            "title": "Authentication",
+            "what": "Chooses how the request proves who you are.",
+            "why": "Many APIs answer only to known users and refuse others with 401.",
+            "example": "Basic for a user name and password, Bearer for a token, API key for a key.",
+            "next": "The API documentation says which one it uses.",
+            "chapter": "auth"
+        },
+        "request.authUser": {
+            "title": "User name",
+            "what": "The user name for Basic authentication.",
+            "why": "Together with the password it identifies you to the server.",
+            "example": "ann or {{user}}",
+            "next": "Prefer a variable for anything you would not show to others.",
+            "chapter": "auth"
+        },
+        "request.authPassword": {
+            "title": "Password",
+            "what": "The password for Basic authentication.",
+            "why": "It proves the user name belongs to you.",
+            "example": "{{password}}, with the value kept as a secret variable.",
+            "next": "A password typed here is stored in the workspace file; a secret variable is not.",
+            "chapter": "auth"
+        },
+        "request.token": {
+            "title": "Token",
+            "what": "A key the server gave you, sent as \"Bearer\" with each request.",
+            "why": "Many APIs use tokens instead of passwords.",
+            "example": "{{token}}, with the value kept as a secret variable.",
+            "next": "Tokens often expire; get a new one when the server answers 401.",
+            "chapter": "auth"
+        },
+        "request.apiKeyName": {
+            "title": "Key name",
+            "what": "The name under which the API key is sent.",
+            "why": "Each API chooses its own name for the key.",
+            "example": "X-Api-Key or api_key",
+            "next": "Enter the key itself in the next field.",
+            "chapter": "auth"
+        },
+        "request.apiKeyValue": {
+            "title": "Key value",
+            "what": "The API key itself.",
+            "why": "It identifies your account or app to the API.",
+            "example": "{{apiKey}}, with the value kept as a secret variable.",
+            "next": "Choose below whether it goes in a header or in the address.",
+            "chapter": "auth"
+        },
+        "request.apiKeyPlace": {
+            "title": "Where the key goes",
+            "what": "Chooses whether the key is sent as a header or as a parameter in the address.",
+            "why": "APIs expect it in one of the two places.",
+            "example": "Header is safer: addresses end up in logs more often.",
+            "next": "Follow the API documentation.",
+            "chapter": "auth"
+        },
+        "request.timeout": {
+            "title": "Timeout",
+            "what": "How long, in milliseconds, ReqDeck waits for an answer before it gives up.",
+            "why": "A server that never answers would otherwise keep you waiting.",
+            "example": "5000 waits five seconds. 0 uses the default.",
+            "next": "Raise it for slow operations such as large uploads.",
+            "chapter": "troubleshooting"
+        },
+        "table.enabled": {
+            "title": "Use this row",
+            "what": "Turns the row on or off without deleting it.",
+            "why": "You can try a request with and without a value quickly.",
+            "example": "Clear the box to leave page=2 out for one send.",
+            "next": "The cross at the end of the row deletes it.",
+            "chapter": "requests"
+        },
+        "response.status": {
+            "title": "Status, time, and size",
+            "what": "The server's verdict, how long it took, and how big the answer was.",
+            "why": "The status tells at a glance whether the request worked.",
+            "example": "200 OK worked, 404 not found, 401 not allowed, 500 the server failed.",
+            "next": "The guide explains the codes you will meet most.",
+            "chapter": "response"
+        },
+        "response.tabs": {
+            "title": "Body and Headers of the answer",
+            "what": "Body shows the content of the answer, Headers the information about it.",
+            "why": "Most of the time you need the body; headers help when something is unclear.",
+            "example": "Content-Type in Headers says what kind of content came back.",
+            "next": "Switch with the tabs above.",
+            "chapter": "response"
+        },
+        "response.pretty": {
+            "title": "Pretty and Raw",
+            "what": "Pretty indents JSON and XML so they are easy to read; Raw shows the text exactly as it came.",
+            "why": "Pretty is easier to read, Raw shows what the server really sent.",
+            "example": "A long one-line JSON becomes an indented tree with line numbers.",
+            "next": "Copy the body from Raw if you need it unchanged.",
+            "chapter": "response"
+        },
+        "response.body": {
+            "title": "Body of the answer",
+            "what": "The content the server sent back.",
+            "why": "This is usually the data you asked for.",
+            "example": "A list of users in JSON.",
+            "next": "Select text and press Ctrl+C to copy it.",
+            "chapter": "response"
+        },
+        "response.headers": {
+            "title": "Headers of the answer",
+            "what": "Information the server sent about its answer.",
+            "why": "They tell the format, caching, cookies, and more.",
+            "example": "Content-Type: application/json; charset=utf-8",
+            "next": "Most of the time you can ignore them.",
+            "chapter": "response"
+        },
+        "environments.list": {
+            "title": "Environments",
+            "what": "Your sets of variables, for example one per server.",
+            "why": "Switching the environment switches all values at once.",
+            "example": "\"Local\", \"Staging\", \"Production\".",
+            "next": "Select one to edit its variables on the right.",
+            "chapter": "variables"
+        },
+        "environments.add": {
+            "title": "Add environment",
+            "what": "Creates a new, empty environment.",
+            "why": "For example for another server.",
+            "example": "Add \"Staging\" and give it its own baseUrl.",
+            "next": "Type its name, then add variables.",
+            "chapter": "variables"
+        },
+        "environments.duplicate": {
+            "title": "Duplicate environment",
+            "what": "Copies the selected environment with all its variables.",
+            "why": "Faster than typing the same variables again.",
+            "example": "Copy \"Staging\" to start \"Production\", then change the values.",
+            "next": "Rename the copy.",
+            "chapter": "variables"
+        },
+        "environments.remove": {
+            "title": "Remove environment",
+            "what": "Deletes the selected environment and its variables.",
+            "why": "To get rid of one you no longer need.",
+            "example": "ReqDeck asks before it deletes.",
+            "next": "Requests that used its variables show them as unresolved.",
+            "chapter": "variables"
+        },
+        "environments.name": {
+            "title": "Environment name",
+            "what": "The name shown in the selector at the top.",
+            "why": "A clear name avoids sending to the wrong server.",
+            "example": "\"Production\"",
+            "next": "It is stored when you leave the field.",
+            "chapter": "variables"
+        },
+        "environments.variables": {
+            "title": "Variables",
+            "what": "Names with values that requests can use as {{name}}.",
+            "why": "Write a value once and use it in many requests.",
+            "example": "baseUrl = https://httpbin.org, used as {{baseUrl}}/get",
+            "next": "Tick Secret for passwords and keys: the value stays out of the workspace file.",
+            "chapter": "variables"
+        },
+        "curl.input": {
+            "title": "cURL command",
+            "what": "Paste a curl command here to turn it into a request.",
+            "why": "API documentation and browsers often give requests as curl commands.",
+            "example": "In a browser: Developer tools > Network > right-click > Copy as cURL (bash).",
+            "next": "The line below tells what was understood; press Import.",
+            "chapter": "history"
+        },
+        "curl.import": {
+            "title": "Import",
+            "what": "Adds the request from the command to your collection and opens it.",
+            "why": "You can then edit and send it like any other.",
+            "example": "Options ReqDeck cannot use are listed before you import.",
+            "next": "Check the URL and headers, then press Send.",
+            "chapter": "history"
+        },
+        "launcher.open": {
+            "title": "Open workspace",
+            "what": "Opens a workspace file from your disk.",
+            "why": "A workspace holds your requests and environments.",
+            "example": "A file ending in .reqdeck.",
+            "next": "Recent workspaces are listed above for one click.",
+            "chapter": "first-request"
+        },
+        "launcher.create": {
+            "title": "Create workspace",
+            "what": "Starts a new, empty workspace file.",
+            "why": "Use one workspace per project or API.",
+            "example": "\"Shop API\"",
+            "next": "Then add a request with Ctrl+N.",
+            "chapter": "first-request"
+        },
+        "launcher.samples": {
+            "title": "Open samples",
+            "what": "Opens ready requests against free test services.",
+            "why": "The fastest way to see how ReqDeck works.",
+            "example": "Pick a request and press Send.",
+            "next": "Change the samples freely; they are your own copy.",
+            "chapter": "first-request"
+        },
+        "launcher.recent": {
+            "title": "Recent workspaces",
+            "what": "Workspaces you opened before.",
+            "why": "One click opens them again.",
+            "example": "The cross removes an entry from the list, not the file.",
+            "next": "Click a row to open it.",
+            "chapter": "first-request"
+        },
+        "dialog.settings": {
+            "title": "Settings",
+            "what": "Language, folder for new workspaces, and update checks.",
+            "why": "To adapt ReqDeck to how you work.",
+            "example": "Turn off automatic update checks if you prefer to check yourself.",
+            "next": "Close the window when done; changes apply at once.",
+            "chapter": "first-request"
+        },
+        "dialog.about": {
+            "title": "About ReqDeck",
+            "what": "Version, license, and the parts ReqDeck is built from.",
+            "why": "Useful when you report a problem.",
+            "example": "Copy the version when you write to support.",
+            "next": "ReqDeck is free software under the GPL.",
+            "chapter": "first-request"
+        },
+        "dialog.update": {
+            "title": "Updates",
+            "what": "Tells whether a newer ReqDeck exists and installs it.",
+            "why": "New versions fix problems and add features.",
+            "example": "Install the update when it suits you.",
+            "next": "Your workspaces are not changed by an update.",
+            "chapter": "first-request"
+        },
+        "dialog.workspace": {
+            "title": "Workspace",
+            "what": "Name and folder of a new workspace.",
+            "why": "The workspace is one file in that folder.",
+            "example": "\"Shop API\" in Documents\\ReqDeck",
+            "next": "Press OK to create it.",
+            "chapter": "first-request"
+        },
+        "dialog.confirm": {
+            "title": "Confirmation",
+            "what": "ReqDeck asks before it does something that cannot be undone.",
+            "why": "So that nothing is lost by a slip of the mouse.",
+            "example": "Unsaved changes: Save keeps them, Discard drops them, Cancel goes back.",
+            "next": "Read the question, then choose.",
+            "chapter": "first-request"
+        },
+        "log.panel": {
+            "title": "Log",
+            "what": "Messages of the application: what it did and what went wrong.",
+            "why": "Helps to understand a problem.",
+            "example": "Filter by level to see only warnings and errors.",
+            "next": "View > Hide Log Panel closes it.",
+            "chapter": "troubleshooting"
+        }
+    },
+    "chapters": [
+        {
+            "id": "first-request",
+            "title": "Your first request in five minutes",
+            "blocks": [
+                {"type": "p", "text": "A request is a message your computer sends to a server. The server answers with a response. That is all an API is: a server that answers requests from programs instead of from people with a browser."},
+                {"type": "steps", "items": [
+                    "Start ReqDeck and choose Open Samples.",
+                    "In the Collection on the left, click \"List users\".",
+                    "Look at the address in the middle: this is where the request goes.",
+                    "Press Send, or Ctrl+Enter.",
+                    "On the right you see the answer: a green 200 OK and a list of users."
+                ]},
+                {"type": "shot", "file": "first-request.png", "caption": "A request in the middle, its answer on the right."},
+                {"type": "tip", "text": "Not sure what something is? Point at it and press F1."}
+            ]
+        },
+        {
+            "id": "requests",
+            "title": "What a request is made of",
+            "blocks": [
+                {"type": "p", "text": "Think of a request as a letter. The method is what you ask for, the address is where it goes, parameters and headers are notes on the envelope, and the body is the letter inside."},
+                {"type": "table", "rows": [
+                    ["GET", "Read something. No body."],
+                    ["POST", "Create something new. Usually with a body."],
+                    ["PUT / PATCH", "Change something that exists."],
+                    ["DELETE", "Remove something."]
+                ]},
+                {"type": "p", "text": "Parameters are added to the address after a question mark, for example ?page=2. Headers carry information about the request, such as the format you accept. The body carries data, most often as JSON."},
+                {"type": "shot", "file": "body.png", "caption": "A JSON body for a POST request."}
+            ]
+        },
+        {
+            "id": "variables",
+            "title": "Variables and environments",
+            "blocks": [
+                {"type": "p", "text": "A variable is a name for a value you use in many requests. Write {{baseUrl}} instead of the full server address, and change the address in one place."},
+                {"type": "p", "text": "An environment is a set of variables. Make one for each server, for example Staging and Production, and switch between them at the top of the window."},
+                {"type": "shot", "file": "environments.png", "caption": "Environments and their variables."},
+                {"type": "tip", "text": "A {{name}} in red with an underline has no value in the active environment."},
+                {"type": "warn", "text": "Tick Secret for passwords and keys. Their values are then kept out of the workspace file."}
+            ]
+        },
+        {
+            "id": "auth",
+            "title": "Logging in: authentication",
+            "blocks": [
+                {"type": "p", "text": "Many APIs answer only to users they know. The Auth tab adds the proof to each request."},
+                {"type": "table", "rows": [
+                    ["Basic", "User name and password."],
+                    ["Bearer", "A token the service gave you."],
+                    ["API key", "A key, sent as a header or a parameter."]
+                ]},
+                {"type": "warn", "text": "Use variables such as {{token}} with Secret ticked, so the value is not saved in the workspace file."}
+            ]
+        },
+        {
+            "id": "response",
+            "title": "Reading the answer",
+            "blocks": [
+                {"type": "p", "text": "The first number tells whether the request worked. Codes starting with 2 mean success, with 4 a problem with the request, with 5 a problem on the server."},
+                {"type": "table", "rows": [
+                    ["200 OK", "It worked."],
+                    ["201 Created", "Something new was created."],
+                    ["204 No Content", "It worked; there is nothing to show."],
+                    ["400 Bad Request", "The server did not understand the request. Check the body and parameters."],
+                    ["401 Unauthorized", "You are not logged in, or the token expired."],
+                    ["403 Forbidden", "You are logged in but not allowed."],
+                    ["404 Not Found", "Nothing at this address. Check the URL."],
+                    ["429 Too Many Requests", "Slow down and try later."],
+                    ["500 Internal Server Error", "The server failed. Not your fault, usually."]
+                ]},
+                {"type": "shot", "file": "response.png", "caption": "Status, time, size, and a pretty body with line numbers."}
+            ]
+        },
+        {
+            "id": "history",
+            "title": "History and cURL",
+            "blocks": [
+                {"type": "p", "text": "Every request you send lands in History, on the left. Double-click an entry to make a new request from it. Passwords and tokens written in a request are not kept there."},
+                {"type": "p", "text": "Documentation often shows requests as curl commands. Use File > Import cURL to turn one into a request, and Request > Copy as cURL to share yours."},
+                {"type": "shot", "file": "history.png", "caption": "History with the status of each request."}
+            ]
+        },
+        {
+            "id": "troubleshooting",
+            "title": "When something does not work",
+            "blocks": [
+                {"type": "table", "rows": [
+                    ["Connection refused", "Nothing answers at this address. Is the server running? Is the port right?"],
+                    ["Host not found", "The server name is wrong or the network is down."],
+                    ["Timeout", "The server took too long. Raise the timeout or try later."],
+                    ["Unresolved variable", "A {{name}} has no value. Pick the right environment."],
+                    ["Certificate error", "The server's HTTPS certificate is not trusted, common on test servers."]
+                ]},
+                {"type": "tip", "text": "View > Show Log Panel shows what ReqDeck did and what went wrong."}
+            ]
+        }
+    ],
+    "links": {
+        "practice": "https://httpbin.org",
+        "statusCodes": "https://developer.mozilla.org/docs/Web/HTTP/Status"
+    }
+}

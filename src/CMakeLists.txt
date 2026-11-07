@@ -86,6 +86,8 @@ target_sources(ReqDeckQmlApi
         qmlapi/environmentmodel.h
         qmlapi/environmentvariablesmodel.cpp
         qmlapi/environmentvariablesmodel.h
+        qmlapi/helplibrary.cpp
+        qmlapi/helplibrary.h
         qmlapi/historymodel.cpp
         qmlapi/historymodel.h
         qmlapi/keyvaluemodel.cpp

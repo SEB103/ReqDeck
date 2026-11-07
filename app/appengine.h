@@ -11,6 +11,7 @@
 class AppInfo;
 class CollectionTreeModel;
 class EnvironmentModel;
+class HelpLibrary;
 class HistoryModel;
 class LicenseModel;
 class LocaleController;
@@ -28,7 +29,7 @@ QT_END_NAMESPACE
  * QML engine wrapper that owns application-level C++ services.
  *
  * Exposes the services to QML as context properties: \c cppAppEngine,
- * \c cppWorkspaceManager, \c cppCollection, \c cppEnvironments, \c cppHistory,
+ * \c cppWorkspaceManager, \c cppCollection, \c cppEnvironments, \c cppHistory, \c cppHelp,
  * \c cppRequestEditor, \c cppResponse,
  * \c cppAppInfo, \c cppLicenseModel, and, once injected, \c cppLocale and
  * \c cppUpdate. It also
@@ -89,6 +90,9 @@ private:
 
     /** Environments of the active workspace exposed to QML as \c cppEnvironments; owned by this engine. */
     EnvironmentModel* m_environments = nullptr;
+
+    /** Help topics exposed to QML as \c cppHelp; owned by this engine. */
+    HelpLibrary* m_help = nullptr;
 
     /** Sent requests exposed to QML as \c cppHistory; owned by this engine. */
     HistoryModel* m_history = nullptr;

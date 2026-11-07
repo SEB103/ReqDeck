@@ -1,0 +1,65 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#ifndef HELPLIBRARY_H
+#define HELPLIBRARY_H
+
+#include <QHash>
+#include <QObject>
+#include <QStringList>
+#include <QVariantMap>
+
+class QLocale;
+
+/**
+ * The help topics shown by F1, in one language, exposed to QML as \c cppHelp.
+ *
+ * Topics and the chapters of the guide come from one JSON file per language, so
+ * the panel and the PDF guide cannot drift apart.
+ */
+class HelpLibrary : public QObject
+{
+    Q_OBJECT
+    Q_DISABLE_COPY_MOVE(HelpLibrary)
+
+    /** Language of the topics, "en" or "ru". */
+    Q_PROPERTY(QString language READ language CONSTANT)
+
+public:
+    /** Loads help.<language>.json from \a directory; a missing or broken file leaves no topics. */
+    explicit HelpLibrary(const QString &language, const QString &directory = QStringLiteral(":/help"),
+                         QObject *parent = nullptr);
+
+    /** Returns the language of the topics. */
+    QString language() const;
+
+    /** Returns the topic \a id with title, what, why, example, next, and chapter; empty when unknown. */
+    Q_INVOKABLE QVariantMap topic(const QString &id) const;
+
+    /** Returns whether a topic \a id exists. */
+    Q_INVOKABLE bool hasTopic(const QString &id) const;
+
+    /** Returns the ids of all topics, sorted. */
+    QStringList topicIds() const;
+
+    /** Returns the ids of the chapters of the guide, in order. */
+    QStringList chapterIds() const;
+
+    /** Returns where the PDF guide of this language is installed. */
+    Q_INVOKABLE QString guidePath() const;
+
+    /** Returns "ru" for a Russian \a locale and "en" for any other. */
+    static QString languageFor(const QLocale &locale);
+
+private:
+    /** Language of the topics. */
+    QString m_language;
+
+    /** Topics by id. */
+    QHash<QString, QVariantMap> m_topics;
+
+    /** Chapter ids in order. */
+    QStringList m_chapters;
+};
+
+#endif // HELPLIBRARY_H

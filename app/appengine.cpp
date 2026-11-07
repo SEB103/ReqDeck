@@ -3,6 +3,7 @@
 
 #include "appengine.h"
 
+#include <QLocale>
 #include <QClipboard>
 #include <QCoreApplication>
 #include <QDateTime>
@@ -34,6 +35,7 @@
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/environmentmodel.h"
 #include "qmlapi/environmentvariablesmodel.h"
+#include "qmlapi/helplibrary.h"
 #include "qmlapi/historymodel.h"
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/requesteditor.h"
@@ -270,6 +272,7 @@ AppEngine::AppEngine(QObject* parent)
     , m_workspaceManager(new WorkspaceManager(this))
     , m_collection(new CollectionTreeModel(m_workspaceManager, this))
     , m_environments(new EnvironmentModel(m_workspaceManager, this))
+    , m_help(new HelpLibrary(HelpLibrary::languageFor(QLocale::system()), QStringLiteral(":/help"), this))
     , m_history(new HistoryModel(AppPaths::instance().historyFilePath(), this))
     , m_response(new ResponseView(this))
     , m_requestEditor(new RequestEditor(m_workspaceManager, m_collection, m_response, this))
@@ -302,6 +305,8 @@ AppEngine::AppEngine(QObject* parent)
     rootContext()->setContextProperty("cppEnvironments", m_environments);
     qmlRegisterUncreatableType<HistoryModel>("Cpp.WorkspaceManager", 1, 0, "HistoryModel", QStringLiteral("HistoryModel should not be created in QML."));
     rootContext()->setContextProperty("cppHistory", m_history);
+    qmlRegisterUncreatableType<HelpLibrary>("Cpp.WorkspaceManager", 1, 0, "HelpLibrary", QStringLiteral("HelpLibrary should not be created in QML."));
+    rootContext()->setContextProperty("cppHelp", m_help);
     connect(m_history, &HistoryModel::storageFailed, this, [](const QString &message) {
         qWarning().noquote() << message;
     });
