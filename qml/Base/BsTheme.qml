@@ -78,15 +78,22 @@ QtObject {
         }
     }
 
-    /*! Returns the color of the HTTP status \a code; 0 means no response. */
+    /*!
+        Returns the color of the HTTP status \a code; 0 means no response.
+
+        Like \l methodColor, this is content, not chrome, so it does not follow the
+        accent.
+    */
     function statusColor(code) {
+        if (code >= 100 && code < 200)
+            return theme.methodColor("HEAD")
         if (code >= 200 && code < 300)
-            return theme.methodColor("GET")
+            return theme.dark ? "#81C784" : "#2E7D32"
         if (code >= 300 && code < 400)
-            return theme.methodColor("PUT")
+            return theme.dark ? "#64B5F6" : "#1565C0"
         if (code >= 400 && code < 500)
-            return theme.methodColor("POST")
-        return theme.methodColor("DELETE")
+            return theme.dark ? "#FFB74D" : "#B85C00"
+        return theme.dark ? "#E57373" : "#C62828"
     }
 
     /*! Background of the pane header strips. */

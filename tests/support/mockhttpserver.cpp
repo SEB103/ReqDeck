@@ -272,6 +272,15 @@ void MockHttpServer::route(QTcpSocket *socket, const Request &request)
         return;
     }
 
+    if (path.startsWith("/lines/")) {
+        QByteArray body = "[0";
+        const int rows = path.mid(7).toInt();
+        for (int row = 1; row < rows; ++row)
+            body += ",0";
+        writeResponse(socket, 200, {{"Content-Type", "application/json"}}, body + "]", head);
+        return;
+    }
+
     if (path.startsWith("/json/")) {
         QByteArray body = "[";
         const int rows = path.mid(6).toInt();

@@ -13,8 +13,9 @@ import QtQuick.Controls.Material
     \brief Line number gutter for a text that does not wrap.
 
     Stands beside the text, not inside it, and only builds the rows in view, so
-    its cost does not grow with the length of the text. All lines must have the
-    same height, which holds for one font without wrapping.
+    its cost does not grow with the length of the text. It assumes lines of equal
+    height, which holds for one font without wrapping. Taller glyphs from a
+    fallback font, such as emoji, make the numbers drift from their lines.
 */
 Item {
     id: root
@@ -43,8 +44,11 @@ Item {
     readonly property int firstLine: root.view && root.lineHeight > 0
         ? Math.max(0, Math.floor((root.view.contentY - root.textTopPadding) / root.lineHeight)) : 0
 
+    /*! Whether numbers are shown; the gutter keeps its width either way. */
+    property bool showNumbers: true
+
     /*! Number of rows built. */
-    readonly property int visibleLines: root.view && root.lineHeight > 0
+    readonly property int visibleLines: root.showNumbers && root.view && root.lineHeight > 0
         ? Math.max(0, Math.min(root.lineCount - root.firstLine,
                                Math.ceil(root.height / root.lineHeight) + 2)) : 0
 
@@ -53,13 +57,15 @@ Item {
         return root.textTopPadding + line * root.lineHeight - (root.view ? root.view.contentY : 0)
     }
 
+    // The width never changes: a change would make the text beside it lay out the
+    // whole document again, which took seconds on a long body.
     implicitWidth: metrics.advanceWidth + 12
     clip: true
 
     TextMetrics {
         id: metrics
 
-        text: String(Math.max(root.lineCount, 999))
+        text: "000000"
     }
 
     Repeater {
@@ -73,7 +79,7 @@ Item {
             horizontalAlignment: Text.AlignRight
             font: root.font
             color: Material.foreground
-            opacity: 0.4
+            opacity: 0.55
             text: root.firstLine + index + 1
         }
     }

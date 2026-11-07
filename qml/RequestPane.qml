@@ -77,7 +77,8 @@ Item {
             Layout.fillWidth: true
             text: cppRequestEditor.name
             Accessible.name: qsTr("Request name")
-            // The editor refuses a blank name and reports no change then.
+            // The editor trims a name and refuses a blank one, without always
+            // reporting a change, so the field shows the stored name again.
             onEditingFinished: {
                 cppRequestEditor.name = text
                 nameTitle.text = Qt.binding(() => cppRequestEditor.name)
@@ -108,12 +109,13 @@ Item {
 
                     width: ListView.view.width
                     highlighted: methodCombo.highlightedIndex === methodOption.index
+                    text: methodOption.modelData
 
                     contentItem: Label {
                         verticalAlignment: Text.AlignVCenter
                         font.bold: true
-                        color: Base.BsTheme.methodColor(methodOption.modelData)
-                        text: methodOption.modelData
+                        color: Base.BsTheme.methodColor(methodOption.text)
+                        text: methodOption.text
                     }
                 }
             }

@@ -36,6 +36,9 @@ class ResponseView : public QObject
     /** Name of the request this response belongs to. */
     Q_PROPERTY(QString requestName READ requestName NOTIFY responseChanged)
 
+    /** Id of the request the response belongs to; names can repeat, ids cannot. */
+    Q_PROPERTY(QString requestId READ requestId NOTIFY responseChanged)
+
     /** HTTP status code; 0 when no response was received. */
     Q_PROPERTY(int statusCode READ statusCode NOTIFY responseChanged)
 
@@ -68,6 +71,9 @@ class ResponseView : public QObject
 
     /** Text for the body view, Pretty or Raw. */
     Q_PROPERTY(QString bodyText READ bodyText NOTIFY responseChanged)
+
+    /** Number of lines of bodyText, known without asking the text item. */
+    Q_PROPERTY(int bodyLineCount READ bodyLineCount NOTIFY responseChanged)
 
     /** Whether bodyText shows only the start of the body. */
     Q_PROPERTY(bool truncated READ truncated NOTIFY responseChanged)
@@ -133,6 +139,9 @@ public:
     /** Returns the text for the body view. */
     QString bodyText() const;
 
+    /** Returns the number of lines of bodyText(). */
+    int bodyLineCount() const;
+
     /** Returns whether bodyText() shows only the start of the body. */
     bool truncated() const;
 
@@ -161,7 +170,10 @@ public:
     Q_INVOKABLE void attachHighlighter(QQuickTextDocument *document);
 
     /** Shows that the request \a requestName is running. */
-    void setBusy(const QString &requestName);
+    void setBusy(const QString &requestName, const QString &requestId = {});
+
+    /** Returns the id of the request the response belongs to. */
+    QString requestId() const;
 
     /** Shows \a response; \a unresolvedVariables become a warning. */
     void setResponse(const ResponseData &response, const QStringList &unresolvedVariables);
@@ -206,6 +218,9 @@ private:
 
     /** Name of the request. */
     QString m_requestName;
+
+    /** Id of the request the response belongs to. */
+    QString m_requestId;
 
     /** Failure text. */
     QString m_errorText;

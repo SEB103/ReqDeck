@@ -112,7 +112,8 @@ void ResponseViewTest::busyNamesRequest()
 {
     ResponseView view;
     QSignalSpy spy(&view, &ResponseView::responseChanged);
-    view.setBusy(QStringLiteral("List users"));
+    view.setBusy(QStringLiteral("List users"), QStringLiteral("id-1"));
+    QCOMPARE(view.requestId(), QStringLiteral("id-1"));
 
     QVERIFY(view.property("busy").toBool());
     QVERIFY(!view.property("hasResponse").toBool());

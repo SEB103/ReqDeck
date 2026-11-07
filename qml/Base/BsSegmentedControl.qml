@@ -45,13 +45,18 @@ Row {
             implicitWidth: 58
             implicitHeight: 24
             focusPolicy: Qt.TabFocus
+            hoverEnabled: true
             text: option.modelData
+            Accessible.role: Accessible.RadioButton
             Accessible.name: option.modelData
+            Accessible.checkable: true
+            Accessible.checked: option.chosen
             onClicked: root.activated(option.index)
 
             background: Rectangle {
                 radius: 4
-                color: option.chosen ? BsTheme.selectedRowColor : "transparent"
+                color: option.chosen ? BsTheme.selectedRowColor
+                                     : option.hovered ? Qt.alpha(BsTheme.accent, 0.06) : "transparent"
                 border.width: option.activeFocus ? 2 : 1
                 border.color: option.activeFocus ? BsTheme.accent : BsTheme.dividerColor
             }

@@ -228,9 +228,11 @@ Item {
             const background = Qt.color(data.background);
 
             for (const method of ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]) {
-                const contrast = contrastOnTint(Qt.color(BsTheme.methodColor(method)),
-                                                BsTheme.selectedRowColor, background);
-                verify(contrast >= 3, method + ": " + contrast);
+                const color = Qt.color(BsTheme.methodColor(method));
+                const selected = contrastOnTint(color, BsTheme.selectedRowColor, background);
+                const hovered = contrastOnTint(color, Qt.alpha(BsTheme.accent, 0.06), background);
+                verify(selected >= 3, method + ": " + selected);
+                verify(hovered >= 3, method + ": " + hovered);
             }
             BsTheme.dark = false;
         }
@@ -243,6 +245,25 @@ Item {
             compare(findChild(pane, "paneHeader").height, BsTheme.paneHeaderHeight);
             compare(BsTheme.paneHeaderHeight, 26);
             compare(BsTheme.compactBarHeight, 34);
+        }
+
+        /*! Verifies that the chip and the lists show a status in one color. */
+        function test_statusChipUsesThemeColor() {
+            const chip = createTemporaryObject(statusChipComponent, root);
+            verify(chip !== null);
+
+            chip.statusClass = 4;
+
+            verify(Qt.colorEqual(chip.classColor, BsTheme.statusColor(404)));
+        }
+
+        /*! Verifies that assistive tools can see which option is chosen. */
+        function test_segmentedControlExposesChoice() {
+            const control = createTemporaryObject(segmentedComponent, root);
+            verify(control !== null);
+
+            compare(findChild(control, "option0").Accessible.checked, true);
+            compare(findChild(control, "option1").Accessible.checked, false);
         }
 
         /*! Verifies that status colors follow the class of the code. */

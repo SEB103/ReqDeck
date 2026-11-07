@@ -109,7 +109,7 @@ Item {
             objectName: "requestNameLabel"
 
             Layout.fillWidth: true
-            visible: cppResponse.requestName !== cppRequestEditor.name
+            visible: cppResponse.requestId !== cppRequestEditor.requestId
             elide: Text.ElideRight
             opacity: 0.6
             textFormat: Text.PlainText
@@ -203,9 +203,9 @@ Item {
                         objectName: "lineNumbers"
 
                         Layout.fillHeight: true
-                        visible: bodyArea.wrapMode === TextEdit.NoWrap
+                        showNumbers: bodyArea.wrapMode === TextEdit.NoWrap
                         view: bodyScroll.contentItem
-                        lineCount: bodyArea.lineCount
+                        lineCount: cppResponse.bodyLineCount
                         textTopPadding: bodyArea.topPadding
                         font: bodyArea.font
                     }
@@ -243,8 +243,7 @@ Item {
 
                             /*! Measures the lines once the current layout pass is over. */
                             function measureLines() {
-                                if (bodyArea.lineCount > 0)
-                                    lineNumbers.lineHeight = bodyArea.contentHeight / bodyArea.lineCount
+                                lineNumbers.lineHeight = bodyArea.contentHeight / cppResponse.bodyLineCount
                             }
 
                             objectName: "bodyArea"

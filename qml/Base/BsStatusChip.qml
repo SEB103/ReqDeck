@@ -9,8 +9,8 @@ import QtQuick.Controls
     \inqmlmodule Base
     \brief Shows an HTTP status in the color of its class.
 
-    Status colors are content, not chrome, so they are defined here and not in
-    BsTheme; only the choice between the light and dark variant follows the theme.
+    The colors come from BsTheme.statusColor(), so that the chip and the history
+    show a status alike. A chip without a status class is grey.
 */
 Rectangle {
     id: root
@@ -22,20 +22,9 @@ Rectangle {
     property string text: ""
 
     /*! Color of the status class in the active theme. */
-    readonly property color classColor: {
-        switch (root.statusClass) {
-        case 2:
-            return BsTheme.dark ? "#81C784" : "#2E7D32"
-        case 3:
-            return BsTheme.dark ? "#64B5F6" : "#1565C0"
-        case 4:
-            return BsTheme.dark ? "#FFB74D" : "#B85C00"
-        case 5:
-            return BsTheme.dark ? "#E57373" : "#C62828"
-        default:
-            return BsTheme.dark ? "#BDBDBD" : "#616161"
-        }
-    }
+    readonly property color classColor: root.statusClass >= 2 && root.statusClass <= 5
+        ? BsTheme.statusColor(root.statusClass * 100)
+        : (BsTheme.dark ? "#BDBDBD" : "#616161")
 
     implicitWidth: label.implicitWidth + 16
     implicitHeight: label.implicitHeight + 6

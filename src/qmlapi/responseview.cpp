@@ -68,6 +68,14 @@ bool ResponseView::busy() const
     return m_busy;
 }
 
+QString ResponseView::requestId() const
+{
+    return m_requestId;
+}
+
+/*!
+ * \brief Returns the name of the request the response belongs to.
+ */
 QString ResponseView::requestName() const
 {
     return m_requestName;
@@ -143,6 +151,18 @@ QString ResponseView::bodyText() const
         return tr("Binary body, %1. Not shown.").arg(sizeText());
     const QString &text = m_pretty && canPretty() ? formattedBody() : m_body.text;
     return text.left(kMaxDisplayChars);
+}
+
+/*!
+ * \brief Returns the number of lines of bodyText().
+ *
+ * The line numbers of the view use this instead of TextEdit.lineCount: a binding
+ * to that property makes the text item count all lines on each change, which
+ * nearly doubled the time to show a body of many short lines.
+ */
+int ResponseView::bodyLineCount() const
+{
+    return int(bodyText().count(u'\n')) + 1;
 }
 
 /*!
@@ -224,11 +244,13 @@ void ResponseView::attachHighlighter(QQuickTextDocument *document)
 /*!
  * \brief Shows that the request \a requestName is running.
  * \param requestName The name of the request.
+ * \param requestId The id of the request.
  */
-void ResponseView::setBusy(const QString &requestName)
+void ResponseView::setBusy(const QString &requestName, const QString &requestId)
 {
     resetResult();
     m_requestName = requestName;
+    m_requestId = requestId;
     m_busy = true;
     emit responseChanged();
 }
@@ -288,6 +310,7 @@ void ResponseView::clear()
 {
     resetResult();
     m_requestName.clear();
+    m_requestId.clear();
     emit responseChanged();
 }
 

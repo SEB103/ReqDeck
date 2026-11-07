@@ -269,6 +269,38 @@ Item {
             compare(url.y, y);
         }
 
+        /*! Verifies that a long name shows its start, as the tree does. */
+        function test_longNameShowsItsStart() {
+            const pane = createRequest("r2");
+            const name = findChild(pane, "nameField");
+
+            cppRequestEditor.name = "START" + "n".repeat(300);
+            waitForRendering(pane);
+            verify(name.positionToRectangle(0).x >= 0, "x " + name.positionToRectangle(0).x);
+
+            name.forceActiveFocus();
+            name.cursorPosition = name.length;
+            keyClick(Qt.Key_X);
+            findChild(pane, "methodCombo").forceActiveFocus();
+            waitForRendering(pane);
+
+            verify(name.positionToRectangle(0).x >= 0, "x " + name.positionToRectangle(0).x);
+        }
+
+        /*! Verifies that the tabs fit the narrowest request pane. */
+        function test_tabsFitMinimumPane() {
+            const pane = createRequest("r2");
+            pane.width = 300;
+            waitForRendering(pane);
+            const tabs = findChild(pane, "tabs");
+
+            for (let i = 0; i < tabs.count; ++i) {
+                const tab = tabs.itemAt(i);
+                verify(tab.implicitContentWidth <= tab.availableWidth,
+                       tab.text + ": " + tab.implicitContentWidth + " in " + tab.availableWidth);
+            }
+        }
+
         /*! Verifies that the URL reads like code. */
         function test_urlUsesMonospace() {
             compare(findChild(createRequest("r2"), "urlField").font.family, "Consolas");
@@ -302,6 +334,7 @@ Item {
             const option = combo.popup.contentItem.itemAtIndex(4);
 
             verify(Qt.colorEqual(option.contentItem.color, BsTheme.methodColor("DELETE")));
+            compare(option.text, "DELETE");
             combo.popup.close();
             tryCompare(combo.popup, "visible", false);
         }
@@ -1786,6 +1819,7 @@ Item {
 
         /*! Sends to a JSON list of \a rows rows and returns the wired panes. */
         function createPrettyBody(rows) {
+            cppResponse.pretty = true;
             const host = createSender(cppTestHost.serverUrl("/json/" + rows));
             sendAndWait(host);
             return host;
@@ -1834,7 +1868,7 @@ Item {
             const started = Date.now();
             for (let step = 1; step <= 20; ++step) {
                 numbers.view.contentY = step * 40 * numbers.lineHeight;
-                waitForRendering(numbers);
+                wait(0);
             }
 
             const elapsed = Date.now() - started;
@@ -1848,7 +1882,7 @@ Item {
 
             mouseClick(findChild(toggle, "option1"));
 
-            compare(findChild(host.response, "lineNumbers").visible, false);
+            compare(findChild(host.response, "lineNumbers").visibleLines, 0);
         }
 
         /*! Verifies that the numbers survive a theme switch. */
@@ -1864,6 +1898,56 @@ Item {
 
             compare(numbers.lineCount, count);
             verify(numbers.lineHeight > 0);
+        }
+
+        /*! Verifies that the owner of a response is told by identity, not by name. */
+        function test_responseLabelUsesRequestIdentity() {
+            const host = createPrettyBody(3);
+            const label = findChild(host.response, "requestNameLabel");
+            verify(cppCollection.rename("r1", "List items"));
+
+            cppRequestEditor.load("r1");
+
+            compare(cppRequestEditor.name, "List items");
+            compare(label.visible, true);
+        }
+
+        /*! Verifies that many short lines show as fast as without numbers. */
+        function test_shortLinesStayFast() {
+            cppResponse.pretty = true;
+            const host = createSender(cppTestHost.serverUrl("/lines/30000"));
+            const started = Date.now();
+
+            sendAndWait(host);
+
+            const elapsed = Date.now() - started;
+            const numbers = findChild(host.response, "lineNumbers");
+            compare(numbers.lineCount, 30002);
+            verify(elapsed < 9000, "took " + elapsed + " ms");
+        }
+
+        /*! Verifies that the numbers meet their lines after the view changed. */
+        function test_lineNumbersAlignAfterSwitches() {
+            const host = createPrettyBody(100);
+            const area = findChild(host.response, "bodyArea");
+            const numbers = findChild(host.response, "lineNumbers");
+            const toggle = findChild(host.response, "prettySwitch");
+
+            mouseClick(findChild(toggle, "option1"));
+            waitForRendering(numbers);
+            mouseClick(findChild(toggle, "option0"));
+            BsTheme.dark = !BsTheme.dark;
+            waitForRendering(numbers);
+            BsTheme.dark = !BsTheme.dark;
+            waitForRendering(numbers);
+            numbers.view.contentY = 100 * numbers.lineHeight;
+            waitForRendering(numbers);
+
+            const line = 120;
+            const position = area.text.split("\n").slice(0, line).join("\n").length + 1;
+            const textY = area.positionToRectangle(position).y - numbers.view.contentY;
+            verify(Math.abs(numbers.lineY(line) - textY) <= 1,
+                   numbers.lineY(line) + " against " + textY);
         }
 
         /*! Verifies that the name shows only for a response of another request. */

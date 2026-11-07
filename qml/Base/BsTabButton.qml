@@ -15,4 +15,6 @@ import QtQuick.Controls.Material
 */
 TabButton {
     implicitHeight: BsTheme.compactBarHeight
+    leftPadding: 4
+    rightPadding: 4
 }

@@ -296,7 +296,7 @@ void RequestEditor::send()
         VariableResolver::fromKeyValues(activeEnvironmentVariables(m_manager->workspaceData()));
     const BuiltRequest built = RequestBuilder::build(m_request, variables, m_builderOptions);
 
-    m_response->setBusy(m_name);
+    m_response->setBusy(m_name, m_requestId);
     if (!built.ok) {
         m_response->setBuildError(built.errorString, built.unresolvedVariables);
         return;
