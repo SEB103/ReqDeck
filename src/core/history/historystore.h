@@ -64,7 +64,16 @@ public:
     /** Removes all entries and the file. */
     bool clear(QString *errorString = nullptr);
 
-    /** Returns \a spec with literal credentials cleared; {{variable}} references stay. */
+    /** Returns whether the file may hold entries that add() will merge into the list. */
+    bool hasUnreadFile() const;
+
+    /** Removes the oldest entry from the list; the file changes with the next add(). */
+    void dropOldest();
+
+    /**
+     * Returns \a spec with literal credentials cleared in auth fields, the URL, and
+     * rows named like credentials; {{variable}} references stay. A raw body is kept.
+     */
     static RequestSpec redacted(const RequestSpec &spec);
 
 private:

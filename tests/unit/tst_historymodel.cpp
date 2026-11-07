@@ -60,6 +60,12 @@ private slots:
     /*! Verifies that the newest request comes first, with all its roles. */
     void recordPrependsRow();
 
+    /*! Verifies that a new row leaves the others where they are. */
+    void recordDoesNotResetModel();
+
+    /*! Verifies that a full list swaps its oldest row for the new one. */
+    void recordAtCapRemovesOldestRow();
+
     /*! Verifies that a request without an answer is kept. */
     void recordKeepsFailures();
 
@@ -122,6 +128,44 @@ void HistoryModelTest::recordPrependsRow()
     QVERIFY(!model.data(newest, HistoryModel::IdRole).toString().isEmpty());
     QCOMPARE(model.data(newest, HistoryModel::TimeRole).toString().size(), 19);
     QVERIFY(model.roleNames().values().contains("timeText"));
+}
+
+void HistoryModelTest::recordDoesNotResetModel()
+{
+    QTemporaryDir dir;
+    HistoryModel model(dir.filePath(QStringLiteral("history.json")));
+    QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+    model.record(makeRequest(QStringLiteral("http://first")), makeResponse(200));
+    QSignalSpy reset(&model, &QAbstractItemModel::modelReset);
+    QSignalSpy inserted(&model, &QAbstractItemModel::rowsInserted);
+
+    model.record(makeRequest(QStringLiteral("http://second")), makeResponse(200));
+
+    QCOMPARE(reset.count(), 0);
+    QCOMPARE(inserted.count(), 1);
+    QCOMPARE(inserted.at(0).at(1).toInt(), 0);
+}
+
+void HistoryModelTest::recordAtCapRemovesOldestRow()
+{
+    QTemporaryDir dir;
+    HistoryModel model(dir.filePath(QStringLiteral("history.json")));
+    QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+    for (int i = 0; i < HistoryStore::kMaxEntries; ++i)
+        model.record(makeRequest(QString::number(i)), makeResponse(200));
+    QSignalSpy reset(&model, &QAbstractItemModel::modelReset);
+    QSignalSpy removed(&model, &QAbstractItemModel::rowsRemoved);
+    QSignalSpy inserted(&model, &QAbstractItemModel::rowsInserted);
+
+    model.record(makeRequest(QStringLiteral("newest")), makeResponse(200));
+
+    QCOMPARE(reset.count(), 0);
+    QCOMPARE(removed.count(), 1);
+    QCOMPARE(inserted.count(), 1);
+    QCOMPARE(model.rowCount(), HistoryStore::kMaxEntries);
+    QCOMPARE(model.data(model.index(0), HistoryModel::UrlRole).toString(), QStringLiteral("newest"));
+    QCOMPARE(model.data(model.index(HistoryStore::kMaxEntries - 1), HistoryModel::UrlRole).toString(),
+             QStringLiteral("1"));
 }
 
 void HistoryModelTest::recordKeepsFailures()

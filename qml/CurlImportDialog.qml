@@ -45,7 +45,8 @@ Dialog {
             return root.check.error
         if (root.check.ignored.length === 0)
             return root.check.summary
-        return qsTr("%1\nIgnored: %2").arg(root.check.summary).arg(root.check.ignored.join(" "))
+        // Joined, not chained through arg(): a URL may hold %2 itself.
+        return root.check.summary + "\n" + qsTr("Ignored: %1").arg(root.check.ignored.join(" "))
     }
 
     objectName: "curlImportDialog"

@@ -164,6 +164,26 @@ Item {
         }
 
         /*! Verifies that the table shows the rows of its model. */
+        function test_menuLeavesRoomForShortcut_data() {
+            return [{tag: "File", title: "File"}, {tag: "Request", title: "Request"}];
+        }
+
+        /*! Verifies that text, icon, and shortcut fit: test builds have no icons. */
+        function test_menuLeavesRoomForShortcut(data) {
+            const menuBar = createTemporaryObject(menuBarComponent, root);
+            verify(menuBar !== null);
+            const menu = menuByTitle(menuBar, data.title);
+            const iconWidth = 40;
+
+            for (let i = 0; i < menu.count; ++i) {
+                const item = menu.itemAt(i);
+                if (item.shortcutText !== undefined && item.shortcutText.length > 0) {
+                    verify(item.availableWidth >= item.contentItem.implicitWidth + iconWidth,
+                           item.text + ": " + item.availableWidth);
+                }
+            }
+        }
+
         /*! Verifies that the menu items name their shortcuts. */
         function test_menuItemShowsShortcut() {
             const menuBar = createTemporaryObject(menuBarComponent, root);

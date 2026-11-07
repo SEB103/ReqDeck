@@ -121,6 +121,12 @@ Item {
         }
     }
 
+    Component {
+        id: mainComponent
+
+        Main {}
+    }
+
     // Connected like Main.qml connects the top bar.
     Component {
         id: selectorComponent
@@ -768,7 +774,7 @@ Item {
             verify(findChild(pane, "emptyHint").visible);
 
             cppTestHost.addHistory("http://x", 1);
-            compare(findChild(pane, "emptyHint").visible, false);
+            tryCompare(findChild(pane, "emptyHint"), "visible", false);
         }
 
         /*! Verifies that a full history shows in reasonable time. */
@@ -1006,6 +1012,98 @@ Item {
             compare(cppTestHost.requestCount(), requests);
             host.dialog.close();
             tryCompare(host.dialog, "visible", false);
+        }
+
+        /*! Creates the application window with r2 open at  url and a name being typed. */
+        function createMainTypingName(url) {
+            const window = createTemporaryObject(mainComponent, root);
+            verify(window !== null);
+            window.requestActivate();
+            tryCompare(window, "active", true);
+            waitForRendering(window.contentItem);
+            findChild(window.contentItem, "tree").parent.selectNode("r2");
+            if (url !== undefined)
+                cppRequestEditor.url = url;
+            const name = findChild(window.contentItem, "nameField");
+            name.forceActiveFocus();
+            name.selectAll();
+            cppTestHost.pressKey(window, Qt.Key_X, Qt.NoModifier);
+            compare(name.text, "x");
+            compare(cppCollection.nodeName("r2"), "List items");
+            return window;
+        }
+
+        /*! Verifies that Ctrl+S saves a name still being typed. */
+        function test_mainSaveShortcutStoresNameBeingEdited() {
+            const window = createMainTypingName();
+
+            cppTestHost.pressKey(window, Qt.Key_S, Qt.ControlModifier);
+
+            compare(cppCollection.nodeName("r2"), "x");
+            compare(cppWorkspaceManager.dirty, false);
+            verify(findChild(window.contentItem, "nameField").activeFocus);
+        }
+
+        /*! Verifies that Ctrl+N keeps a name still being typed in its own request. */
+        function test_mainNewShortcutStoresNameBeingEdited() {
+            const window = createMainTypingName();
+
+            cppTestHost.pressKey(window, Qt.Key_N, Qt.ControlModifier);
+
+            compare(cppCollection.nodeName("r2"), "x");
+            compare(cppRequestEditor.name, "New request");
+        }
+
+        /*! Verifies that the send shortcut works in the application window. */
+        function test_mainSendShortcutSends() {
+            const window = createMainTypingName(cppTestHost.serverUrl("/status/201"));
+
+            cppTestHost.pressKey(window, Qt.Key_Return, Qt.ControlModifier);
+            tryCompare(cppResponse, "busy", false, 10000);
+
+            compare(cppResponse.statusCode, 201);
+            compare(cppCollection.nodeName("r2"), "x");
+        }
+
+        /*! Verifies that an entry opened in the application window shows up as a request. */
+        function test_mainOpeningEntryShowsRequest() {
+            cppTestHost.addHistory("http://x/items", 1);
+            const window = createTemporaryObject(mainComponent, root);
+            verify(window !== null);
+            waitForRendering(window.contentItem);
+
+            const id = cppHistory.openEntry(0, cppCollection);
+            findChild(window.contentItem, "historyList").parent.parent.entryOpened(id);
+
+            compare(cppRequestEditor.url, "http://x/items");
+        }
+
+        /*! Verifies that a list being read keeps its entry when a request finishes. */
+        function test_historyKeepsCurrentEntry() {
+            cppTestHost.addHistory("http://older", 1);
+            cppTestHost.addHistory("http://newer", 1);
+            const list = findChild(createHistory(), "historyList");
+            list.forceActiveFocus();
+            keyClick(Qt.Key_Down);
+            keyClick(Qt.Key_Down);
+            compare(list.currentIndex, 1);
+
+            cppTestHost.addHistory("http://latest", 1);
+
+            tryCompare(list, "currentIndex", 2);
+            keyClick(Qt.Key_Return);
+            compare(cppRequestEditor.url, "http://older");
+        }
+
+        /*! Verifies that a percent sign in a URL is not read as a placeholder. */
+        function test_curlDialogKeepsPercentInSummary() {
+            const host = openCurl();
+
+            enterCommand(host, "curl --compressed 'http://x/a%2Fb?c=%1'");
+
+            const status = findChild(host, "curlStatus").text;
+            verify(status.indexOf("http://x/a%2Fb?c=%1") >= 0, status);
+            verify(status.indexOf("--compressed") >= 0, status);
         }
 
         /*! Opens the environment dialog and waits until it is shown. */

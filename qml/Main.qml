@@ -42,7 +42,7 @@ ApplicationWindow {
     */
     function commitFocusedEdit() {
         const focused = mainWindow.activeFocusItem
-        mainScreen.forceActiveFocus(Qt.ShortcutFocusReason)
+        editFocusSink.forceActiveFocus(Qt.ShortcutFocusReason)
         if (focused)
             focused.forceActiveFocus(Qt.ShortcutFocusReason)
     }
@@ -270,6 +270,12 @@ ApplicationWindow {
         function onCancelRequested() {
             cppRequestEditor.cancel()
         }
+    }
+
+    // Takes the focus in commitFocusedEdit(). It is a plain item on purpose: a focus
+    // scope would hand the focus straight back to the field being edited.
+    Item {
+        id: editFocusSink
     }
 
     Shortcut {

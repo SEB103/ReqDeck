@@ -145,6 +145,8 @@ MenuBar {
 
     Menu {
         title: qsTr("&File")
+        // Menus do not grow with their items, and these name their shortcuts.
+        width: 300
         // The entries of submenus are created from this delegate.
         delegate: BsMenuItem {}
 
@@ -246,6 +248,7 @@ MenuBar {
 
     Menu {
         title: qsTr("&Request")
+        width: 300
         delegate: BsMenuItem {}
 
         BsMenuItem {

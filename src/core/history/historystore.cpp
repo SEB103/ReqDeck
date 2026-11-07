@@ -27,12 +27,23 @@ constexpr int kHistorySchemaVersion = 1;
 
 /*!
  * \internal
- * \brief Header names whose values are treated as credentials.
+ * \brief Parts of header, parameter, and field names that mark a credential.
  */
-constexpr std::array<QLatin1StringView, 5> kCredentialHeaders {
-    QLatin1StringView("Authorization"), QLatin1StringView("Proxy-Authorization"),
-    QLatin1StringView("Cookie"),        QLatin1StringView("X-Api-Key"),
-    QLatin1StringView("X-Auth-Token"),
+constexpr std::array<QLatin1StringView, 11> kCredentialNameParts {
+    QLatin1StringView("authorization"), QLatin1StringView("cookie"),
+    QLatin1StringView("token"),         QLatin1StringView("secret"),
+    QLatin1StringView("password"),      QLatin1StringView("passwd"),
+    QLatin1StringView("pwd"),           QLatin1StringView("apikey"),
+    QLatin1StringView("api-key"),       QLatin1StringView("api_key"),
+    QLatin1StringView("session"),
+};
+
+/*!
+ * \internal
+ * \brief Authentication schemes that may stand before a reference in a value.
+ */
+constexpr std::array<QLatin1StringView, 3> kAuthSchemes {
+    QLatin1StringView("Bearer"), QLatin1StringView("Basic"), QLatin1StringView("Token"),
 };
 
 /*!
@@ -48,12 +59,116 @@ bool fail(QString *errorString, const QString &message)
 
 /*!
  * \internal
- * \brief Clears \a value unless it references a variable.
+ * \brief Clears \a value unless it holds nothing literal.
+ *
+ * What may stay is one or more references, optionally after an authentication
+ * scheme, as in "Bearer {{token}}". A value with a literal part next to a
+ * reference is cleared whole, because the literal part may be the secret.
  */
 void clearLiteral(QString &value)
 {
-    if (VariableResolver::referencedNames(value).isEmpty())
+    const QList<VariableReference> references = VariableResolver::references(value);
+    if (references.isEmpty()) {
         value.clear();
+        return;
+    }
+
+    QString literal = value;
+    for (auto it = references.crbegin(); it != references.crend(); ++it)
+        literal.remove(it->start, it->length);
+    literal = literal.trimmed();
+
+    const bool scheme = std::any_of(kAuthSchemes.cbegin(), kAuthSchemes.cend(),
+                                    [&literal](QLatin1StringView candidate) {
+                                        return literal.compare(candidate, Qt::CaseInsensitive) == 0;
+                                    });
+    if (!literal.isEmpty() && !scheme)
+        value.clear();
+}
+
+/*!
+ * \internal
+ * \brief Returns whether \a name marks its value as a credential.
+ */
+bool isCredentialName(QStringView name)
+{
+    return std::any_of(kCredentialNameParts.cbegin(), kCredentialNameParts.cend(),
+                       [name](QLatin1StringView part) {
+                           return name.contains(part, Qt::CaseInsensitive);
+                       });
+}
+
+/*!
+ * \internal
+ * \brief Clears the literal values of the rows of \a rows named like credentials.
+ */
+void clearCredentialRows(QList<KeyValue> &rows)
+{
+    for (KeyValue &row : rows) {
+        if (isCredentialName(row.key))
+            clearLiteral(row.value);
+    }
+}
+
+/*!
+ * \internal
+ * \brief Removes literal credentials from the user information of \a url.
+ *
+ * User information without a reference goes whole: a token often stands in the
+ * place of the user name. With a reference, only a literal password goes.
+ */
+void redactUserInfo(QString &url)
+{
+    const qsizetype scheme = url.indexOf(QLatin1StringView("://"));
+    if (scheme < 0)
+        return;
+
+    const qsizetype start = scheme + 3;
+    qsizetype end = start;
+    while (end < url.size() && url.at(end) != u'/' && url.at(end) != u'?' && url.at(end) != u'#')
+        ++end;
+    const qsizetype at = url.first(end).lastIndexOf(u'@');
+    if (at < start)
+        return;
+
+    QString info = url.sliced(start, at - start);
+    if (VariableResolver::references(info).isEmpty()) {
+        url.remove(start, at - start + 1);
+        return;
+    }
+
+    const qsizetype colon = info.indexOf(u':');
+    if (colon < 0)
+        return;
+    QString password = info.sliced(colon + 1);
+    clearLiteral(password);
+    url.replace(start, at - start, info.first(colon + 1) + password);
+}
+
+/*!
+ * \internal
+ * \brief Clears the literal values of query parameters of \a url named like credentials.
+ */
+void redactQuery(QString &url)
+{
+    const qsizetype query = url.indexOf(u'?');
+    if (query < 0)
+        return;
+
+    qsizetype end = url.indexOf(u'#', query);
+    if (end < 0)
+        end = url.size();
+
+    QStringList parts = url.sliced(query + 1, end - query - 1).split(u'&');
+    for (QString &part : parts) {
+        const qsizetype equals = part.indexOf(u'=');
+        if (equals < 0 || !isCredentialName(QStringView(part).first(equals)))
+            continue;
+        QString value = part.sliced(equals + 1);
+        clearLiteral(value);
+        part = part.first(equals + 1) + value;
+    }
+    url.replace(query + 1, end - query - 1, parts.join(u'&'));
 }
 
 /*!
@@ -243,12 +358,35 @@ bool HistoryStore::clear(QString *errorString)
 }
 
 /*!
+ * \brief Returns whether the file may hold entries that add() will merge into the list.
+ */
+bool HistoryStore::hasUnreadFile() const
+{
+    return m_unread;
+}
+
+/*!
+ * \brief Removes the oldest entry from the list.
+ *
+ * This lets a model report the removal before add() reports the new row. The file
+ * changes with the next add().
+ */
+void HistoryStore::dropOldest()
+{
+    if (!m_entries.isEmpty())
+        m_entries.removeLast();
+}
+
+/*!
  * \brief Returns \a spec with literal credentials cleared.
  *
  * The history is a plain file next to the application data, so passwords,
- * tokens, API keys, and credential header values are removed unless they
- * reference a variable: a reference discloses nothing and still works when the
- * request is repeated. Fields of an inactive auth type are cleared as well.
+ * tokens, API keys, credentials in the URL, and the values of headers, parameters,
+ * and form fields named like credentials are removed unless they only reference
+ * variables: a reference discloses nothing and still works when the request is
+ * repeated. Fields of an inactive auth type are cleared as well. Names are a
+ * heuristic, and a raw body is kept as it is, because it is what makes a request
+ * worth repeating.
  * \param spec The request as edited by the user.
  */
 RequestSpec HistoryStore::redacted(const RequestSpec &spec)
@@ -258,17 +396,22 @@ RequestSpec HistoryStore::redacted(const RequestSpec &spec)
     clearLiteral(result.auth.token);
     clearLiteral(result.auth.apiKeyValue);
 
+    redactUserInfo(result.url);
+    redactQuery(result.url);
+    clearCredentialRows(result.queryParams);
+    clearCredentialRows(result.headers);
+    clearCredentialRows(result.body.form);
+
     const QString apiKeyName = spec.auth.apiKeyName.trimmed();
-    for (KeyValue &header : result.headers) {
-        const QString name = header.key.trimmed();
-        const bool credential =
-            std::any_of(kCredentialHeaders.cbegin(), kCredentialHeaders.cend(),
-                        [&name](QLatin1StringView candidate) {
-                            return name.compare(candidate, Qt::CaseInsensitive) == 0;
-                        })
-            || (!apiKeyName.isEmpty() && name.compare(apiKeyName, Qt::CaseInsensitive) == 0);
-        if (credential)
-            clearLiteral(header.value);
+    if (!apiKeyName.isEmpty()) {
+        const auto clearApiKey = [&apiKeyName](QList<KeyValue> &rows) {
+            for (KeyValue &row : rows) {
+                if (row.key.trimmed().compare(apiKeyName, Qt::CaseInsensitive) == 0)
+                    clearLiteral(row.value);
+            }
+        };
+        clearApiKey(result.headers);
+        clearApiKey(result.queryParams);
     }
     return result;
 }

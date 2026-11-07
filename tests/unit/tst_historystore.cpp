@@ -76,6 +76,22 @@ private slots:
     /*! Verifies that ordinary headers and the user name stay. */
     void keepsOrdinaryValues();
 
+    /*! Verifies what is left of a URL holding credentials. */
+    void redactsUrlCredentials_data();
+    /*! Runs one URL case. */
+    void redactsUrlCredentials();
+
+    /*! Verifies rows whose names say they hold credentials. */
+    void redactsCredentialRows();
+
+    /*! Verifies that ordinary rows stay as they are. */
+    void keepsOrdinaryRows();
+
+    /*! Verifies values mixing a literal part with a reference. */
+    void redactsPartlyLiteralValues_data();
+    /*! Runs one mixed value case. */
+    void redactsPartlyLiteralValues();
+
     /*! Verifies that add() redacts what it stores. */
     void addStoresRedactedRequest();
 
@@ -190,6 +206,101 @@ void HistoryStoreTest::redactsLiteralCredentialHeaders()
     const RequestSpec result = HistoryStore::redacted(spec);
     QCOMPARE(result.headers.at(0).key, name);
     QVERIFY(result.headers.at(0).value.isEmpty());
+}
+
+void HistoryStoreTest::redactsUrlCredentials_data()
+{
+    QTest::addColumn<QString>("url");
+    QTest::addColumn<QString>("expected");
+
+    QTest::newRow("user and password") << QStringLiteral("https://alice:pw@h/x")
+                                       << QStringLiteral("https://h/x");
+    QTest::newRow("token as user") << QStringLiteral("https://ghp_abc@h/x")
+                                   << QStringLiteral("https://h/x");
+    QTest::newRow("references") << QStringLiteral("https://{{u}}:{{p}}@h/x")
+                                << QStringLiteral("https://{{u}}:{{p}}@h/x");
+    QTest::newRow("literal password") << QStringLiteral("https://{{u}}:pw@h/x")
+                                      << QStringLiteral("https://{{u}}:@h/x");
+    QTest::newRow("query") << QStringLiteral("http://h/x?access_token=T&page=2&api_key=K")
+                           << QStringLiteral("http://h/x?access_token=&page=2&api_key=");
+    QTest::newRow("query reference") << QStringLiteral("http://h/x?token={{t}}")
+                                     << QStringLiteral("http://h/x?token={{t}}");
+    QTest::newRow("before fragment") << QStringLiteral("http://h/x?token=T#top")
+                                     << QStringLiteral("http://h/x?token=#top");
+    QTest::newRow("variable host") << QStringLiteral("{{baseUrl}}/items?secret=S")
+                                   << QStringLiteral("{{baseUrl}}/items?secret=");
+    QTest::newRow("at in path") << QStringLiteral("http://h/a@b") << QStringLiteral("http://h/a@b");
+    QTest::newRow("at in query") << QStringLiteral("http://h/x?mail=a@b")
+                                 << QStringLiteral("http://h/x?mail=a@b");
+    QTest::newRow("plain") << QStringLiteral("http://h:8080/x") << QStringLiteral("http://h:8080/x");
+}
+
+void HistoryStoreTest::redactsUrlCredentials()
+{
+    QFETCH(QString, url);
+    QFETCH(QString, expected);
+
+    RequestSpec spec;
+    spec.url = url;
+
+    QCOMPARE(HistoryStore::redacted(spec).url, expected);
+}
+
+void HistoryStoreTest::redactsCredentialRows()
+{
+    RequestSpec spec;
+    spec.queryParams = {{QStringLiteral("access_token"), QStringLiteral("L"), true},
+                        {QStringLiteral("key"), QStringLiteral("{{k}}"), true}};
+    spec.headers = {{QStringLiteral("X-Access-Token"), QStringLiteral("L"), true},
+                    {QStringLiteral("X-Session-Id"), QStringLiteral("L"), false}};
+    spec.body.form = {{QStringLiteral("Password"), QStringLiteral("L"), true},
+                      {QStringLiteral("client_secret"), QStringLiteral("L"), true}};
+
+    const RequestSpec result = HistoryStore::redacted(spec);
+
+    QVERIFY(result.queryParams.at(0).value.isEmpty());
+    QCOMPARE(result.queryParams.at(1).value, QStringLiteral("{{k}}"));
+    QVERIFY(result.headers.at(0).value.isEmpty());
+    QVERIFY(result.headers.at(1).value.isEmpty());
+    QVERIFY(result.body.form.at(0).value.isEmpty());
+    QVERIFY(result.body.form.at(1).value.isEmpty());
+}
+
+void HistoryStoreTest::keepsOrdinaryRows()
+{
+    RequestSpec spec;
+    spec.queryParams = {{QStringLiteral("author"), QStringLiteral("Ann"), true}};
+    spec.headers = {{QStringLiteral("Accept"), QStringLiteral("*/*"), true}};
+    spec.body.form = {{QStringLiteral("name"), QStringLiteral("Bob"), true}};
+
+    QVERIFY(HistoryStore::redacted(spec) == spec);
+}
+
+void HistoryStoreTest::redactsPartlyLiteralValues_data()
+{
+    QTest::addColumn<QString>("value");
+    QTest::addColumn<QString>("expected");
+
+    QTest::newRow("literal prefix") << QStringLiteral("Bearer LIT{{x}}") << QString();
+    QTest::newRow("literal suffix") << QStringLiteral("{{x}}-LIT") << QString();
+    QTest::newRow("bearer") << QStringLiteral("Bearer {{t}}") << QStringLiteral("Bearer {{t}}");
+    QTest::newRow("basic") << QStringLiteral("basic {{t}}") << QStringLiteral("basic {{t}}");
+    QTest::newRow("two references") << QStringLiteral("{{a}}{{b}}") << QStringLiteral("{{a}}{{b}}");
+}
+
+void HistoryStoreTest::redactsPartlyLiteralValues()
+{
+    QFETCH(QString, value);
+    QFETCH(QString, expected);
+
+    RequestSpec spec;
+    spec.headers = {{QStringLiteral("Authorization"), value, true}};
+    spec.auth.token = value;
+
+    const RequestSpec result = HistoryStore::redacted(spec);
+
+    QCOMPARE(result.headers.at(0).value, expected);
+    QCOMPARE(result.auth.token, expected);
 }
 
 void HistoryStoreTest::redactsAuthFields()

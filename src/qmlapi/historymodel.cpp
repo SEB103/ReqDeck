@@ -90,9 +90,10 @@ void HistoryModel::load()
 /*!
  * \brief Adds a finished \a request.
  *
- * The store may merge entries it could not read before and drops the oldest
- * ones, so the model resets instead of reporting one row. The store writes on
- * the GUI thread: 74 ms at worst for 200 entries of maximum size.
+ * Rows are reported one by one, so a list being read keeps its place and its
+ * current entry. Only when the store merges entries it could not read before does
+ * the model reset. The store writes on the GUI thread: 74 ms at worst for 200
+ * entries of maximum size.
  * \param request The request as it was sent; the store redacts it.
  * \param response The outcome; a request the user cancelled is left out.
  */
@@ -108,9 +109,21 @@ void HistoryModel::record(const RequestSpec &request, const ResponseData &respon
     entry.errorString = response.errorString;
 
     QString errorString;
-    beginResetModel();
-    const bool ok = m_store.add(std::move(entry), &errorString);
-    endResetModel();
+    bool ok = false;
+    if (m_store.hasUnreadFile()) {
+        beginResetModel();
+        ok = m_store.add(std::move(entry), &errorString);
+        endResetModel();
+    } else {
+        if (rowCount() >= HistoryStore::kMaxEntries) {
+            beginRemoveRows({}, rowCount() - 1, rowCount() - 1);
+            m_store.dropOldest();
+            endRemoveRows();
+        }
+        beginInsertRows({}, 0, 0);
+        ok = m_store.add(std::move(entry), &errorString);
+        endInsertRows();
+    }
     reportResult(ok, errorString);
 }
 

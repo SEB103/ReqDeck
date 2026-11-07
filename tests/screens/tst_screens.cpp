@@ -3,6 +3,10 @@
 
 #include <QDir>
 #include <QQmlContext>
+#include <QQmlPropertyMap>
+#include <QQuickWindow>
+#include <QStringListModel>
+#include <QTest>
 #include <QQmlEngine>
 #include <QQuickTextDocument>
 #include <QTcpServer>
@@ -97,6 +101,52 @@ public:
         context->setContextProperty(QStringLiteral("cppRequestEditor"), &m_editor);
         context->setContextProperty(QStringLiteral("cppResponse"), &m_response);
         context->setContextProperty(QStringLiteral("cppTestHost"), this);
+        publishMainStubs(context);
+    }
+
+    /*!
+     * Publishes the services only Main.qml and its dialogs read. They have no part
+     * in what the tests of Main check, which is the wiring of the real facades.
+     */
+    void publishMainStubs(QQmlContext *context)
+    {
+        auto *info = new QQmlPropertyMap(this);
+        for (const char *key : {"appName", "appVersion", "buildTimestamp", "buildType", "compiler",
+                                "copyright", "cpuArchitecture", "cxxStandard", "description",
+                                "homepageUrl", "licenseName", "licensesRoot", "operatingSystem",
+                                "qtVersion"}) {
+            info->insert(QLatin1StringView(key), QStringLiteral("x"));
+        }
+        context->setContextProperty(QStringLiteral("cppAppInfo"), info);
+
+        auto *locale = new QQmlPropertyMap(this);
+        locale->insert(QStringLiteral("availableLanguages"), QStringList());
+        locale->insert(QStringLiteral("currentFlag"), QString());
+        locale->insert(QStringLiteral("currentLanguage"), QStringLiteral("en"));
+        context->setContextProperty(QStringLiteral("cppLocale"), locale);
+
+        auto *update = new QQmlPropertyMap(this);
+        for (const char *key : {"featureEnabled", "checkAutomatically", "updateAvailable", "checking",
+                                "canInstallUpdate"}) {
+            update->insert(QLatin1StringView(key), false);
+        }
+        for (const char *key : {"actionError", "currentVersion", "statusMessage"})
+            update->insert(QLatin1StringView(key), QString());
+        context->setContextProperty(QStringLiteral("cppUpdate"), update);
+
+        context->setContextProperty(QStringLiteral("cppLicenseModel"), new QStringListModel(this));
+
+        auto *engine = new QQmlPropertyMap(this);
+        engine->insert(QStringLiteral("logModel"),
+                       QVariant::fromValue<QObject *>(new QStringListModel(this)));
+        context->setContextProperty(QStringLiteral("cppAppEngine"), engine);
+    }
+
+    /*! Presses \a key with \a modifiers in the window \a window, which tests cannot reach by keyClick(). */
+    Q_INVOKABLE void pressKey(QObject *window, int key, int modifiers)
+    {
+        QTest::keyClick(qobject_cast<QQuickWindow *>(window), Qt::Key(key),
+                        Qt::KeyboardModifiers(modifiers));
     }
 
     /*! Returns the URL of \a path on the mock server. */
