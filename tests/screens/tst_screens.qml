@@ -204,6 +204,23 @@ Item {
             return pane;
         }
 
+        /*! Verifies that the tab bars of the panes are compact. */
+        function test_tabBarsAreCompact() {
+            const host = createWired();
+            clickRow(host, 1);
+            cppRequestEditor.url = cppTestHost.serverUrl("/status/200");
+            sendAndWait(host);
+
+            compare(findChild(host.request, "tabs").height, BsTheme.compactBarHeight);
+            compare(findChild(host.response, "responseTabs").height, BsTheme.compactBarHeight);
+        }
+
+        /*! Verifies that the tests see the style settings of the application. */
+        function test_stylesMatchApplication() {
+            const field = findChild(createRequest("r2"), "nameField");
+            verify(field.height <= 48, "height " + field.height);
+        }
+
         /*! Verifies that a method is shown in its own color. */
         function test_treeShowsMethodColor() {
             const tree = findChild(createCollection(), "tree");

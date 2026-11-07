@@ -143,12 +143,13 @@ Item {
             objectName: "responseTabs"
 
             Layout.fillWidth: true
+            contentHeight: Base.BsTheme.compactBarHeight
 
-            TabButton {
+            Base.BsTabButton {
                 text: qsTr("Body")
             }
 
-            TabButton {
+            Base.BsTabButton {
                 text: qsTr("Headers")
             }
         }

@@ -39,8 +39,10 @@ Rectangle {
         spacing: 0
 
         Rectangle {
+            objectName: "paneHeader"
+
             Layout.fillWidth: true
-            Layout.preferredHeight: 34
+            Layout.preferredHeight: BsTheme.paneHeaderHeight
             color: BsTheme.headerColor
 
             Label {
@@ -48,9 +50,9 @@ Rectangle {
                 anchors.leftMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.title
-                font.pixelSize: 12
+                font.pixelSize: 11
                 font.bold: true
-                font.letterSpacing: 1.2
+                font.letterSpacing: 1.0
                 font.capitalization: Font.AllUppercase
                 color: BsTheme.accentTextColor
             }

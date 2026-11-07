@@ -125,20 +125,21 @@ Item {
             objectName: "tabs"
 
             Layout.fillWidth: true
+            contentHeight: Base.BsTheme.compactBarHeight
 
-            TabButton {
+            Base.BsTabButton {
                 text: qsTr("Params")
             }
 
-            TabButton {
+            Base.BsTabButton {
                 text: qsTr("Headers")
             }
 
-            TabButton {
+            Base.BsTabButton {
                 text: qsTr("Body")
             }
 
-            TabButton {
+            Base.BsTabButton {
                 text: qsTr("Auth")
             }
         }

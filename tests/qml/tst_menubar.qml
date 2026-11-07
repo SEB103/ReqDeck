@@ -218,6 +218,16 @@ Item {
             BsTheme.dark = false;
         }
 
+        /*! Verifies that the header strip of a pane is compact. */
+        function test_paneHeaderIsCompact() {
+            const pane = createTemporaryObject(paneComponent, root);
+            verify(pane !== null);
+
+            compare(findChild(pane, "paneHeader").height, BsTheme.paneHeaderHeight);
+            compare(BsTheme.paneHeaderHeight, 26);
+            compare(BsTheme.compactBarHeight, 34);
+        }
+
         /*! Verifies that status colors follow the class of the code. */
         function test_statusColorByClass() {
             verify(Qt.colorEqual(BsTheme.statusColor(201), BsTheme.statusColor(204)));

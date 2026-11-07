@@ -180,12 +180,13 @@ Pane {
                         id: sidebarTabs
 
                         Layout.fillWidth: true
+                        contentHeight: Base.BsTheme.compactBarHeight
 
-                        TabButton {
+                        Base.BsTabButton {
                             text: qsTr("Collection")
                         }
 
-                        TabButton {
+                        Base.BsTabButton {
                             text: qsTr("History")
                         }
                     }

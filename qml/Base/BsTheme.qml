@@ -32,6 +32,12 @@ QtObject {
     /*! Whether the dark palette is active. */
     property bool dark: false
 
+    /*! Height of the header strip of a pane. */
+    readonly property int paneHeaderHeight: 26
+
+    /*! Height of tab bars. */
+    readonly property int compactBarHeight: 34
+
     /*! Application accent: Material accent, accent lines, and checked controls. */
     readonly property color accent: theme.dark ? "#F06292" : "#C2185B"
 

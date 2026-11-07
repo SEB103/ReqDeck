@@ -384,7 +384,7 @@ target_link_libraries(tst_qml
 
 add_test(NAME ReqDeck.QmlSmoke COMMAND tst_qml)
 set_tests_properties(ReqDeck.QmlSmoke PROPERTIES
-    ENVIRONMENT "QML2_IMPORT_PATH=${QT_QML_OUTPUT_DIRECTORY}"
+    ENVIRONMENT "QML2_IMPORT_PATH=${QT_QML_OUTPUT_DIRECTORY};QT_QUICK_CONTROLS_CONF=${CMAKE_SOURCE_DIR}/resources/qtquickcontrols2.conf"
 )
 
 # The application's screens read its context, so they run against the real
@@ -434,5 +434,5 @@ qt_add_resources(tst_screens "screen_icons"
 
 add_test(NAME ReqDeck.Screens COMMAND tst_screens)
 set_tests_properties(ReqDeck.Screens PROPERTIES
-    ENVIRONMENT "QML2_IMPORT_PATH=${QT_QML_OUTPUT_DIRECTORY}"
+    ENVIRONMENT "QML2_IMPORT_PATH=${QT_QML_OUTPUT_DIRECTORY};QT_QUICK_CONTROLS_CONF=${CMAKE_SOURCE_DIR}/resources/qtquickcontrols2.conf"
 )

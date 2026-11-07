@@ -21,6 +21,7 @@ qt_add_qml_module(Base
         BsSingleLineEdit.qml
         BsStatusBar.qml
         BsStatusChip.qml
+        BsTabButton.qml
         BsTheme.qml
         BsTopBarActions.qml
 )
