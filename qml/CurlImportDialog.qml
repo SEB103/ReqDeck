@@ -53,6 +53,7 @@ Dialog {
 
     anchors.centerIn: Overlay.overlay
     modal: true
+    Material.roundedScale: Material.SmallScale
     title: qsTr("Import cURL")
     closePolicy: Popup.CloseOnEscape
 

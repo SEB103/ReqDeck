@@ -185,15 +185,19 @@ Item {
             currentIndex: tabs.currentIndex
 
             Base.BsKeyValueTable {
+                objectName: "paramsTable"
+
                 model: cppRequestEditor.paramsModel
-                keyPlaceholder: qsTr("Parameter")
+                keyTitle: qsTr("Parameter")
+                emptyHint: qsTr("Add a parameter to send it in the URL.")
             }
 
             Base.BsKeyValueTable {
                 objectName: "headersTable"
 
                 model: cppRequestEditor.headersModel
-                keyPlaceholder: qsTr("Header")
+                keyTitle: qsTr("Header")
+                emptyHint: qsTr("Add a header to send extra information with the request.")
             }
 
             ColumnLayout {
@@ -275,7 +279,8 @@ Item {
                     Layout.fillHeight: true
                     visible: cppRequestEditor.bodyMode === 2 // BodyMode::FormUrlEncoded
                     model: cppRequestEditor.formModel
-                    keyPlaceholder: qsTr("Field")
+                    keyTitle: qsTr("Field")
+                    emptyHint: qsTr("Add a field to send it in the body.")
                 }
 
                 Item {

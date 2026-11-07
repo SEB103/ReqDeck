@@ -37,6 +37,7 @@ Dialog {
 
     title: qsTr("Check for updates")
     modal: true
+    Material.roundedScale: Material.SmallScale
     anchors.centerIn: Overlay.overlay
     width: Math.min(root.parent ? root.parent.width - 80 : 460, 460)
     standardButtons: Dialog.Close

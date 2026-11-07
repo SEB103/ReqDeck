@@ -31,6 +31,7 @@ Dialog {
 
     title: qsTr("About %1").arg(cppAppInfo.appName)
     modal: true
+    Material.roundedScale: Material.SmallScale
     anchors.centerIn: Overlay.overlay
     width: Math.min(root.parent ? root.parent.width - 80 : 900, 900)
     height: Math.min(root.parent ? root.parent.height - 80 : 660, 680)

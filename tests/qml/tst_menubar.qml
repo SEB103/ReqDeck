@@ -335,6 +335,74 @@ Item {
             compare(rowChild(table, 0, "valueField").echoMode, TextInput.Normal);
         }
 
+        /*! Verifies that the columns are named above the rows. */
+        function test_tableShowsColumnTitles() {
+            resetKeyValueModel();
+            const table = createTemporaryObject(keyValueTableComponent, root);
+            verify(table !== null);
+            table.keyTitle = "Header";
+            table.valueTitle = "Content";
+
+            compare(findChild(table, "keyColumnTitle").text, "Header");
+            compare(findChild(table, "valueColumnTitle").text, "Content");
+        }
+
+        /*! Verifies that an empty table says what it is for. */
+        function test_tableShowsHintWhenEmpty() {
+            keyValueModel.clear();
+            const table = createTemporaryObject(keyValueTableComponent, root);
+            verify(table !== null);
+            table.emptyHint = "Add one.";
+            const hint = findChild(table, "emptyHint");
+            compare(hint.visible, true);
+            compare(hint.text, "Add one.");
+
+            keyValueModel.addRow();
+
+            tryCompare(hint, "visible", false);
+        }
+
+        /*! Verifies that a table without a hint shows none. */
+        function test_tableWithoutHintShowsNone() {
+            keyValueModel.clear();
+            const table = createTemporaryObject(keyValueTableComponent, root);
+            verify(table !== null);
+
+            compare(findChild(table, "emptyHint").visible, false);
+        }
+
+        /*! Verifies that fields can still be told apart without floating labels. */
+        function test_tableFieldsKeepNames() {
+            resetKeyValueModel();
+            const table = createTemporaryObject(keyValueTableComponent, root);
+            verify(table !== null);
+            waitForRendering(table);
+
+            compare(rowChild(table, 1, "keyField").Accessible.name, "Key 2");
+            compare(rowChild(table, 1, "valueField").Accessible.name, "Value 2");
+        }
+
+        /*! Verifies that no floating label can be cut off by the list. */
+        function test_firstRowIsNotClipped() {
+            resetKeyValueModel();
+            const table = createTemporaryObject(keyValueTableComponent, root);
+            verify(table !== null);
+            waitForRendering(table);
+
+            compare(rowChild(table, 0, "keyField").placeholderText, "");
+            compare(rowChild(table, 0, "valueField").placeholderText, "");
+        }
+
+        /*! Verifies that the rows stay compact. */
+        function test_tableRowsAreCompact() {
+            resetKeyValueModel();
+            const table = createTemporaryObject(keyValueTableComponent, root);
+            verify(table !== null);
+            waitForRendering(table);
+
+            compare(rowChild(table, 0, "keyField").height, 34);
+        }
+
         function test_keyValueTableEditsWriteToModel() {
             resetKeyValueModel();
             const table = createTemporaryObject(keyValueTableComponent, root);

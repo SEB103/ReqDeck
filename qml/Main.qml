@@ -432,6 +432,7 @@ ApplicationWindow {
         width: Math.min(mainWindow.width - 80, 560)
         title: qsTr("Create New Workspace")
         modal: true
+        Material.roundedScale: Material.SmallScale
         focus: true
         standardButtons: Dialog.Ok | Dialog.Cancel
         closePolicy: Popup.CloseOnEscape
@@ -526,6 +527,7 @@ ApplicationWindow {
         width: Math.min(mainWindow.width - 80, 460)
         title: qsTr("Unsaved changes")
         modal: true
+        Material.roundedScale: Material.SmallScale
         focus: true
         standardButtons: Dialog.Save | Dialog.Discard | Dialog.Cancel
         closePolicy: Popup.CloseOnEscape
@@ -562,6 +564,7 @@ ApplicationWindow {
         width: Math.min(mainWindow.width - 80, 480)
         title: qsTr("Workspace error")
         modal: true
+        Material.roundedScale: Material.SmallScale
         focus: true
         standardButtons: Dialog.Ok
         closePolicy: Popup.CloseOnEscape
@@ -583,6 +586,7 @@ ApplicationWindow {
         width: Math.min(mainWindow.width - 80, 620)
         title: qsTr("Settings")
         modal: true
+        Material.roundedScale: Material.SmallScale
         focus: true
         standardButtons: Dialog.Close
         closePolicy: Popup.CloseOnEscape

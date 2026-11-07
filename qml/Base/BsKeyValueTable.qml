@@ -13,7 +13,8 @@ import QtQuick.Layouts
     \inqmlmodule Base
     \brief Editable table of key/value rows with an enable switch per row.
 
-    Used for query parameters, headers, and form fields. The \l model needs the
+    Used for query parameters, headers, and form fields. Columns are named by
+    titles above the rows, and \l emptyHint explains an empty table. The \l model needs the
     roles \c key, \c value, and \c enabled, and the invokable functions
     \c addRow() and \c removeRow(row). Edits are written to the model as the user
     types, never when the model itself changes. With \l showSecret, the model also
@@ -28,15 +29,68 @@ ColumnLayout {
     /*! Whether each row offers a Secret box. */
     property bool showSecret: false
 
-    /*! Placeholder of the key fields. */
-    property string keyPlaceholder: qsTr("Key")
+    /*! Title of the key column. */
+    property string keyTitle: qsTr("Key")
 
-    /*! Placeholder of the value fields. */
-    property string valuePlaceholder: qsTr("Value")
+    /*! Title of the value column. */
+    property string valueTitle: qsTr("Value")
+
+    /*! Text shown while the table has no rows. */
+    property string emptyHint: ""
+
+    /*! Width of the column with the enable switch and of the one with the remove button. */
+    readonly property int sideColumnWidth: 40
+
+    /*! Width of the column with the Secret box. */
+    readonly property int secretColumnWidth: 90
 
     spacing: 4
 
+    RowLayout {
+        objectName: "columnTitles"
+
+        Layout.fillWidth: true
+        spacing: 4
+
+        Item {
+            Layout.preferredWidth: root.sideColumnWidth
+        }
+
+        Label {
+            objectName: "keyColumnTitle"
+
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            leftPadding: 8
+            font.pixelSize: 12
+            opacity: 0.7
+            text: root.keyTitle
+        }
+
+        Label {
+            objectName: "valueColumnTitle"
+
+            Layout.fillWidth: true
+            Layout.preferredWidth: 2
+            leftPadding: 8
+            font.pixelSize: 12
+            opacity: 0.7
+            text: root.valueTitle
+        }
+
+        Item {
+            Layout.preferredWidth: root.secretColumnWidth
+            visible: root.showSecret
+        }
+
+        Item {
+            Layout.preferredWidth: root.sideColumnWidth
+        }
+    }
+
     ListView {
+        id: rowList
+
         objectName: "rows"
 
         Layout.fillWidth: true
@@ -46,6 +100,19 @@ ColumnLayout {
         model: root.model
 
         ScrollBar.vertical: ScrollBar {}
+
+        Label {
+            objectName: "emptyHint"
+
+            parent: rowList
+            anchors.centerIn: parent
+            width: parent.width - 32
+            visible: rowList.count === 0 && root.emptyHint.length > 0
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.Wrap
+            opacity: 0.6
+            text: root.emptyHint
+        }
 
         delegate: RowLayout {
             id: row
@@ -59,6 +126,7 @@ ColumnLayout {
             CheckBox {
                 objectName: "enabledBox"
 
+                Layout.preferredWidth: root.sideColumnWidth
                 checked: row.model.enabled
                 Accessible.name: qsTr("Enabled")
                 onToggled: row.model.enabled = checked
@@ -69,8 +137,11 @@ ColumnLayout {
 
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
-                placeholderText: root.keyPlaceholder
+                implicitHeight: 34
+                topPadding: 4
+                bottomPadding: 4
                 selectByMouse: true
+                Accessible.name: root.keyTitle + " " + (row.index + 1)
                 text: row.model.key
                 onTextEdited: row.model.key = text
             }
@@ -80,8 +151,11 @@ ColumnLayout {
 
                 Layout.fillWidth: true
                 Layout.preferredWidth: 2
-                placeholderText: root.valuePlaceholder
+                implicitHeight: 34
+                topPadding: 4
+                bottomPadding: 4
                 selectByMouse: true
+                Accessible.name: root.valueTitle + " " + (row.index + 1)
                 echoMode: root.showSecret && row.model.secret ? TextInput.Password : TextInput.Normal
                 text: row.model.value
                 onTextEdited: row.model.value = text
@@ -90,6 +164,7 @@ ColumnLayout {
             CheckBox {
                 objectName: "secretBox"
 
+                Layout.preferredWidth: root.secretColumnWidth
                 visible: root.showSecret
                 checked: root.showSecret && row.model.secret
                 text: qsTr("Secret")
@@ -99,6 +174,7 @@ ColumnLayout {
             ToolButton {
                 objectName: "removeButton"
 
+                Layout.preferredWidth: root.sideColumnWidth
                 display: AbstractButton.IconOnly
                 icon.source: "qrc:/images/svg/close.svg"
                 icon.width: 18

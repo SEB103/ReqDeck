@@ -58,6 +58,7 @@ Dialog {
 
     anchors.centerIn: Overlay.overlay
     modal: true
+    Material.roundedScale: Material.SmallScale
     title: qsTr("Environments")
     standardButtons: Dialog.Close
     closePolicy: Popup.CloseOnEscape
@@ -247,7 +248,8 @@ Dialog {
                 Layout.fillHeight: true
                 enabled: root.hasEnvironment && !cppWorkspaceManager.secretsUnread
                 showSecret: true
-                keyPlaceholder: qsTr("Variable")
+                keyTitle: qsTr("Variable")
+                emptyHint: qsTr("Add a variable to use it as {{name}} in requests.")
                 model: cppEnvironments.variablesModel
             }
         }
@@ -261,6 +263,7 @@ Dialog {
         anchors.centerIn: Overlay.overlay
         width: 420
         modal: true
+        Material.roundedScale: Material.SmallScale
         title: qsTr("Remove environment")
         standardButtons: Dialog.Yes | Dialog.No
 

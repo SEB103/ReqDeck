@@ -275,6 +275,7 @@ Item {
 
         anchors.centerIn: Overlay.overlay
         modal: true
+        Material.roundedScale: Material.SmallScale
         title: qsTr("Rename")
         standardButtons: Dialog.Ok | Dialog.Cancel
 
@@ -310,6 +311,7 @@ Item {
         anchors.centerIn: Overlay.overlay
         width: 420
         modal: true
+        Material.roundedScale: Material.SmallScale
         title: qsTr("Delete")
         standardButtons: Dialog.Yes | Dialog.No
 

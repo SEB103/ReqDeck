@@ -3,6 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtTest
 import Base
 import ReqDeck
@@ -1327,6 +1328,20 @@ Item {
         function firstVariableChild(host, name) {
             const rows = findChild(findChild(host, "variablesTable"), "rows");
             return findChild(rows.itemAtIndex(0), name);
+        }
+
+        /*! Verifies that the corners of dialogs are not those of a phone. */
+        function test_dialogsUseSmallCorners() {
+            const host = openDialog();
+
+            compare(host.dialog.Material.roundedScale, Material.SmallScale);
+        }
+
+        /*! Verifies that an empty Params tab explains itself. */
+        function test_emptyParamsTabShowsHint() {
+            const pane = createRequest("r2");
+
+            compare(findChild(findChild(pane, "paramsTable"), "emptyHint").visible, true);
         }
 
         /*! Verifies that the dialog starts at the active environment. */

@@ -187,6 +187,7 @@ Item {
         anchors.centerIn: Overlay.overlay
         width: 420
         modal: true
+        Material.roundedScale: Material.SmallScale
         title: qsTr("Clear history")
         standardButtons: Dialog.Yes | Dialog.No
 
