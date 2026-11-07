@@ -99,6 +99,23 @@ Item {
     }
 
     Component {
+        id: segmentedComponent
+
+        BsSegmentedControl {
+            options: ["One", "Two"]
+        }
+    }
+
+    Component {
+        id: lineNumbersComponent
+
+        BsLineNumbers {
+            width: 40
+            height: 100
+        }
+    }
+
+    Component {
         id: singleLineEditComponent
 
         BsSingleLineEdit {
@@ -234,6 +251,27 @@ Item {
             verify(!Qt.colorEqual(BsTheme.statusColor(404), BsTheme.statusColor(201)));
             verify(Qt.colorEqual(BsTheme.statusColor(0), BsTheme.statusColor(500)));
             verify(!Qt.colorEqual(BsTheme.statusColor(301), BsTheme.statusColor(404)));
+        }
+
+        /*! Verifies that a click reports the option and leaves the choice to the host. */
+        function test_segmentedControlReportsChoice() {
+            const control = createTemporaryObject(segmentedComponent, root);
+            verify(control !== null);
+            let chosen = -1;
+            control.activated.connect((index) => chosen = index);
+
+            mouseClick(findChild(control, "option1"));
+
+            compare(chosen, 1);
+            compare(control.currentIndex, 0);
+        }
+
+        /*! Verifies that the gutter is safe without a view. */
+        function test_lineNumbersWithoutView() {
+            const numbers = createTemporaryObject(lineNumbersComponent, root);
+            verify(numbers !== null);
+
+            compare(numbers.visibleLines, 0);
         }
 
         /*! Verifies that the menu items name their shortcuts. */

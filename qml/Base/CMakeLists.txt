@@ -14,11 +14,13 @@ qt_add_qml_module(Base
         BsInlineTitle.qml
         BsKeyValueTable.qml
         BsLanguageSelector.qml
+        BsLineNumbers.qml
         BsLogPanel.qml
         BsMenuBar.qml
         BsMenuItem.qml
         BsNotificationBanner.qml
         BsPane.qml
+        BsSegmentedControl.qml
         BsSingleLineEdit.qml
         BsStatusBar.qml
         BsStatusChip.qml

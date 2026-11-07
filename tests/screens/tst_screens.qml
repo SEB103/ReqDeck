@@ -158,6 +158,10 @@ Item {
         when: windowShown
 
         function init() {
+            // A closed application window leaves this one inactive at times,
+            // and shortcuts only reach an active window.
+            root.Window.window.requestActivate();
+            tryVerify(() => root.Window.window.active);
             verify(cppTestHost.reset());
             selectedSpy.clear();
             limitSpy.clear();
@@ -1759,8 +1763,101 @@ Item {
             compare(findChild(host.response, "statusChip").text, "201 Created");
             compare(findChild(host.response, "statusChip").statusClass, 2);
             compare(findChild(host.response, "sizeLabel").text, "10 B");
-            compare(findChild(host.response, "requestNameLabel").text, "List items");
             compare(findChild(host.response, "bodyArea").text, "status 201");
+        }
+
+        /*! Sends to a JSON list of \a rows rows and returns the wired panes. */
+        function createPrettyBody(rows) {
+            const host = createSender(cppTestHost.serverUrl("/json/" + rows));
+            sendAndWait(host);
+            return host;
+        }
+
+        /*! Verifies that the view can be switched from the keyboard. */
+        function test_prettyControlWorksByKeyboard() {
+            const host = createPrettyBody(3);
+            const toggle = findChild(host.response, "prettySwitch");
+
+            findChild(toggle, "option1").forceActiveFocus();
+            keyClick(Qt.Key_Space);
+            compare(cppResponse.pretty, false);
+
+            findChild(toggle, "option0").forceActiveFocus();
+            keyClick(Qt.Key_Space);
+            compare(cppResponse.pretty, true);
+        }
+
+        /*! Verifies that the numbers stay on their lines while scrolling. */
+        function test_lineNumbersFollowScroll() {
+            const host = createPrettyBody(300);
+            const area = findChild(host.response, "bodyArea");
+            const numbers = findChild(host.response, "lineNumbers");
+            verify(numbers.visible);
+            compare(numbers.lineCount, area.lineCount);
+
+            const line = 500;
+            numbers.view.contentY = line * numbers.lineHeight;
+            waitForRendering(numbers);
+
+            verify(Math.abs(numbers.firstLine - line) <= 3, "first " + numbers.firstLine);
+            const position = area.text.split("\n").slice(0, line).join("\n").length + 1;
+            const textY = area.positionToRectangle(position).y - numbers.view.contentY;
+            verify(Math.abs(numbers.lineY(line) - textY) <= 1,
+                   numbers.lineY(line) + " against " + textY);
+        }
+
+        /*! Verifies that a long body only builds the visible numbers. */
+        function test_lineNumbersStayFastOnLargeBody() {
+            const host = createPrettyBody(25000);
+            const numbers = findChild(host.response, "lineNumbers");
+            verify(numbers.lineCount >= 15000, "lines " + numbers.lineCount);
+            verify(numbers.visibleLines < 200, "built " + numbers.visibleLines);
+
+            const started = Date.now();
+            for (let step = 1; step <= 20; ++step) {
+                numbers.view.contentY = step * 40 * numbers.lineHeight;
+                waitForRendering(numbers);
+            }
+
+            const elapsed = Date.now() - started;
+            verify(elapsed < 3000, "took " + elapsed + " ms");
+        }
+
+        /*! Verifies that a wrapped body shows no numbers: its lines are not rows. */
+        function test_lineNumbersHiddenWhenWrapping() {
+            const host = createPrettyBody(3);
+            const toggle = findChild(host.response, "prettySwitch");
+
+            mouseClick(findChild(toggle, "option1"));
+
+            compare(findChild(host.response, "lineNumbers").visible, false);
+        }
+
+        /*! Verifies that the numbers survive a theme switch. */
+        function test_lineNumbersSurviveThemeSwitch() {
+            const host = createPrettyBody(30);
+            const numbers = findChild(host.response, "lineNumbers");
+            const count = numbers.lineCount;
+
+            BsTheme.dark = !BsTheme.dark;
+            waitForRendering(numbers);
+            BsTheme.dark = !BsTheme.dark;
+            waitForRendering(numbers);
+
+            compare(numbers.lineCount, count);
+            verify(numbers.lineHeight > 0);
+        }
+
+        /*! Verifies that the name shows only for a response of another request. */
+        function test_requestNameHiddenForOpenRequest() {
+            const host = createPrettyBody(3);
+            const label = findChild(host.response, "requestNameLabel");
+            compare(label.visible, false);
+
+            cppRequestEditor.load("r1");
+
+            compare(label.visible, true);
+            compare(label.text, "List items");
         }
 
         /*! Verifies that a value being typed counts when Send is clicked. */
@@ -1836,11 +1933,12 @@ Item {
             const area = findChild(host.response, "bodyArea");
             const toggle = findChild(host.response, "prettySwitch");
             compare(toggle.visible, true);
-            compare(toggle.checked, true);
+            compare(toggle.currentIndex, 0);
             verify(area.text.indexOf("\n") >= 0);
 
-            mouseClick(toggle);
+            mouseClick(findChild(toggle, "option1"));
 
+            compare(toggle.currentIndex, 1);
             compare(cppResponse.pretty, false);
             verify(area.text.indexOf("\n") < 0);
             cppResponse.pretty = true;

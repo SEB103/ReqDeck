@@ -109,6 +109,7 @@ Item {
             objectName: "requestNameLabel"
 
             Layout.fillWidth: true
+            visible: cppResponse.requestName !== cppRequestEditor.name
             elide: Text.ElideRight
             opacity: 0.6
             textFormat: Text.PlainText
@@ -166,13 +167,13 @@ Item {
                     Layout.fillWidth: true
                     spacing: 8
 
-                    Switch {
+                    Base.BsSegmentedControl {
                         objectName: "prettySwitch"
 
                         visible: cppResponse.canPretty
-                        text: qsTr("Pretty")
-                        checked: cppResponse.pretty
-                        onToggled: cppResponse.pretty = checked
+                        options: [qsTr("Pretty"), qsTr("Raw")]
+                        currentIndex: cppResponse.pretty ? 0 : 1
+                        onActivated: (index) => cppResponse.pretty = index === 0
                     }
 
                     Label {
@@ -191,54 +192,82 @@ Item {
                     }
                 }
 
-                ScrollView {
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    spacing: 0
 
-                    // Text and wrap mode are set here, not bound: separate
-                    // bindings would lay out a large body twice. The empty text
-                    // in between avoids that, and it colors a body in the new
-                    // palette much faster than recoloring it in place.
-                    TextArea {
-                        id: bodyArea
+                    Base.BsLineNumbers {
+                        id: lineNumbers
 
-                        /*! Returns the wrap mode for the body that is shown now. */
-                        function wrapModeForBody() {
-                            if (cppResponse.pretty && cppResponse.canPretty)
-                                return TextEdit.NoWrap
-                            return cppResponse.wrapAnywhere ? TextEdit.WrapAnywhere : TextEdit.Wrap
-                        }
+                        objectName: "lineNumbers"
 
-                        /*! Shows the current body; \a always also when it looks unchanged. */
-                        function showBody(always) {
-                            const body = cppResponse.bodyText
-                            const wrap = bodyArea.wrapModeForBody()
-                            if (!always && body === bodyArea.text && wrap === bodyArea.wrapMode)
-                                return
-                            bodyArea.text = ""
-                            bodyArea.wrapMode = wrap
-                            bodyArea.text = body
-                        }
+                        Layout.fillHeight: true
+                        visible: bodyArea.wrapMode === TextEdit.NoWrap
+                        view: bodyScroll.contentItem
+                        lineCount: bodyArea.lineCount
+                        textTopPadding: bodyArea.topPadding
+                        font: bodyArea.font
+                    }
 
-                        objectName: "bodyArea"
+                    ScrollView {
+                        id: bodyScroll
 
-                        readOnly: true
-                        selectByMouse: true
-                        font.family: "Consolas"
-                        Component.onCompleted: {
-                            cppResponse.attachHighlighter(bodyArea.textDocument)
-                            bodyArea.showBody(false)
-                        }
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
 
-                        Connections {
-                            target: cppResponse
+                        // Text and wrap mode are set here, not bound: separate
+                        // bindings would lay out a large body twice. The empty text
+                        // in between avoids that, and it colors a body in the new
+                        // palette much faster than recoloring it in place.
+                        TextArea {
+                            id: bodyArea
 
-                            function onResponseChanged() {
+                            /*! Returns the wrap mode for the body that is shown now. */
+                            function wrapModeForBody() {
+                                if (cppResponse.pretty && cppResponse.canPretty)
+                                    return TextEdit.NoWrap
+                                return cppResponse.wrapAnywhere ? TextEdit.WrapAnywhere : TextEdit.Wrap
+                            }
+
+                            /*! Shows the current body; \a always also when it looks unchanged. */
+                            function showBody(always) {
+                                const body = cppResponse.bodyText
+                                const wrap = bodyArea.wrapModeForBody()
+                                if (!always && body === bodyArea.text && wrap === bodyArea.wrapMode)
+                                    return
+                                bodyArea.text = ""
+                                bodyArea.wrapMode = wrap
+                                bodyArea.text = body
+                            }
+
+                            /*! Measures the lines once the current layout pass is over. */
+                            function measureLines() {
+                                if (bodyArea.lineCount > 0)
+                                    lineNumbers.lineHeight = bodyArea.contentHeight / bodyArea.lineCount
+                            }
+
+                            objectName: "bodyArea"
+
+                            readOnly: true
+                            selectByMouse: true
+                            font.family: "Consolas"
+                            onContentHeightChanged: Qt.callLater(bodyArea.measureLines)
+                            Component.onCompleted: {
+                                cppResponse.attachHighlighter(bodyArea.textDocument)
                                 bodyArea.showBody(false)
                             }
 
-                            function onDarkThemeChanged() {
-                                bodyArea.showBody(true)
+                            Connections {
+                                target: cppResponse
+
+                                function onResponseChanged() {
+                                    bodyArea.showBody(false)
+                                }
+
+                                function onDarkThemeChanged() {
+                                    bodyArea.showBody(true)
+                                }
                             }
                         }
                     }
