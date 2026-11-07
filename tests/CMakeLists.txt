@@ -398,7 +398,9 @@ target_link_libraries(tst_qml
         Qt6::QuickTest
 )
 
-add_test(NAME ReqDeck.QmlSmoke COMMAND tst_qml)
+# Quick Test writes nothing to standard output here, so the report goes to a
+# file that CI prints when the test fails.
+add_test(NAME ReqDeck.QmlSmoke COMMAND tst_qml -o "${CMAKE_CURRENT_BINARY_DIR}/tst_qml.txt,txt")
 set_tests_properties(ReqDeck.QmlSmoke PROPERTIES
     ENVIRONMENT "QML2_IMPORT_PATH=${QT_QML_OUTPUT_DIRECTORY};QT_QUICK_CONTROLS_CONF=${CMAKE_SOURCE_DIR}/resources/qtquickcontrols2.conf"
 )
@@ -449,7 +451,9 @@ qt_add_resources(tst_screens "screen_icons"
         "${CMAKE_SOURCE_DIR}/resources/images/svg/note_add.svg"
 )
 
-add_test(NAME ReqDeck.Screens COMMAND tst_screens)
+# Quick Test writes nothing to standard output here, so the report goes to a
+# file that CI prints when the test fails.
+add_test(NAME ReqDeck.Screens COMMAND tst_screens -o "${CMAKE_CURRENT_BINARY_DIR}/tst_screens.txt,txt")
 set_tests_properties(ReqDeck.Screens PROPERTIES
     ENVIRONMENT "QML2_IMPORT_PATH=${QT_QML_OUTPUT_DIRECTORY};QT_QUICK_CONTROLS_CONF=${CMAKE_SOURCE_DIR}/resources/qtquickcontrols2.conf"
 )

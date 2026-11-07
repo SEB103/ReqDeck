@@ -65,5 +65,16 @@ jobs:
       - name: Run tests
         run: ctest --test-dir build/ci --output-on-failure
 
+      - name: Show screen test reports
+        if: failure()
+        shell: pwsh
+        run: |
+          foreach ($report in "build/ci/tests/tst_qml.txt", "build/ci/tests/tst_screens.txt") {
+            if (Test-Path $report) {
+              Write-Host "=== $report"
+              Get-Content $report | Select-String -Pattern "FAIL!|Totals|Loc:|Actual|Expected|QFATAL" | ForEach-Object { $_.Line }
+            }
+          }
+
       - name: Run QML lint targets
         run: cmake --build build/ci --target all_qmllint
