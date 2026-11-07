@@ -38,6 +38,7 @@ HelpLibrary::HelpLibrary(const QString &language, const QString &directory, QObj
         return;
     }
 
+    m_labels = document.object().value(QLatin1StringView("labels")).toObject().toVariantMap();
     const QJsonObject topics = document.object().value(QLatin1StringView("topics")).toObject();
     for (auto it = topics.constBegin(); it != topics.constEnd(); ++it)
         m_topics.insert(it.key(), it.value().toObject().toVariantMap());
@@ -72,6 +73,17 @@ QVariantMap HelpLibrary::topic(const QString &id) const
 bool HelpLibrary::hasTopic(const QString &id) const
 {
     return m_topics.contains(id);
+}
+
+/*!
+ * \brief Returns the headings of the help panel.
+ *
+ * They are in the language of the topics, which can differ from the language of
+ * the application interface.
+ */
+QVariantMap HelpLibrary::labels() const
+{
+    return m_labels;
 }
 
 /*!

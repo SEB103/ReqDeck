@@ -47,6 +47,26 @@ ApplicationWindow {
             focused.forceActiveFocus(Qt.ShortcutFocusReason)
     }
 
+    /*!
+        Opens help for the element F1 refers to, or closes it when that element's
+        help is already shown.
+    */
+    function toggleHelp() {
+        const id = cppHelpLocator.currentTopic(mainWindow)
+        if (helpPanel.opened && helpPanel.topicId === id) {
+            helpPanel.close()
+            return
+        }
+        helpPanel.topicId = id
+        helpPanel.topic = cppHelp.topic(id)
+        helpPanel.open()
+    }
+
+    /*! Opens the beginner guide; \a chapter is kept for a viewer that can jump to it. */
+    function openGuide(chapter) {
+        Qt.openUrlExternally("file:///" + cppHelp.guidePath())
+    }
+
     /*! Saves the workspace with everything the user has typed so far. */
     function saveWorkspace() {
         mainWindow.commitFocusedEdit()
@@ -270,6 +290,31 @@ ApplicationWindow {
         function onCancelRequested() {
             cppRequestEditor.cancel()
         }
+    }
+
+    // F1 works in dialogs too, so the shortcut is not limited to the window.
+    Shortcut {
+        sequence: "F1"
+        context: Qt.ApplicationShortcut
+        onActivated: mainWindow.toggleHelp()
+    }
+
+    // Escape closes help first, then whatever is below it.
+    Shortcut {
+        sequence: "Esc"
+        context: Qt.ApplicationShortcut
+        enabled: helpPanel.opened
+        onActivated: helpPanel.close()
+    }
+
+    Base.BsHelpPanel {
+        id: helpPanel
+
+        /*! Id of the shown topic. */
+        property string topicId: ""
+
+        labels: cppHelp.labels()
+        onMoreRequested: (chapter) => mainWindow.openGuide(chapter)
     }
 
     // Takes the focus in commitFocusedEdit(). It is a plain item on purpose: a focus

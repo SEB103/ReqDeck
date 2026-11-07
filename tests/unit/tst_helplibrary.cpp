@@ -48,6 +48,9 @@ private slots:
     /*! Verifies that each topic points to an existing chapter of the guide. */
     void topicsPointToChapters();
 
+    /*! Verifies the headings of the panel in the language of the topics. */
+    void labelsFollowLanguage();
+
     /*! Verifies where the guide is looked for. */
     void guidePathFollowsLanguage();
 };
@@ -134,6 +137,20 @@ void HelpLibraryTest::topicsPointToChapters()
         const QString chapter = english.topic(id).value(QStringLiteral("chapter")).toString();
         QVERIFY2(english.chapterIds().contains(chapter), qPrintable(id + u' ' + chapter));
     }
+}
+
+void HelpLibraryTest::labelsFollowLanguage()
+{
+    const HelpLibrary russian(QStringLiteral("ru"), QStringLiteral(REQDECK_HELP_DIR));
+    const HelpLibrary english(QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR));
+
+    for (const QString &key : {QStringLiteral("why"), QStringLiteral("example"), QStringLiteral("next"),
+                               QStringLiteral("more"), QStringLiteral("close")}) {
+        QVERIFY2(!russian.labels().value(key).toString().isEmpty(), qPrintable(key));
+        QVERIFY2(!english.labels().value(key).toString().isEmpty(), qPrintable(key));
+    }
+    QCOMPARE(english.labels().value(QStringLiteral("why")).toString(), QStringLiteral("Why"));
+    QCOMPARE(russian.labels().value(QStringLiteral("why")).toString(), QStringLiteral("Зачем"));
 }
 
 void HelpLibraryTest::guidePathFollowsLanguage()

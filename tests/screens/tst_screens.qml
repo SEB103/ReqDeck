@@ -1367,6 +1367,127 @@ Item {
             compare(cppRequestEditor.url, "http://x/items");
         }
 
+        /*! Creates the application window, active, and returns it. */
+        function createMain() {
+            const window = createTemporaryObject(mainComponent, root);
+            verify(window !== null);
+            window.requestActivate();
+            tryCompare(window, "active", true);
+            waitForRendering(window.contentItem);
+            return window;
+        }
+
+        /*! Returns the help panel of \a window. */
+        function helpPanel(window) {
+            return findChild(window, "helpPanel");
+        }
+
+        /*! Verifies that F1 shows a topic in the panel. */
+        function test_panelShowsTopic() {
+            const window = createMain();
+            mouseMove(window.contentItem, window.width - 4, window.height - 30);
+
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+
+            const panel = helpPanel(window);
+            tryCompare(panel, "opened", true);
+            compare(findChild(panel, "helpTitle").text, "Getting started");
+            verify(findChild(panel, "help_example").text.length > 0);
+            compare(findChild(panel, "helpMore").text, "More in the guide");
+        }
+
+        /*! Verifies that the panel leaves the focus where it was. */
+        function test_panelDoesNotTakeFocus() {
+            const window = createMainTypingName();
+
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+
+            tryCompare(helpPanel(window), "opened", true);
+            verify(findChild(window.contentItem, "nameField").activeFocus);
+            cppTestHost.pressKey(window, Qt.Key_Y, Qt.NoModifier);
+            compare(findChild(window.contentItem, "nameField").text, "xy");
+        }
+
+        /*! Verifies that F1 on the same element closes the panel again. */
+        function test_f1OpensAndF1Closes() {
+            const window = createMain();
+            const panel = helpPanel(window);
+
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+            tryCompare(panel, "opened", true);
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+
+            tryCompare(panel, "visible", false);
+        }
+
+        /*! Verifies that Escape closes the panel. */
+        function test_escClosesPanel() {
+            const window = createMain();
+            const panel = helpPanel(window);
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+            tryCompare(panel, "opened", true);
+
+            cppTestHost.pressKey(window, Qt.Key_Escape, Qt.NoModifier);
+
+            tryCompare(panel, "visible", false);
+        }
+
+        /*! Verifies help inside a modal dialog, and that Escape closes help first. */
+        function test_f1WorksInModalDialog() {
+            const window = createMain();
+            findChild(window.contentItem, "manageEnvironmentsButton").clicked();
+            const dialog = findChild(window, "environmentDialog");
+            tryCompare(dialog, "opened", true);
+            const list = findChild(dialog, "environmentList");
+            mouseMove(list, list.width / 2, 20);
+
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+
+            const panel = helpPanel(window);
+            tryCompare(panel, "opened", true);
+            compare(findChild(panel, "helpTitle").text, "Environments");
+            verify(panel.z > dialog.z);
+
+            cppTestHost.pressKey(window, Qt.Key_Escape, Qt.NoModifier);
+            tryCompare(panel, "visible", false);
+            compare(dialog.visible, true);
+            dialog.close();
+        }
+
+        /*! Verifies that F1 on another element shows its topic instead of closing. */
+        function test_panelFollowsNextF1() {
+            const window = createMain();
+            findChild(window.contentItem, "manageEnvironmentsButton").clicked();
+            const dialog = findChild(window, "environmentDialog");
+            tryCompare(dialog, "opened", true);
+            const list = findChild(dialog, "environmentList");
+            mouseMove(list, list.width / 2, 20);
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+            const panel = helpPanel(window);
+            tryCompare(panel, "opened", true);
+
+            mouseMove(window.contentItem, 4, window.height - 30);
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+
+            compare(panel.opened, true);
+            compare(findChild(panel, "helpTitle").text, "Getting started");
+            dialog.close();
+        }
+
+        /*! Verifies that topic text is shown as text. */
+        function test_panelMarkupStaysText() {
+            const window = createMain();
+            const panel = helpPanel(window);
+
+            panel.topic = {title: "<b>x</b>", what: "<img src='http://x'>", why: "<i>y</i>"};
+            panel.open();
+            tryCompare(panel, "opened", true);
+
+            compare(findChild(panel, "helpTitle").textFormat, Text.PlainText);
+            compare(findChild(panel, "helpWhat").textFormat, Text.PlainText);
+            compare(findChild(panel, "help_why").textFormat, Text.PlainText);
+        }
+
         /*! Verifies that a list being read keeps its entry when a request finishes. */
         function test_historyKeepsCurrentEntry() {
             cppTestHost.addHistory("http://older", 1);

@@ -1,6 +1,7 @@
 {
     "schema": 1,
     "language": "ru",
+    "labels": {"why": "Зачем", "example": "Пример", "next": "Что дальше", "more": "Подробнее в руководстве", "close": "Закрыть справку"},
     "topics": {
         "start": {
             "title": "С чего начать",

@@ -39,6 +39,9 @@ public:
     /** Returns whether a topic \a id exists. */
     Q_INVOKABLE bool hasTopic(const QString &id) const;
 
+    /** Returns the headings of the help panel: why, example, next, more, close. */
+    Q_INVOKABLE QVariantMap labels() const;
+
     /** Returns the ids of all topics, sorted. */
     QStringList topicIds() const;
 
@@ -57,6 +60,9 @@ private:
 
     /** Topics by id. */
     QHash<QString, QVariantMap> m_topics;
+
+    /** Headings of the help panel. */
+    QVariantMap m_labels;
 
     /** Chapter ids in order. */
     QStringList m_chapters;

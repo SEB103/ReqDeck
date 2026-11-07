@@ -1,6 +1,7 @@
 {
     "schema": 1,
     "language": "en",
+    "labels": {"why": "Why", "example": "Example", "next": "What next", "more": "More in the guide", "close": "Close help"},
     "topics": {
         "start": {
             "title": "Getting started",
