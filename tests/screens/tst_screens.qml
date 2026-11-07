@@ -204,6 +204,52 @@ Item {
             return pane;
         }
 
+        /*! Verifies that a method is shown in its own color. */
+        function test_treeShowsMethodColor() {
+            const tree = findChild(createCollection(), "tree");
+
+            const label = findChild(tree.itemAtCell(0, 1), "nodeMethod");
+
+            verify(Qt.colorEqual(label.color, BsTheme.methodColor("GET")));
+        }
+
+        /*! Verifies that the selected row is a tint, on which the method stays visible. */
+        function test_selectedRowKeepsMethodVisible() {
+            const pane = createCollection();
+            const tree = findChild(pane, "tree");
+
+            pane.selectedId = "r2";
+
+            const row = tree.itemAtCell(0, 1);
+            verify(Qt.colorEqual(row.background.color, BsTheme.selectedRowColor));
+            verify(Qt.colorEqual(findChild(row, "nodeMethod").color, BsTheme.methodColor("GET")));
+            compare(findChild(row, "selectionBar").visible, true);
+        }
+
+        /*! Verifies that a row without selection has no band of its own. */
+        function test_plainRowHasNoBackground() {
+            const tree = findChild(createCollection(), "tree");
+
+            compare(tree.itemAtCell(0, 1).background.color.a, 0);
+        }
+
+        /*! Verifies that the tree stays compact. */
+        function test_treeRowsAreCompact() {
+            const tree = findChild(createCollection(), "tree");
+
+            compare(tree.itemAtCell(0, 1).height, 30);
+        }
+
+        /*! Verifies that the result of an entry shows the class of its status. */
+        function test_historyShowsStatusColor() {
+            cppTestHost.addHistory("http://x", 1, "", 404);
+
+            const row = findChild(createHistory(), "historyList").itemAtIndex(0);
+
+            verify(Qt.colorEqual(findChild(row, "historyResult").color, BsTheme.statusColor(404)));
+            verify(Qt.colorEqual(findChild(row, "historyMethod").color, BsTheme.methodColor("GET")));
+        }
+
         /*! Verifies that the tree shows the top level with folders collapsed. */
         function test_collectionShowsTopLevel() {
             const tree = findChild(createCollection(), "tree");

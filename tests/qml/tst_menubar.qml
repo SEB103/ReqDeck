@@ -184,6 +184,48 @@ Item {
             }
         }
 
+        /*! Returns the relative luminance of \a color. */
+        function luminance(color) {
+            const channel = (value) => value <= 0.03928 ? value / 12.92
+                                                        : Math.pow((value + 0.055) / 1.055, 2.4);
+            return 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
+        }
+
+        /*! Returns the contrast of \a color on \a tint laid over \a background. */
+        function contrastOnTint(color, tint, background) {
+            const mix = (channel) => tint.a * tint[channel] + (1 - tint.a) * background[channel];
+            const under = Qt.rgba(mix("r"), mix("g"), mix("b"), 1);
+            const first = luminance(color) + 0.05;
+            const second = luminance(under) + 0.05;
+            return Math.max(first, second) / Math.min(first, second);
+        }
+
+        function test_methodColorsAreReadable_data() {
+            return [{tag: "light", dark: false, background: "#FFFBFE"},
+                    {tag: "dark", dark: true, background: "#1C1B1F"}];
+        }
+
+        /*! Verifies that every method reads on the selected row in both themes. */
+        function test_methodColorsAreReadable(data) {
+            BsTheme.dark = data.dark;
+            const background = Qt.color(data.background);
+
+            for (const method of ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]) {
+                const contrast = contrastOnTint(Qt.color(BsTheme.methodColor(method)),
+                                                BsTheme.selectedRowColor, background);
+                verify(contrast >= 3, method + ": " + contrast);
+            }
+            BsTheme.dark = false;
+        }
+
+        /*! Verifies that status colors follow the class of the code. */
+        function test_statusColorByClass() {
+            verify(Qt.colorEqual(BsTheme.statusColor(201), BsTheme.statusColor(204)));
+            verify(!Qt.colorEqual(BsTheme.statusColor(404), BsTheme.statusColor(201)));
+            verify(Qt.colorEqual(BsTheme.statusColor(0), BsTheme.statusColor(500)));
+            verify(!Qt.colorEqual(BsTheme.statusColor(301), BsTheme.statusColor(404)));
+        }
+
         /*! Verifies that the menu items name their shortcuts. */
         function test_menuItemShowsShortcut() {
             const menuBar = createTemporaryObject(menuBarComponent, root);

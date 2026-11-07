@@ -145,7 +145,23 @@ Item {
             required property bool isFolder
 
             implicitWidth: tree.width
+            implicitHeight: 30
             highlighted: nodeDelegate.nodeId === root.selectedId
+
+            background: Rectangle {
+                color: nodeDelegate.highlighted ? Base.BsTheme.selectedRowColor
+                                                : nodeDelegate.hovered ? Qt.alpha(Base.BsTheme.accent, 0.06)
+                                                                       : "transparent"
+
+                Rectangle {
+                    objectName: "selectionBar"
+
+                    width: 3
+                    height: parent.height
+                    visible: nodeDelegate.highlighted
+                    color: Base.BsTheme.accent
+                }
+            }
 
             contentItem: RowLayout {
                 spacing: 6
@@ -163,11 +179,14 @@ Item {
                 }
 
                 Label {
+                    objectName: "nodeMethod"
+
+                    Layout.preferredWidth: 42
                     visible: !nodeDelegate.isFolder
                     text: nodeDelegate.method
                     font.pixelSize: 10
                     font.bold: true
-                    color: Base.BsTheme.accentTextColor
+                    color: Base.BsTheme.methodColor(nodeDelegate.method)
                 }
 
                 Label {
@@ -177,6 +196,7 @@ Item {
                     textFormat: Text.PlainText
                     text: nodeDelegate.name
                     elide: Text.ElideRight
+                    color: Material.foreground
                 }
             }
 

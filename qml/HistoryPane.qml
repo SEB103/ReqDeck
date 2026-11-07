@@ -117,7 +117,7 @@ Item {
                             text: entry.method
                             font.pixelSize: 10
                             font.bold: true
-                            color: Base.BsTheme.accentTextColor
+                            color: Base.BsTheme.methodColor(entry.method)
                         }
 
                         Label {
@@ -140,7 +140,7 @@ Item {
                             Layout.fillWidth: true
                             textFormat: Text.PlainText
                             elide: Text.ElideRight
-                            opacity: 0.7
+                            color: Base.BsTheme.statusColor(entry.statusCode)
                             font.pixelSize: 11
                             text: root.resultText(entry.statusCode, entry.elapsedMs, entry.errorString)
                         }

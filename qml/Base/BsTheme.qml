@@ -49,6 +49,40 @@ QtObject {
     */
     readonly property color accentText: theme.dark ? "#F48FB1" : "#AD1457"
 
+    /*!
+        Returns the color of the HTTP method \a method.
+
+        The usual convention of API tools: green reads, orange creates, blue and
+        purple change, red deletes. The other methods stay neutral.
+    */
+    function methodColor(method) {
+        switch (method) {
+        case "GET":
+            return theme.dark ? "#81C784" : "#2E7D32"
+        case "POST":
+            return theme.dark ? "#FFB74D" : "#BF4400"
+        case "PUT":
+            return theme.dark ? "#64B5F6" : "#1565C0"
+        case "PATCH":
+            return theme.dark ? "#CE93D8" : "#7B1FA2"
+        case "DELETE":
+            return theme.dark ? "#E57373" : "#C62828"
+        default:
+            return theme.dark ? "#B0BEC5" : "#546E7A"
+        }
+    }
+
+    /*! Returns the color of the HTTP status \a code; 0 means no response. */
+    function statusColor(code) {
+        if (code >= 200 && code < 300)
+            return theme.methodColor("GET")
+        if (code >= 300 && code < 400)
+            return theme.methodColor("PUT")
+        if (code >= 400 && code < 500)
+            return theme.methodColor("POST")
+        return theme.methodColor("DELETE")
+    }
+
     /*! Background of the pane header strips. */
     readonly property color headerColor: theme.dark ? "#2A2327" : "#F7F0F3"
 
