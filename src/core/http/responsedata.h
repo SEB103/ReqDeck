@@ -6,10 +6,12 @@
 
 #include <QByteArray>
 #include <QList>
+#include <QTemporaryFile>
 #include <QString>
 #include <QStringList>
 #include <QUrl>
 
+#include <memory>
 #include <utility>
 
 /** Transport-level failure of a request; HTTP error statuses are not failures. */
@@ -39,13 +41,15 @@ struct ResponseData
     QString reasonPhrase;
     /** Response headers in received order; Qt lower-cases names and merges repeated ones. */
     QList<std::pair<QByteArray, QByteArray>> headers;
-    /** Response body after transparent decompression. */
+    /** Response body after transparent decompression; only its start when bodyFile is set. */
     QByteArray body;
+    /** The whole body when it was too large for memory; deleted with the last copy. */
+    std::shared_ptr<QTemporaryFile> bodyFile;
     /** Value of the Content-Type header; empty when absent. */
     QString contentType;
     /** Time from sending to completion in milliseconds. */
     qint64 elapsedMs {0};
-    /** Body size in bytes. */
+    /** Body size in bytes, the whole body also when only its start is in memory. */
     qint64 sizeBytes {0};
     /** URL of the final response after redirects. */
     QUrl finalUrl;

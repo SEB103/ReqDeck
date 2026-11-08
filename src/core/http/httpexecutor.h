@@ -9,6 +9,9 @@
 #include <QNetworkReply>
 #include <QObject>
 #include <QStringList>
+#include <QTemporaryFile>
+
+#include <memory>
 
 #include "core/http/requestbuilder.h"
 #include "core/http/responsedata.h"
@@ -54,6 +57,18 @@ public:
     /** Cancels the running request, which finishes with ResponseError::Aborted; no-op when idle. */
     void abort();
 
+    /** Bytes of a body kept in memory before the rest goes to a temporary file. */
+    static constexpr qint64 kDefaultBodyMemoryLimit = 32 * 1024 * 1024;
+
+    /** Bytes of a body on disk kept in memory for display, at most the memory limit. */
+    static constexpr qint64 kBodyPreviewBytes = 4 * 1024 * 1024;
+
+    /** Returns the memory limit of a body. */
+    qint64 bodyMemoryLimit() const;
+
+    /** Sets the memory limit of a body to \a bytes, for requests started afterwards. */
+    void setBodyMemoryLimit(qint64 bytes);
+
     /** Returns the proxies a request to \a url would try, in order; NoProxy means direct. */
     QList<QNetworkProxy> proxiesFor(const QUrl &url) const;
 
@@ -70,6 +85,9 @@ signals:
 private:
     /** Sends the current hop of m_current and connects the reply. */
     void startReply();
+
+    /** Moves the bytes that arrived to memory, or to the file past the limit. */
+    void readBody();
 
     /** Rewrites m_current to follow a redirect with \a status to \a target. */
     void prepareRedirect(const QUrl &target, int status);
@@ -100,6 +118,21 @@ private:
 
     /** Whether certificate errors were ignored for the running request. */
     bool m_tlsErrorsIgnored {false};
+
+    /** Memory limit of a body. */
+    qint64 m_bodyMemoryLimit {kDefaultBodyMemoryLimit};
+
+    /** Body of the current hop in memory: all of it, or its start once m_bodyFile is set. */
+    QByteArray m_body;
+
+    /** Whole body of the current hop once it passed the limit. */
+    std::shared_ptr<QTemporaryFile> m_bodyFile;
+
+    /** Bytes of the body of the current hop received so far. */
+    qint64 m_bodySize {0};
+
+    /** Why the body could not be stored; empty while it could. */
+    QString m_bodyError;
 
     /** Whether TLS certificate errors are ignored. */
     bool m_ignoreTlsErrors {false};

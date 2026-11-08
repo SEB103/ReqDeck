@@ -163,6 +163,24 @@ int MockHttpServer::requestCount() const
 }
 
 /*!
+ * \brief Returns \a size bytes of the text /bytes/ serves, starting at \a offset.
+ *
+ * Lines of 63 letters and a line feed, each line shifted by one letter, so that
+ * a byte out of place shows in a comparison.
+ * \param offset Position of the first byte.
+ * \param size Number of bytes.
+ */
+QByteArray MockHttpServer::patternBytes(qint64 offset, qint64 size)
+{
+    QByteArray bytes(size, Qt::Uninitialized);
+    for (qint64 i = 0; i < size; ++i) {
+        const qint64 position = offset + i;
+        bytes[i] = position % 64 == 63 ? '\n' : char('a' + (position / 64 + position % 64) % 26);
+    }
+    return bytes;
+}
+
+/*!
  * \brief Accepts pending connections and wires their input and cleanup.
  */
 void MockHttpServer::acceptConnections()
@@ -253,6 +271,31 @@ void MockHttpServer::route(QTcpSocket *socket, const Request &request)
         };
         writeResponse(socket, 200, {{"Content-Type", "application/json"}},
                       QJsonDocument(echo).toJson(QJsonDocument::Compact), head);
+        return;
+    }
+
+    if (path.startsWith("/bytes/")) {
+        // Written as the socket drains, so the server never holds the body.
+        const qint64 total = path.mid(7).toLongLong();
+        socket->write("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + QByteArray::number(total)
+                      + "\r\nConnection: close\r\n\r\n");
+        if (head || total == 0) {
+            socket->disconnectFromHost();
+            return;
+        }
+        auto sent = std::make_shared<qint64>(0);
+        const auto writeMore = [socket, total, sent]() {
+            constexpr qint64 kChunk = 256 * 1024;
+            while (*sent < total && socket->bytesToWrite() < 4 * kChunk) {
+                const qint64 size = qMin(kChunk, total - *sent);
+                socket->write(patternBytes(*sent, size));
+                *sent += size;
+                if (*sent == total)
+                    socket->disconnectFromHost();
+            }
+        };
+        connect(socket, &QTcpSocket::bytesWritten, socket, writeMore);
+        writeMore();
         return;
     }
 

@@ -135,6 +135,15 @@ private slots:
     /*! Verifies that the exception ends with its request. */
     void tlsExceptionIsOneRequest();
 
+    /*! Verifies that a body past the memory limit goes whole to a file, and its start stays in memory. */
+    void largeBodySpillsToFile();
+    /*! Verifies that a body within the limit stays in memory without a file. */
+    void smallBodyStaysInMemory();
+    /*! Verifies that the file goes with the last copy of the response. */
+    void spillFileGoesWithResponse();
+    /*! Verifies the default memory limit. */
+    void defaultBodyMemoryLimit();
+
     /*! Verifies that requests ask the system for a proxy, as browsers on Windows do. */
     void usesSystemProxy();
     /*! Verifies that the computer itself is always reached directly. */
@@ -400,6 +409,67 @@ void HttpExecutorTest::tlsExceptionIsOneRequest()
     QVERIFY(second);
     QCOMPARE(second->error, ResponseError::Tls);
     QVERIFY(!second->tlsErrorsIgnored);
+}
+
+void HttpExecutorTest::largeBodySpillsToFile()
+{
+    constexpr qint64 kLimit = 1024 * 1024;
+    constexpr qint64 kSize = 5 * kLimit + 123;
+    HttpExecutor executor;
+    executor.setBodyMemoryLimit(kLimit);
+
+    const auto response = sendAndWait(
+        executor, buildRequest(specFor(m_server.url(QStringLiteral("/bytes/%1").arg(kSize)))), 20000);
+
+    QVERIFY(response);
+    QCOMPARE(response->error, ResponseError::None);
+    QCOMPARE(response->sizeBytes, kSize);
+    QVERIFY(response->bodyFile);
+    QCOMPARE(response->body, MockHttpServer::patternBytes(0, kLimit));
+    QFile file(response->bodyFile->fileName());
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    QCOMPARE(file.size(), kSize);
+    QCOMPARE(file.readAll(), MockHttpServer::patternBytes(0, kSize));
+}
+
+void HttpExecutorTest::smallBodyStaysInMemory()
+{
+    constexpr qint64 kLimit = 1024 * 1024;
+    HttpExecutor executor;
+    executor.setBodyMemoryLimit(kLimit);
+
+    const auto response = sendAndWait(
+        executor, buildRequest(specFor(m_server.url(QStringLiteral("/bytes/%1").arg(kLimit)))), 20000);
+
+    QVERIFY(response);
+    QVERIFY(!response->bodyFile);
+    QCOMPARE(response->sizeBytes, kLimit);
+    QCOMPARE(response->body, MockHttpServer::patternBytes(0, kLimit));
+}
+
+void HttpExecutorTest::spillFileGoesWithResponse()
+{
+    HttpExecutor executor;
+    executor.setBodyMemoryLimit(64 * 1024);
+    auto response = sendAndWait(
+        executor, buildRequest(specFor(m_server.url(QStringLiteral("/bytes/300000")))), 20000);
+    QVERIFY(response);
+    QVERIFY(response->bodyFile);
+    const QString path = response->bodyFile->fileName();
+    QVERIFY(QFile::exists(path));
+    ResponseData copy = *response;
+
+    response.reset();
+    QVERIFY(QFile::exists(path));
+    copy = ResponseData();
+
+    QVERIFY(!QFile::exists(path));
+}
+
+void HttpExecutorTest::defaultBodyMemoryLimit()
+{
+    const HttpExecutor executor;
+    QCOMPARE(executor.bodyMemoryLimit(), qint64(32 * 1024 * 1024));
 }
 
 void HttpExecutorTest::usesSystemProxy()

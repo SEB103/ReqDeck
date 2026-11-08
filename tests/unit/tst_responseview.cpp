@@ -91,6 +91,9 @@ private slots:
     /*! Verifies the warning about unknown variables. */
     void unresolvedVariablesBecomeWarning();
 
+    /*! Verifies that a body on disk shows its start, its whole size, and no formatting. */
+    void bodyOnDiskShowsStart();
+
     /*! Verifies that only a failed certificate check offers to continue, for its host. */
     void certificateCanBeTrustedAfterTlsFailure();
 
@@ -347,6 +350,26 @@ void ResponseViewTest::unresolvedVariablesBecomeWarning()
 
     view.setResponse(makeResponse("{}", QStringLiteral("application/json")), {});
     QVERIFY(view.property("warningText").toString().isEmpty());
+}
+
+void ResponseViewTest::bodyOnDiskShowsStart()
+{
+    ResponseData response = makeResponse("[1, 2", QStringLiteral("application/json"));
+    response.sizeBytes = 200LL * 1024 * 1024;
+    response.bodyFile = std::make_shared<QTemporaryFile>();
+    QVERIFY(response.bodyFile->open());
+    ResponseView view;
+
+    view.setResponse(response, {});
+
+    QCOMPARE(view.property("bodyOnDisk").toBool(), true);
+    QCOMPARE(view.property("truncated").toBool(), true);
+    QCOMPARE(view.property("canPretty").toBool(), false);
+    QCOMPARE(view.property("sizeText").toString(), QStringLiteral("200.0 MB"));
+    QCOMPARE(view.property("bodyText").toString(), QStringLiteral("[1, 2"));
+
+    view.setResponse(makeResponse("{}", QStringLiteral("application/json")), {});
+    QCOMPARE(view.property("bodyOnDisk").toBool(), false);
 }
 
 void ResponseViewTest::certificateCanBeTrustedAfterTlsFailure()

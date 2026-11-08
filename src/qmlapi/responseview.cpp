@@ -172,6 +172,8 @@ bool ResponseView::truncated() const
 {
     if (m_body.kind == BodyKind::Binary)
         return false;
+    if (bodyOnDisk())
+        return true;
     const QString &text = m_pretty && canPretty() ? formattedBody() : m_body.text;
     return text.size() > kMaxDisplayChars;
 }
@@ -186,8 +188,18 @@ bool ResponseView::truncated() const
  */
 bool ResponseView::canPretty() const
 {
-    return (m_body.kind == BodyKind::Json || m_body.kind == BodyKind::Xml)
+    // The start of a body is not a document; formatting it would mislead.
+    return !bodyOnDisk() && (m_body.kind == BodyKind::Json || m_body.kind == BodyKind::Xml)
            && m_body.text.size() <= kMaxDisplayChars && formattedBody() != m_body.text;
+}
+
+/*!
+ * \brief Returns whether the body was too large for memory, so that only its
+ * start is shown and the whole of it lies in a temporary file.
+ */
+bool ResponseView::bodyOnDisk() const
+{
+    return m_response.bodyFile != nullptr;
 }
 
 /*!

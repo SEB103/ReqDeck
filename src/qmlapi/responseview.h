@@ -81,6 +81,9 @@ class ResponseView : public QObject
     /** Whether the body can be formatted. */
     Q_PROPERTY(bool canPretty READ canPretty NOTIFY responseChanged)
 
+    /** Whether the body was too large for memory and only its start is shown. */
+    Q_PROPERTY(bool bodyOnDisk READ bodyOnDisk NOTIFY responseChanged)
+
     /** Whether the body has a run too long to wrap at word boundaries. */
     Q_PROPERTY(bool wrapAnywhere READ wrapAnywhere NOTIFY responseChanged)
 
@@ -153,6 +156,9 @@ public:
 
     /** Returns whether the body can be formatted. */
     bool canPretty() const;
+
+    /** Returns whether only the start of the body is in memory. */
+    bool bodyOnDisk() const;
 
     /** Returns whether the body has a run too long to wrap at word boundaries. */
     bool wrapAnywhere() const;

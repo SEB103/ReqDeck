@@ -234,7 +234,9 @@ Item {
                         visible: cppResponse.truncated
                         elide: Text.ElideRight
                         opacity: 0.6
-                        text: qsTr("Showing the first 1 MB.")
+                        text: cppResponse.bodyOnDisk
+                              ? qsTr("Showing the start of %1. Save the response to get all of it.").arg(cppResponse.sizeText)
+                              : qsTr("Showing the first 1 MB.")
                     }
 
                     Item {

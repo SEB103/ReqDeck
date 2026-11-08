@@ -3,6 +3,7 @@
 
 #include "core/http/httpexecutor.h"
 
+#include <QDir>
 #include <QHostAddress>
 #include <QHttpHeaders>
 #include <QNetworkAccessManager>
@@ -150,6 +151,20 @@ HttpExecutor::HttpExecutor(QObject *parent)
     m_network->setProxyFactory(new SystemProxyFactory);
 }
 
+qint64 HttpExecutor::bodyMemoryLimit() const
+{
+    return m_bodyMemoryLimit;
+}
+
+/*!
+ * \brief Sets the memory limit of a body.
+ * \param bytes The limit; tests use a small one to reach the file without huge bodies.
+ */
+void HttpExecutor::setBodyMemoryLimit(qint64 bytes)
+{
+    m_bodyMemoryLimit = bytes;
+}
+
 /*!
  * \brief Returns the proxies a request to \a url would try.
  * \param url The address of a request.
@@ -289,6 +304,11 @@ void HttpExecutor::startReply()
     else
         m_reply = m_network->sendCustomRequest(m_current.request, m_current.verb, m_current.body);
 
+    m_body.clear();
+    m_bodyFile.reset();
+    m_bodySize = 0;
+    m_bodyError.clear();
+    connect(m_reply, &QNetworkReply::readyRead, this, &HttpExecutor::readBody);
     connect(m_reply, &QNetworkReply::finished, this, &HttpExecutor::handleFinished);
 #if QT_CONFIG(ssl)
     QNetworkReply *reply = m_reply;
@@ -308,6 +328,43 @@ void HttpExecutor::startReply()
         }
     });
 #endif
+}
+
+/*!
+ * \brief Moves the bytes that arrived to memory, or to the temporary file.
+ *
+ * Reading as the data arrives keeps Qt from buffering the whole body. Once the
+ * body passes the memory limit, everything so far goes to a temporary file and
+ * so does the rest, while the start stays in memory for display. A failed write,
+ * for example on a full disk, stops the transfer; handleFinished() reports it.
+ */
+void HttpExecutor::readBody()
+{
+    if (!m_reply || !m_reply->isOpen() || !m_bodyError.isEmpty())
+        return;
+    const QByteArray data = m_reply->readAll();
+    m_bodySize += data.size();
+
+    if (!m_bodyFile) {
+        m_body += data;
+        if (m_body.size() <= m_bodyMemoryLimit)
+            return;
+        auto file = std::make_shared<QTemporaryFile>(QDir::temp().filePath(QStringLiteral("ReqDeck-XXXXXX.body")));
+        if (!file->open() || file->write(m_body) != m_body.size()) {
+            m_bodyError = file->errorString();
+            m_reply->abort();
+            return;
+        }
+        m_bodyFile = std::move(file);
+        m_body.truncate(qMin(m_bodyMemoryLimit, kBodyPreviewBytes));
+        m_body.squeeze();
+        return;
+    }
+
+    if (m_bodyFile->write(data) != data.size()) {
+        m_bodyError = m_bodyFile->errorString();
+        m_reply->abort();
+    }
 }
 
 /*!
@@ -374,9 +431,14 @@ void HttpExecutor::handleFinished()
     response.contentType = QString::fromLatin1(
         reply->headers().value(QHttpHeaders::WellKnownHeader::ContentType));
     // An aborted or timed-out reply is already closed; reading it only warns.
-    if (reply->isOpen())
-        response.body = reply->readAll();
-    response.sizeBytes = response.body.size();
+    m_reply = reply;
+    readBody();
+    m_reply = nullptr;
+    if (m_bodyFile)
+        m_bodyFile->flush();
+    response.body = std::exchange(m_body, {});
+    response.bodyFile = std::exchange(m_bodyFile, {});
+    response.sizeBytes = std::exchange(m_bodySize, 0);
     response.finalUrl = reply->url();
 
     const QNetworkReply::NetworkError error = reply->error();
@@ -387,6 +449,12 @@ void HttpExecutor::handleFinished()
                                       || error == QNetworkReply::ProtocolFailure);
     if (m_abortRequested || transportFailure || !response.hasStatus())
         response.error = classifyError(error, m_abortRequested);
+    if (!m_bodyError.isEmpty()) {
+        response.error = ResponseError::Network;
+        response.errorString = QStringLiteral("The response could not be stored on disk: %1").arg(m_bodyError);
+        response.body.clear();
+        response.bodyFile.reset();
+    }
 
     if (response.error == ResponseError::None && m_current.followRedirects
         && isFollowableRedirect(response.statusCode)) {
