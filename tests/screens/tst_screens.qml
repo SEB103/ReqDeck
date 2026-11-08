@@ -1777,6 +1777,42 @@ Item {
             }
         }
 
+        /*! Verifies the banner of an untrusted certificate and its Continue button. */
+        function test_certificateBannerContinues() {
+            const window = createMain();
+            findChild(window.contentItem, "tree").parent.selectNode("r2");
+            cppRequestEditor.url = cppTestHost.tlsServerUrl("/echo");
+            cppRequestEditor.send();
+            tryCompare(cppResponse, "busy", false, 10000);
+            const banner = findChild(window.contentItem, "certificateBanner");
+            tryCompare(banner, "visible", true);
+            verify(findChild(banner, "certificateText").text.indexOf("127.0.0.1") >= 0);
+
+            mouseClick(findChild(banner, "trustCertificateButton"));
+
+            tryCompare(cppResponse, "statusCode", 200, 10000);
+            compare(banner.visible, false);
+            const warning = findChild(window.contentItem, "warningLabel");
+            compare(warning.visible, true);
+            verify(warning.text.indexOf("127.0.0.1") >= 0, warning.text);
+        }
+
+        /*! Verifies that the banner does not offer to continue another request than its own. */
+        function test_certificateBannerBelongsToItsRequest() {
+            const window = createMain();
+            const pane = findChild(window.contentItem, "tree").parent;
+            pane.selectNode("r2");
+            cppRequestEditor.url = cppTestHost.tlsServerUrl("/echo");
+            cppRequestEditor.send();
+            tryCompare(cppResponse, "busy", false, 10000);
+            const banner = findChild(window.contentItem, "certificateBanner");
+            tryCompare(banner, "visible", true);
+
+            pane.selectNode("r1");
+
+            tryCompare(banner, "visible", false);
+        }
+
         /*! Verifies that once the pointer left the window, the focused field decides. */
         function test_leavingWindowLetsFocusDecide() {
             const window = createMain();

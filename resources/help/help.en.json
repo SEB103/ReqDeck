@@ -503,6 +503,22 @@
             "example": "English.",
             "next": "The change applies at once; Settings in the main window offers the same choice.",
             "chapter": "first-request"
+        },
+        "response.tlsBanner": {
+            "title": "Untrusted certificate",
+            "what": "The server proves who it is with a certificate, and this one is not trusted by Windows.",
+            "why": "A wrong certificate can mean someone is pretending to be the server, so ReqDeck stops.",
+            "example": "A test server on your own computer often has a certificate made by itself.",
+            "next": "Press Continue only if you know the server. Otherwise ask its owner.",
+            "chapter": "troubleshooting"
+        },
+        "response.tlsContinue": {
+            "title": "Continue without the check",
+            "what": "Sends this request once more and skips the certificate check for this server only.",
+            "why": "Test servers often use certificates nobody signed, and you still need to try them.",
+            "example": "https://localhost:8443 with a self-made certificate.",
+            "next": "The answer shows a warning, and the log records it. The next request is checked again.",
+            "chapter": "troubleshooting"
         }
     },
     "chapters": [
@@ -739,7 +755,7 @@
                         ],
                         [
                             "Certificate error",
-                            "The server's HTTPS certificate is not trusted, common on test servers."
+                            "The server's HTTPS certificate is not trusted, common on test servers. If you know the server, press Continue."
                         ]
                     ]
                 },

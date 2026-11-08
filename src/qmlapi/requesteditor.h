@@ -217,6 +217,12 @@ public:
     /** Sends the open request; does nothing without one or while one is running. */
     Q_INVOKABLE void send();
 
+    /**
+     * Sends the open request again without checking the certificate of the host
+     * whose check failed for its last response; does nothing otherwise.
+     */
+    Q_INVOKABLE void sendTrustingCertificate();
+
     /** Cancels the running request. */
     Q_INVOKABLE void cancel();
 
@@ -261,6 +267,9 @@ private:
 
     /** Shows the working copy in the table models and notifies QML. */
     void showRequest();
+
+    /** Builds and sends the open request; \a tlsExceptionHost skips the certificate check there. */
+    void sendBuilt(const QString &tlsExceptionHost);
 
     /** Passes the result of the running request to the response view. */
     void showResponse(const ResponseData &response);

@@ -84,6 +84,12 @@ class ResponseView : public QObject
     /** Whether the body has a run too long to wrap at word boundaries. */
     Q_PROPERTY(bool wrapAnywhere READ wrapAnywhere NOTIFY responseChanged)
 
+    /** Whether the request failed only because the server's certificate is not trusted. */
+    Q_PROPERTY(bool canTrustCertificate READ canTrustCertificate NOTIFY responseChanged)
+
+    /** Host whose certificate failed or was not checked; empty without a TLS outcome. */
+    Q_PROPERTY(QString certificateHost READ certificateHost NOTIFY responseChanged)
+
     /** Whether formatted text is preferred; stays set across responses. */
     Q_PROPERTY(bool pretty READ pretty WRITE setPretty NOTIFY responseChanged)
 
@@ -150,6 +156,12 @@ public:
 
     /** Returns whether the body has a run too long to wrap at word boundaries. */
     bool wrapAnywhere() const;
+
+    /** Returns whether the request failed only because the certificate is not trusted. */
+    bool canTrustCertificate() const;
+
+    /** Returns the host of the certificate. */
+    QString certificateHost() const;
 
     /** Returns whether formatted text is preferred. */
     bool pretty() const;

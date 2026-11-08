@@ -289,12 +289,38 @@ void RequestEditor::clear()
  */
 void RequestEditor::send()
 {
+    sendBuilt({});
+}
+
+/*!
+ * \brief Sends the open request again, trusting the certificate that failed.
+ *
+ * Offered after a response failed only its certificate check. The exception
+ * covers the host of that response and this one send; nothing about it is
+ * stored. The response must belong to the open request, so that a click cannot
+ * apply to a request the user did not see fail.
+ */
+void RequestEditor::sendTrustingCertificate()
+{
+    if (!m_response->canTrustCertificate() || m_response->requestId() != m_requestId)
+        return;
+    sendBuilt(m_response->certificateHost());
+}
+
+/*!
+ * \internal
+ * \brief Builds the open request and sends it.
+ * \param tlsExceptionHost Host whose certificate errors are ignored; empty for none.
+ */
+void RequestEditor::sendBuilt(const QString &tlsExceptionHost)
+{
     if (!canSend())
         return;
 
     const VariableResolver variables =
         VariableResolver::fromKeyValues(activeEnvironmentVariables(m_manager->workspaceData()));
-    const BuiltRequest built = RequestBuilder::build(m_request, variables, m_builderOptions);
+    BuiltRequest built = RequestBuilder::build(m_request, variables, m_builderOptions);
+    built.tlsExceptionHost = tlsExceptionHost;
 
     m_response->setBusy(m_name, m_requestId);
     if (!built.ok) {
@@ -364,6 +390,11 @@ QString RequestEditor::importCurl(const QString &command, const QString &parentI
  */
 void RequestEditor::showResponse(const ResponseData &response)
 {
+    // A skipped certificate check is a security decision, so the log keeps it.
+    if (response.tlsErrorsIgnored) {
+        qWarning().noquote() << QStringLiteral("The certificate of %1 was not checked: %2")
+                                    .arg(response.finalUrl.host(), response.tlsErrors.join(QStringLiteral("; ")));
+    }
     m_response->setResponse(response, m_unresolved);
     emit requestFinished(m_sentRequest, response);
 }

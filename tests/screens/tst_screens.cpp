@@ -119,6 +119,7 @@ public:
     void publish(QQmlContext *context)
     {
         m_server.start();
+        m_tlsServer.startTls();
         QObject::connect(&m_editor, &RequestEditor::requestFinished, &m_history,
                          &HistoryModel::record);
         m_manager.setSecretsDir(m_dir.filePath(QStringLiteral("secrets")));
@@ -181,6 +182,9 @@ public:
 
     /*! Returns the URL of \a path on the mock server. */
     Q_INVOKABLE QString serverUrl(const QString &path) const { return m_server.url(path).toString(); }
+
+    /*! Returns the address of \a path on the HTTPS server with an untrusted certificate. */
+    Q_INVOKABLE QString tlsServerUrl(const QString &path) const { return m_tlsServer.url(path).toString(); }
 
     /*! Returns a URL on a port nothing listens on. */
     Q_INVOKABLE QString closedUrl() const
@@ -437,6 +441,9 @@ private:
 
     /*! Local server the requests of the tests go to. */
     MockHttpServer m_server;
+
+    /*! Local HTTPS server with an untrusted certificate. */
+    MockHttpServer m_tlsServer;
 
     /*! Real workspace manager. */
     WorkspaceManager m_manager;

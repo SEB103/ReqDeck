@@ -91,6 +91,12 @@ private slots:
     /*! Verifies the warning about unknown variables. */
     void unresolvedVariablesBecomeWarning();
 
+    /*! Verifies that only a failed certificate check offers to continue, for its host. */
+    void certificateCanBeTrustedAfterTlsFailure();
+
+    /*! Verifies that ignored certificate errors become a warning naming the host. */
+    void ignoredCertificateBecomesWarning();
+
     /*! Verifies the header table. */
     void headersModelListsResponseHeaders();
 
@@ -341,6 +347,50 @@ void ResponseViewTest::unresolvedVariablesBecomeWarning()
 
     view.setResponse(makeResponse("{}", QStringLiteral("application/json")), {});
     QVERIFY(view.property("warningText").toString().isEmpty());
+}
+
+void ResponseViewTest::certificateCanBeTrustedAfterTlsFailure()
+{
+    ResponseData failed;
+    failed.error = ResponseError::Tls;
+    failed.errorString = QStringLiteral("SSL handshake failed");
+    failed.tlsErrors = {QStringLiteral("The certificate is self-signed, and untrusted")};
+    failed.finalUrl = QUrl(QStringLiteral("https://dev.local:8443/items"));
+    ResponseView view;
+
+    view.setResponse(failed, {});
+    QCOMPARE(view.property("canTrustCertificate").toBool(), true);
+    QCOMPARE(view.property("certificateHost").toString(), QStringLiteral("dev.local"));
+
+    ResponseData refused = failed;
+    refused.error = ResponseError::ConnectionRefused;
+    view.setResponse(refused, {});
+    QCOMPARE(view.property("canTrustCertificate").toBool(), false);
+
+    ResponseData noMessages = failed;
+    noMessages.tlsErrors.clear();
+    view.setResponse(noMessages, {});
+    QCOMPARE(view.property("canTrustCertificate").toBool(), false);
+
+    view.clear();
+    QCOMPARE(view.property("canTrustCertificate").toBool(), false);
+}
+
+void ResponseViewTest::ignoredCertificateBecomesWarning()
+{
+    ResponseData response = makeResponse("{}", QStringLiteral("application/json"));
+    response.tlsErrorsIgnored = true;
+    response.tlsErrors = {QStringLiteral("The certificate is self-signed, and untrusted")};
+    response.finalUrl = QUrl(QStringLiteral("https://dev.local/items"));
+    ResponseView view;
+
+    view.setResponse(response, {QStringLiteral("a")});
+
+    const QString warning = view.property("warningText").toString();
+    QVERIFY2(warning.contains(QStringLiteral("dev.local")), qPrintable(warning));
+    QVERIFY2(warning.contains(QStringLiteral("self-signed")), qPrintable(warning));
+    QVERIFY2(warning.contains(QStringLiteral("{{a}}")), qPrintable(warning));
+    QCOMPARE(view.property("canTrustCertificate").toBool(), false);
 }
 
 void ResponseViewTest::headersModelListsResponseHeaders()

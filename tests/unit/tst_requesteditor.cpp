@@ -211,6 +211,15 @@ private slots:
     /*! Verifies that sending changes nothing in the workspace. */
     void sendDoesNotMarkDirty();
 
+    /*! Verifies that Continue sends the failed request again, trusting only that host. */
+    void trustingCertificateResendsToThatHost();
+
+    /*! Verifies that Continue does nothing once another request is open. */
+    void trustingCertificateNeedsItsRequest();
+
+    /*! Verifies that Continue does nothing without a failed certificate check. */
+    void trustingWithoutTlsFailureDoesNothing();
+
 private:
     /*! Waits until the running request has finished. */
     static bool waitForResponse(const ResponseView &response);
@@ -220,6 +229,12 @@ private:
 
     /*! Mock server of the send tests. */
     MockHttpServer m_server;
+
+    /*! HTTPS mock server with an untrusted certificate. */
+    MockHttpServer m_tlsServer;
+
+    /*! Opens the request "other" with \a url as its address. */
+    void openRequestAtUrl(const QUrl &url);
 
     /*! Response view the editor reports to. */
     std::unique_ptr<ResponseView> m_response;
@@ -261,6 +276,8 @@ void RequestEditorTest::init()
     m_editor = std::make_unique<RequestEditor>(m_manager.get(), m_collection.get(), m_response.get());
     if (m_server.port() == 0)
         QVERIFY(m_server.start());
+    if (m_tlsServer.port() == 0)
+        QVERIFY(m_tlsServer.startTls());
     QVERIFY(m_manager->openWorkspace(writeWorkspace(QStringLiteral("Main"), makeCollection())));
 }
 
@@ -530,9 +547,14 @@ bool RequestEditorTest::waitForResponse(const ResponseView &response)
 
 void RequestEditorTest::openRequestAt(const QString &path)
 {
+    openRequestAtUrl(m_server.url(path));
+}
+
+void RequestEditorTest::openRequestAtUrl(const QUrl &url)
+{
     WorkspaceData data = m_manager->workspaceData();
     RequestSpec spec;
-    spec.url = m_server.url(path).toString();
+    spec.url = url.toString();
     setNodeRequest(data.collection, QStringLiteral("other"), spec);
     const QString file = m_dir->filePath(QStringLiteral("sent.reqdeck"));
     QVERIFY(WorkspaceSerializer::save(file, data));
@@ -551,6 +573,52 @@ void RequestEditorTest::sendShowsResponse()
     QVERIFY(m_response->hasResponse());
     QCOMPARE(m_response->statusCode(), 201);
     QCOMPARE(m_response->bodyText(), QStringLiteral("status 201"));
+}
+
+void RequestEditorTest::trustingCertificateResendsToThatHost()
+{
+    openRequestAtUrl(m_tlsServer.url(QStringLiteral("/echo")));
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_response->property("canTrustCertificate").toBool(), true);
+    QCOMPARE(m_response->property("certificateHost").toString(), QStringLiteral("127.0.0.1"));
+    const int before = m_tlsServer.requestCount();
+
+    m_editor->sendTrustingCertificate();
+
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_response->statusCode(), 200);
+    QCOMPARE(m_tlsServer.requestCount(), before + 1);
+    QVERIFY(m_response->warningText().contains(QStringLiteral("127.0.0.1")));
+    QCOMPARE(m_response->property("canTrustCertificate").toBool(), false);
+}
+
+void RequestEditorTest::trustingCertificateNeedsItsRequest()
+{
+    openRequestAtUrl(m_tlsServer.url(QStringLiteral("/echo")));
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    m_editor->load(QStringLiteral("full"));
+    const int before = m_tlsServer.requestCount();
+
+    m_editor->sendTrustingCertificate();
+
+    QVERIFY(!m_response->busy());
+    QCOMPARE(m_response->statusCode(), 0);
+    QCOMPARE(m_tlsServer.requestCount(), before);
+}
+
+void RequestEditorTest::trustingWithoutTlsFailureDoesNothing()
+{
+    openRequestAt(QStringLiteral("/status/201"));
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    const int before = m_server.requestCount();
+
+    m_editor->sendTrustingCertificate();
+
+    QVERIFY(!m_response->busy());
+    QCOMPARE(m_server.requestCount(), before);
 }
 
 void RequestEditorTest::sendUsesWorkingCopy()

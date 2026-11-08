@@ -198,6 +198,25 @@ bool ResponseView::wrapAnywhere() const
     return m_wrapAnywhere;
 }
 
+/*!
+ * \brief Returns whether the request failed only because the server's
+ * certificate is not trusted, so that sending it again for this host once,
+ * without the check, is a meaningful offer.
+ */
+bool ResponseView::canTrustCertificate() const
+{
+    return m_hasResponse && m_response.error == ResponseError::Tls && !m_response.tlsErrors.isEmpty()
+           && !m_response.tlsErrorsIgnored && !m_response.finalUrl.host().isEmpty();
+}
+
+/*!
+ * \brief Returns the host whose certificate failed or was not checked.
+ */
+QString ResponseView::certificateHost() const
+{
+    return m_response.finalUrl.host();
+}
+
 bool ResponseView::pretty() const
 {
     return m_pretty;
@@ -272,7 +291,14 @@ void ResponseView::setResponse(const ResponseData &response, const QStringList &
     m_wrapAnywhere = hasLongRun(QStringView(m_body.text).first(qMin(m_body.text.size(), kMaxDisplayChars)));
     m_response = response;
     m_response.body.clear();
-    m_warningText = unresolvedWarning(unresolvedVariables);
+    QStringList warnings;
+    if (response.tlsErrorsIgnored) {
+        warnings.append(tr("The certificate of %1 was not checked: %2")
+                            .arg(response.finalUrl.host(), response.tlsErrors.join(QStringLiteral("; "))));
+    }
+    if (!unresolvedVariables.isEmpty())
+        warnings.append(unresolvedWarning(unresolvedVariables));
+    m_warningText = warnings.join(u'\n');
 
     if (response.error != ResponseError::None) {
         QStringList lines {response.errorString};

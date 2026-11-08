@@ -136,6 +136,42 @@ Item {
             text: cppResponse.errorText
         }
 
+        RowLayout {
+            /*! Topic of the F1 help. */
+            property string helpTopic: "response.tlsBanner"
+
+            objectName: "certificateBanner"
+
+            Layout.fillWidth: true
+            // Offered only beside the request that failed, so that Continue
+            // always sends what the user saw fail.
+            visible: cppResponse.canTrustCertificate && cppResponse.requestId === cppRequestEditor.requestId
+            spacing: 8
+
+            Label {
+                objectName: "certificateText"
+
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                textFormat: Text.PlainText
+                text: qsTr("The certificate of %1 is not trusted. Continue only for a server you know, such as your own test server.")
+                          .arg(cppResponse.certificateHost)
+            }
+
+            Button {
+                /*! Topic of the F1 help. */
+                property string helpTopic: "response.tlsContinue"
+
+                objectName: "trustCertificateButton"
+
+                enabled: !cppRequestEditor.busy
+                text: qsTr("Continue")
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Send this request once more without checking the certificate")
+                onClicked: cppRequestEditor.sendTrustingCertificate()
+            }
+        }
+
         Label {
             objectName: "warningLabel"
 
