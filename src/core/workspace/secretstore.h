@@ -9,16 +9,17 @@
 
 #include <optional>
 
+#include "core/workspace/secretcipher.h"
 #include "core/workspace/workspacedata.h"
 
 /**
  * Keeps the values of secret environment variables outside workspace files.
  *
  * Each workspace with secret values has one JSON file named after its UUID in
- * the store directory. The values are not encrypted: the store keeps them out
- * of files people share, it does not protect them on this machine. A key maps
- * to an array, because an environment may hold several rows with the same key,
- * for example to switch between two values.
+ * the store directory. The values, and their keys, are encrypted for the
+ * current Windows user; files of schema 1 hold them in plain text and are still
+ * read. A key maps to an array, because an environment may hold several rows
+ * with the same key, for example to switch between two values.
  */
 class SecretStore
 {
@@ -30,11 +31,13 @@ public:
         /** The file was malformed and renamed to "<file>.corrupt"; nothing is left to protect. */
         Corrupt,
         /** The file could not be read or moved and is still there; do not overwrite it. */
-        Unreadable
+        Unreadable,
+        /** The file is encrypted for another user or computer and stays as it is. */
+        Unavailable
     };
 
-    /** Creates a store over \a directory, which is created on the first write. */
-    explicit SecretStore(QString directory);
+    /** Creates a store over \a directory, which is created on the first write, encrypting with \a cipher. */
+    explicit SecretStore(QString directory, SecretCipher cipher = SecretCipher());
 
     /** Returns the path of the secrets file of \a workspaceId. */
     QString filePath(const QString &workspaceId) const;
@@ -63,6 +66,9 @@ private:
 
     /** Directory holding one file per workspace. */
     QString m_directory;
+
+    /** Encrypts and decrypts the values. */
+    SecretCipher m_cipher;
 };
 
 #endif // SECRETSTORE_H

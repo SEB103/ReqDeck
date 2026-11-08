@@ -54,6 +54,8 @@ target_sources(ReqDeckCore
         core/workspace/jsonfile.h
         core/workspace/requestjson.cpp
         core/workspace/requestjson.h
+        core/workspace/secretcipher.cpp
+        core/workspace/secretcipher.h
         core/workspace/secretstore.cpp
         core/workspace/secretstore.h
         core/workspace/workspacedata.cpp
@@ -72,6 +74,11 @@ target_link_libraries(ReqDeckCore
         Qt6::Core
         Qt6::Network
 )
+
+# DPAPI, part of Windows, encrypts the secret values.
+if(WIN32)
+    target_link_libraries(ReqDeckCore PRIVATE Crypt32)
+endif()
 
 # QObject facades exposed to QML as context properties.
 qt_add_library(ReqDeckQmlApi STATIC)

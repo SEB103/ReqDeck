@@ -17,9 +17,21 @@
 namespace {
 /*!
  * \internal
- * \brief Schema version of a secrets file.
+ * \brief Schema version of a secrets file this build writes: encrypted values.
  */
-constexpr int kSecretsSchemaVersion = 1;
+constexpr int kSecretsSchemaVersion = 2;
+
+/*!
+ * \internal
+ * \brief Schema version of a secrets file with plain values, still read.
+ */
+constexpr int kPlainSecretsSchemaVersion = 1;
+
+/*!
+ * \internal
+ * \brief Protection named in an encrypted secrets file.
+ */
+constexpr QLatin1StringView kDpapiProtection("dpapi");
 
 /*!
  * \internal
@@ -36,9 +48,11 @@ bool fail(QString *errorString, const QString &message)
 /*!
  * \brief Creates a store over \a directory.
  * \param directory The directory holding the secrets files.
+ * \param cipher Encrypts and decrypts the values.
  */
-SecretStore::SecretStore(QString directory)
+SecretStore::SecretStore(QString directory, SecretCipher cipher)
     : m_directory(std::move(directory))
+    , m_cipher(std::move(cipher))
 {
 }
 
@@ -84,7 +98,9 @@ SecretStore::ReadStatus SecretStore::fillEmptyValues(WorkspaceData &data) const
  *
  * Rows with the same key take their values by position. A malformed file is set
  * aside, so it survives the next save; when even that fails the caller gets
- * Unreadable, like for a file that cannot be opened.
+ * Unreadable, like for a file that cannot be opened. An encrypted file that does
+ * not decrypt is Unavailable and stays where it is: it most likely belongs to
+ * another user or computer, and DPAPI cannot tell that from damage.
  * \param data The workspace to complete.
  * \param onlyEmpty Whether values already present in \a data are kept.
  * \return The outcome of reading the file.
@@ -104,12 +120,31 @@ SecretStore::ReadStatus SecretStore::read(WorkspaceData &data, bool onlyEmpty) c
     const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
     file.close();
 
-    const QJsonObject root = document.object();
-    const QJsonValue environments = root.value(QLatin1StringView("environments"));
-    if (!document.isObject() || root.value(QLatin1StringView("schema")).toInt() != kSecretsSchemaVersion
-        || !environments.isObject()) {
+    const auto corrupt = [&path] {
         return setAsideCorruptFile(path) ? ReadStatus::Corrupt : ReadStatus::Unreadable;
+    };
+    const QJsonObject root = document.object();
+    const int schema = root.value(QLatin1StringView("schema")).toInt();
+    QJsonValue environments;
+    if (!document.isObject()) {
+        return corrupt();
+    } else if (schema == kPlainSecretsSchemaVersion) {
+        environments = root.value(QLatin1StringView("environments"));
+    } else if (schema == kSecretsSchemaVersion) {
+        const QJsonValue data = root.value(QLatin1StringView("data"));
+        if (root.value(QLatin1StringView("protection")).toString() != kDpapiProtection || !data.isString())
+            return corrupt();
+        const QByteArray::FromBase64Result sealed =
+            QByteArray::fromBase64Encoding(data.toString().toLatin1(), QByteArray::AbortOnBase64DecodingErrors);
+        if (!sealed)
+            return corrupt();
+        const std::optional<QByteArray> plain = m_cipher.unprotect(*sealed);
+        if (!plain)
+            return ReadStatus::Unavailable;
+        environments = QJsonDocument::fromJson(*plain).object().value(QLatin1StringView("environments"));
     }
+    if (!environments.isObject())
+        return corrupt();
 
     const QJsonObject stored = environments.toObject();
     for (Environment &environment : data.environments) {
@@ -133,7 +168,8 @@ SecretStore::ReadStatus SecretStore::read(WorkspaceData &data, bool onlyEmpty) c
  * Every secret variable counts, including disabled ones; an empty value keeps
  * its position so that rows sharing a key stay aligned. An environment without
  * any value is left out, and with none left at all the file is removed, so a
- * workspace without secrets leaves nothing behind.
+ * workspace without secrets leaves nothing behind. Keys and values are written
+ * encrypted, inside a small JSON object that names the schema and protection.
  * \param data The workspace to store.
  * \param errorString Receives the reason on failure when it is not null.
  * \return True on success.
@@ -167,9 +203,16 @@ bool SecretStore::save(const WorkspaceData &data, QString *errorString) const
         return true;
     }
 
+    QJsonObject values;
+    values.insert(QLatin1StringView("environments"), environments);
+    const std::optional<QByteArray> sealed = m_cipher.protect(QJsonDocument(values).toJson(QJsonDocument::Compact));
+    if (!sealed)
+        return fail(errorString, QStringLiteral("The secret values could not be encrypted."));
+
     QJsonObject root;
     root.insert(QLatin1StringView("schema"), kSecretsSchemaVersion);
-    root.insert(QLatin1StringView("environments"), environments);
+    root.insert(QLatin1StringView("protection"), kDpapiProtection);
+    root.insert(QLatin1StringView("data"), QString::fromLatin1(sealed->toBase64()));
     return writeJsonFile(path, root) || fail(errorString, writeError);
 }
 

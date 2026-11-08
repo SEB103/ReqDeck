@@ -4,6 +4,8 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTemporaryDir>
@@ -12,6 +14,7 @@
 #include <QVariantMap>
 #include <QtTest>
 
+#include "core/workspace/secretcipher.h"
 #include "core/workspace/secretstore.h"
 #include "core/workspace/workspaceserializer.h"
 #include "productinfo.h"
@@ -53,6 +56,17 @@ static QByteArray readFile(const QString &path)
 {
     QFile file(path);
     return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
+}
+
+/*!
+ * \internal
+ * \brief Returns the decrypted values of the secrets file at \a path, as JSON text.
+ */
+static QByteArray storedSecrets(const QString &path)
+{
+    const QJsonObject root = QJsonDocument::fromJson(readFile(path)).object();
+    const QByteArray sealed = QByteArray::fromBase64(root.value(QLatin1StringView("data")).toString().toLatin1());
+    return SecretCipher().unprotect(sealed).value_or(QByteArray());
 }
 
 /*! Verifies WorkspaceManager recent-list, file, and active-workspace behavior. */
@@ -954,8 +968,8 @@ void WorkspaceManagerTest::unreadableSecretsAreRecoveredOnSave()
     QVERIFY(manager.saveWorkspace());
     QCOMPARE(manager.workspaceData().environments.at(0).variables.at(1).value,
              QStringLiteral("stored-one"));
-    QVERIFY(readFile(secretsFile).contains("stored-one"));
-    QVERIFY(readFile(secretsFile).contains("stored-two"));
+    QVERIFY(storedSecrets(secretsFile).contains("stored-one"));
+    QVERIFY(storedSecrets(secretsFile).contains("stored-two"));
 }
 
 void WorkspaceManagerTest::retrySecretsKeepsStateWhileLocked()
@@ -1029,9 +1043,9 @@ void WorkspaceManagerTest::recoveryKeepsReenteredValue()
     file.close();
 
     QVERIFY(manager.saveWorkspace());
-    QVERIFY(readFile(secretsFile).contains("re-entered"));
-    QVERIFY(!readFile(secretsFile).contains("stored-one"));
-    QVERIFY(readFile(secretsFile).contains("stored-two"));
+    QVERIFY(storedSecrets(secretsFile).contains("re-entered"));
+    QVERIFY(!storedSecrets(secretsFile).contains("stored-one"));
+    QVERIFY(storedSecrets(secretsFile).contains("stored-two"));
 }
 
 void WorkspaceManagerTest::setAsideFailureBlocksSave()

@@ -6,6 +6,7 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include "core/workspace/secretcipher.h"
 #include "core/workspace/secretstore.h"
 
 /*!
@@ -71,8 +72,17 @@ private slots:
     /*! Verifies that saved values come back, including disabled ones. */
     void saveThenApplyRestoresValues();
 
-    /*! Verifies that the file contains secret values only. */
-    void writesOnlySecretValues();
+    /*! Verifies that the file holds no value in plain text, secret or not. */
+    void fileHoldsNoPlainValue();
+
+    /*! Verifies that a file of schema 1, with plain values, is still read. */
+    void readsSchemaOne();
+
+    /*! Verifies that a file encrypted with another key is unavailable and stays as it is. */
+    void otherKeyIsUnavailable();
+
+    /*! Verifies that the cipher turns data back and refuses another key. */
+    void cipherRoundTrip();
 
     /*! Verifies that the file disappears when no secret value is left. */
     void noSecretsRemovesFile();
@@ -127,7 +137,7 @@ void SecretStoreTest::saveThenApplyRestoresValues()
     QVERIFY(loaded == data);
 }
 
-void SecretStoreTest::writesOnlySecretValues()
+void SecretStoreTest::fileHoldsNoPlainValue()
 {
     QTemporaryDir dir;
     QVERIFY(dir.isValid());
@@ -137,8 +147,60 @@ void SecretStoreTest::writesOnlySecretValues()
     QVERIFY(store.save(data));
 
     const QByteArray content = readFile(store.filePath(data.id));
-    QVERIFY(content.contains("secret-value"));
+    QVERIFY(!content.isEmpty());
+    QVERIFY(!content.contains("secret-value"));
+    QVERIFY(!content.contains("off-value"));
+    QVERIFY(!content.contains("token"));
     QVERIFY(!content.contains("plain-value"));
+    QVERIFY(content.contains("\"schema\": 2"));
+}
+
+void SecretStoreTest::readsSchemaOne()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const SecretStore store(dir.path());
+    const WorkspaceData data = makeWorkspace();
+    QVERIFY(writeFile(store.filePath(data.id),
+                      "{\"schema\":1,\"environments\":{\"e1\":{\"token\":[\"secret-value\"],"
+                      "\"old\":[\"off-value\"]}}}"));
+
+    WorkspaceData loaded = withoutSecretValues(data);
+    QCOMPARE(store.applyTo(loaded), SecretStore::ReadStatus::Ok);
+    QVERIFY(loaded == data);
+}
+
+void SecretStoreTest::otherKeyIsUnavailable()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const SecretStore other(dir.path(), SecretCipher(QByteArrayLiteral("another computer")));
+    const WorkspaceData data = makeWorkspace();
+    QVERIFY(other.save(data));
+    const QString path = other.filePath(data.id);
+    const QByteArray content = readFile(path);
+
+    const SecretStore store(dir.path());
+    WorkspaceData loaded = withoutSecretValues(data);
+    const WorkspaceData before = loaded;
+    QCOMPARE(store.applyTo(loaded), SecretStore::ReadStatus::Unavailable);
+    QVERIFY(loaded == before);
+    QCOMPARE(readFile(path), content);
+    QVERIFY(!QFile::exists(path + QStringLiteral(".corrupt")));
+    QCOMPARE(store.fillEmptyValues(loaded), SecretStore::ReadStatus::Unavailable);
+}
+
+void SecretStoreTest::cipherRoundTrip()
+{
+    const SecretCipher cipher;
+    const QByteArray plain("value with \0 inside", 19);
+
+    const std::optional<QByteArray> sealed = cipher.protect(plain);
+    QVERIFY(sealed);
+    QVERIFY(!sealed->contains("value"));
+    QCOMPARE(cipher.unprotect(*sealed), std::optional<QByteArray>(plain));
+    QVERIFY(!SecretCipher(QByteArrayLiteral("other")).unprotect(*sealed));
+    QVERIFY(!cipher.unprotect(QByteArrayLiteral("not sealed")));
 }
 
 void SecretStoreTest::noSecretsRemovesFile()
@@ -174,7 +236,10 @@ void SecretStoreTest::malformedFileReportsErrorAndKeepsData_data()
     QTest::newRow("not-json") << QByteArray("{oops");
     QTest::newRow("array-root") << QByteArray("[]");
     QTest::newRow("environments-string") << QByteArray("{\"schema\":1,\"environments\":\"x\"}");
-    QTest::newRow("future-schema") << QByteArray("{\"schema\":2,\"environments\":{}}");
+    QTest::newRow("future-schema") << QByteArray("{\"schema\":3,\"data\":\"AAAA\"}");
+    QTest::newRow("encrypted-without-data") << QByteArray("{\"schema\":2,\"protection\":\"dpapi\"}");
+    QTest::newRow("encrypted-data-number") << QByteArray("{\"schema\":2,\"protection\":\"dpapi\",\"data\":5}");
+    QTest::newRow("unknown-protection") << QByteArray("{\"schema\":2,\"protection\":\"rot13\",\"data\":\"AAAA\"}");
 }
 
 void SecretStoreTest::malformedFileReportsErrorAndKeepsData()
