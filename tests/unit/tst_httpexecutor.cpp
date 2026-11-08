@@ -126,6 +126,11 @@ private slots:
     /*! Runs one status case. */
     void statusCodesAreResponsesNotErrors();
 
+    /*! Provides statuses whose server sends no reason phrase. */
+    void reasonPhraseFilledWhenMissing_data();
+    /*! Verifies that a status without reason phrase gets the standard one, as HTTP/2 needs. */
+    void reasonPhraseFilledWhenMissing();
+
     /*! Verifies empty bodies of 204 and HEAD responses. */
     void headAndNoContentReturnEmptyBody();
 
@@ -301,6 +306,33 @@ void HttpExecutorTest::statusCodesAreResponsesNotErrors()
     QCOMPARE(response->error, ResponseError::None);
     QVERIFY(response->errorString.isEmpty());
     QVERIFY(!response->reasonPhrase.isEmpty());
+}
+
+void HttpExecutorTest::reasonPhraseFilledWhenMissing_data()
+{
+    QTest::addColumn<int>("status");
+    QTest::addColumn<QString>("phrase");
+
+    QTest::newRow("200") << 200 << QStringLiteral("OK");
+    QTest::newRow("201") << 201 << QStringLiteral("Created");
+    QTest::newRow("404") << 404 << QStringLiteral("Not Found");
+    QTest::newRow("418") << 418 << QStringLiteral("I'm a teapot");
+    QTest::newRow("429") << 429 << QStringLiteral("Too Many Requests");
+    QTest::newRow("503") << 503 << QStringLiteral("Service Unavailable");
+    QTest::newRow("599 unknown") << 599 << QString();
+}
+
+void HttpExecutorTest::reasonPhraseFilledWhenMissing()
+{
+    QFETCH(int, status);
+    QFETCH(QString, phrase);
+
+    HttpExecutor executor;
+    const auto response = sendAndWait(
+        executor, buildRequest(specFor(m_server.url(QStringLiteral("/no-reason/%1").arg(status)))));
+    QVERIFY(response);
+    QCOMPARE(response->statusCode, status);
+    QCOMPARE(response->reasonPhrase, phrase);
 }
 
 void HttpExecutorTest::headAndNoContentReturnEmptyBody()

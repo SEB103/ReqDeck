@@ -52,10 +52,10 @@ QByteArray reasonPhrase(int status)
  */
 void writeResponse(QTcpSocket *socket, int status,
                    const QList<std::pair<QByteArray, QByteArray>> &headers,
-                   const QByteArray &body, bool headOnly = false)
+                   const QByteArray &body, bool headOnly = false, bool withReason = true)
 {
-    QByteArray response = "HTTP/1.1 " + QByteArray::number(status) + ' ' + reasonPhrase(status)
-                          + "\r\n";
+    QByteArray response = "HTTP/1.1 " + QByteArray::number(status) + ' '
+                          + (withReason ? reasonPhrase(status) : QByteArray()) + "\r\n";
     for (const auto &[name, value] : headers)
         response += name + ": " + value + "\r\n";
     response += "Content-Length: " + QByteArray::number(body.size()) + "\r\n";
@@ -202,6 +202,12 @@ void MockHttpServer::route(QTcpSocket *socket, const Request &request)
         };
         writeResponse(socket, 200, {{"Content-Type", "application/json"}},
                       QJsonDocument(echo).toJson(QJsonDocument::Compact), head);
+        return;
+    }
+
+    if (path.startsWith("/no-reason/")) {
+        // The status line of an HTTP/2 answer as Qt reports it: no reason phrase.
+        writeResponse(socket, path.mid(11).toInt(), {{"Content-Type", "text/plain"}}, "body", head, false);
         return;
     }
 

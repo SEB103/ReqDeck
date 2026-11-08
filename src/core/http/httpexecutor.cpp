@@ -29,6 +29,72 @@ bool isFollowableRedirect(int status)
 
 /*!
  * \internal
+ * \brief Returns the standard reason phrase of \a status, or an empty string.
+ *
+ * HTTP/2 and HTTP/3 carry no reason phrase, so a status would otherwise show as
+ * a bare number. The phrases are those of RFC 9110 and the common extensions.
+ */
+QString standardReasonPhrase(int status)
+{
+    switch (status) {
+    case 100: return QStringLiteral("Continue");
+    case 101: return QStringLiteral("Switching Protocols");
+    case 200: return QStringLiteral("OK");
+    case 201: return QStringLiteral("Created");
+    case 202: return QStringLiteral("Accepted");
+    case 203: return QStringLiteral("Non-Authoritative Information");
+    case 204: return QStringLiteral("No Content");
+    case 205: return QStringLiteral("Reset Content");
+    case 206: return QStringLiteral("Partial Content");
+    case 207: return QStringLiteral("Multi-Status");
+    case 300: return QStringLiteral("Multiple Choices");
+    case 301: return QStringLiteral("Moved Permanently");
+    case 302: return QStringLiteral("Found");
+    case 303: return QStringLiteral("See Other");
+    case 304: return QStringLiteral("Not Modified");
+    case 307: return QStringLiteral("Temporary Redirect");
+    case 308: return QStringLiteral("Permanent Redirect");
+    case 400: return QStringLiteral("Bad Request");
+    case 401: return QStringLiteral("Unauthorized");
+    case 402: return QStringLiteral("Payment Required");
+    case 403: return QStringLiteral("Forbidden");
+    case 404: return QStringLiteral("Not Found");
+    case 405: return QStringLiteral("Method Not Allowed");
+    case 406: return QStringLiteral("Not Acceptable");
+    case 407: return QStringLiteral("Proxy Authentication Required");
+    case 408: return QStringLiteral("Request Timeout");
+    case 409: return QStringLiteral("Conflict");
+    case 410: return QStringLiteral("Gone");
+    case 411: return QStringLiteral("Length Required");
+    case 412: return QStringLiteral("Precondition Failed");
+    case 413: return QStringLiteral("Content Too Large");
+    case 414: return QStringLiteral("URI Too Long");
+    case 415: return QStringLiteral("Unsupported Media Type");
+    case 416: return QStringLiteral("Range Not Satisfiable");
+    case 417: return QStringLiteral("Expectation Failed");
+    case 418: return QStringLiteral("I'm a teapot");
+    case 421: return QStringLiteral("Misdirected Request");
+    case 422: return QStringLiteral("Unprocessable Content");
+    case 423: return QStringLiteral("Locked");
+    case 425: return QStringLiteral("Too Early");
+    case 426: return QStringLiteral("Upgrade Required");
+    case 428: return QStringLiteral("Precondition Required");
+    case 429: return QStringLiteral("Too Many Requests");
+    case 431: return QStringLiteral("Request Header Fields Too Large");
+    case 451: return QStringLiteral("Unavailable For Legal Reasons");
+    case 500: return QStringLiteral("Internal Server Error");
+    case 501: return QStringLiteral("Not Implemented");
+    case 502: return QStringLiteral("Bad Gateway");
+    case 503: return QStringLiteral("Service Unavailable");
+    case 504: return QStringLiteral("Gateway Timeout");
+    case 505: return QStringLiteral("HTTP Version Not Supported");
+    case 511: return QStringLiteral("Network Authentication Required");
+    default: return {};
+    }
+}
+
+/*!
+ * \internal
  * \brief Returns whether \a lhs and \a rhs share scheme, host, and effective port.
  */
 bool isSameOrigin(const QUrl &lhs, const QUrl &rhs)
@@ -256,7 +322,9 @@ void HttpExecutor::handleFinished()
     ResponseData response;
     response.elapsedMs = m_timer.elapsed();
     response.statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    response.reasonPhrase = reply->attribute(QNetworkRequest::HttpReasonPhraseAttribute).toString();
+    response.reasonPhrase = reply->attribute(QNetworkRequest::HttpReasonPhraseAttribute).toString().trimmed();
+    if (response.reasonPhrase.isEmpty())
+        response.reasonPhrase = standardReasonPhrase(response.statusCode);
     response.headers = reply->rawHeaderPairs();
     response.contentType = QString::fromLatin1(
         reply->headers().value(QHttpHeaders::WellKnownHeader::ContentType));

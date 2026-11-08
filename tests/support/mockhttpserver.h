@@ -21,7 +21,7 @@ QT_END_NAMESPACE
  * Minimal HTTP/1.1 server on 127.0.0.1 for network tests.
  *
  * Routes: /echo (request as JSON, header values decoded as UTF-8),
- * /status/<code>, /redirect (302 to /echo), /redirect307 (307 to /echo),
+ * /status/<code>, /no-reason/<code> (a status line without reason phrase), /redirect (302 to /echo), /redirect307 (307 to /echo),
  * /redirect-loop (302 to itself), /redirect-to?url=<encoded URL> (302 to that
  * URL), /delay/<ms>, /response-headers (repeated X-Dup header), /set-cookie
  * (Set-Cookie: sid=server), /truncated (announces 100 body bytes, sends 10),
