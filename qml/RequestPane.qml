@@ -130,6 +130,8 @@ Item {
                 /*! Topic of the F1 help. */
                 property string helpTopic: "request.url"
 
+                id: urlField
+
                 objectName: "urlField"
 
                 Layout.fillWidth: true
@@ -137,9 +139,25 @@ Item {
                 font.pixelSize: 14
                 placeholderText: qsTr("https://example.com or {{baseUrl}}/path")
                 text: cppRequestEditor.url
+                keyFilter: (event) => urlCompleter.handleKey(event)
                 Accessible.name: qsTr("URL")
-                onTextEdited: (edited) => cppRequestEditor.url = edited
+                onTextEdited: (edited) => {
+                    cppRequestEditor.url = edited
+                    urlCompleter.refresh()
+                }
                 Component.onCompleted: cppEnvironments.attachUrlHighlighter(textDocument)
+
+                Base.BsVariableCompleter {
+                    id: urlCompleter
+
+                    objectName: "urlCompleter"
+                    target: urlField
+                    names: cppEnvironments.activeVariableNames
+                    onCompleted: (text, cursorPosition) => {
+                        cppRequestEditor.url = text
+                        urlField.cursorPosition = cursorPosition
+                    }
+                }
             }
 
             // Taking the focus first commits a field still being edited.
@@ -375,7 +393,22 @@ Item {
                     text: cppRequestEditor.authPassword
                     ToolTip.visible: hovered && passwordField.unknown.length > 0
                     ToolTip.text: passwordFieldMark.tooltip
-                    onTextEdited: cppRequestEditor.authPassword = text
+                    Keys.onPressed: (event) => passwordFieldCompleter.handleKey(event)
+                    onTextEdited: {
+                        cppRequestEditor.authPassword = text
+                        passwordFieldCompleter.refresh()
+                    }
+
+                    Base.BsVariableCompleter {
+                        id: passwordFieldCompleter
+
+                        target: passwordField
+                        names: cppEnvironments.activeVariableNames
+                        onCompleted: (text, cursorPosition) => {
+                            cppRequestEditor.authPassword = text
+                            passwordField.cursorPosition = cursorPosition
+                        }
+                    }
 
                     Base.BsUnknownVariablesMark {
                         id: passwordFieldMark
@@ -403,7 +436,22 @@ Item {
                     text: cppRequestEditor.authToken
                     ToolTip.visible: hovered && tokenField.unknown.length > 0
                     ToolTip.text: tokenFieldMark.tooltip
-                    onTextEdited: cppRequestEditor.authToken = text
+                    Keys.onPressed: (event) => tokenFieldCompleter.handleKey(event)
+                    onTextEdited: {
+                        cppRequestEditor.authToken = text
+                        tokenFieldCompleter.refresh()
+                    }
+
+                    Base.BsVariableCompleter {
+                        id: tokenFieldCompleter
+
+                        target: tokenField
+                        names: cppEnvironments.activeVariableNames
+                        onCompleted: (text, cursorPosition) => {
+                            cppRequestEditor.authToken = text
+                            tokenField.cursorPosition = cursorPosition
+                        }
+                    }
 
                     Base.BsUnknownVariablesMark {
                         id: tokenFieldMark
@@ -425,6 +473,8 @@ Item {
                 }
 
                 TextField {
+                    id: apiKeyValueField
+
                     /*! Topic of the F1 help. */
                     property string helpTopic: "request.apiKeyValue"
                     /*! Variables in the field that do not resolve. */
@@ -438,7 +488,22 @@ Item {
                     text: cppRequestEditor.apiKeyValue
                     ToolTip.visible: hovered && unknown.length > 0
                     ToolTip.text: apiKeyValueMark.tooltip
-                    onTextEdited: cppRequestEditor.apiKeyValue = text
+                    Keys.onPressed: (event) => apiKeyValueCompleter.handleKey(event)
+                    onTextEdited: {
+                        cppRequestEditor.apiKeyValue = text
+                        apiKeyValueCompleter.refresh()
+                    }
+
+                    Base.BsVariableCompleter {
+                        id: apiKeyValueCompleter
+
+                        target: apiKeyValueField
+                        names: cppEnvironments.activeVariableNames
+                        onCompleted: (text, cursorPosition) => {
+                            cppRequestEditor.apiKeyValue = text
+                            apiKeyValueField.cursorPosition = cursorPosition
+                        }
+                    }
 
                     Base.BsUnknownVariablesMark {
                         id: apiKeyValueMark

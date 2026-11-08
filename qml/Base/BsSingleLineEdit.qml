@@ -43,6 +43,9 @@ FocusScope {
     /*! Document of the text, for a syntax highlighter. */
     readonly property alias textDocument: area.textDocument
 
+    /*! Called with each key press before the control handles it; returning true takes the key. */
+    property var keyFilter: null
+
     /*!
         Emitted with the new text after the user changed it.
         \a edited is the text without line breaks.
@@ -144,6 +147,8 @@ FocusScope {
                 root.textEdited(area.text)
             }
             Keys.onPressed: (event) => {
+                if (root.keyFilter && root.keyFilter(event))
+                    return
                 if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                     event.accepted = true
                 } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {

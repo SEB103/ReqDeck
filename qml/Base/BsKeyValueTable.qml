@@ -156,7 +156,11 @@ ColumnLayout {
                 text: row.model.key
                 ToolTip.visible: hovered && keyField.unknown.length > 0
                 ToolTip.text: keyMark.tooltip
-                onTextEdited: row.model.key = text
+                Keys.onPressed: (event) => keyCompleter.handleKey(event)
+                onTextEdited: {
+                    row.model.key = text
+                    keyCompleter.refresh()
+                }
                 // Out of editing, a long text shows its start, not its end.
                 onTextChanged: if (!activeFocus) cursorPosition = 0
                 onActiveFocusChanged: if (!activeFocus) cursorPosition = 0
@@ -165,6 +169,17 @@ ColumnLayout {
                     id: keyMark
 
                     names: keyField.unknown
+                }
+
+                BsVariableCompleter {
+                    id: keyCompleter
+
+                    target: keyField
+                    names: root.knownVariables ?? []
+                    onCompleted: (text, cursorPosition) => {
+                        row.model.key = text
+                        keyField.cursorPosition = cursorPosition
+                    }
                 }
             }
 
@@ -187,7 +202,11 @@ ColumnLayout {
                 text: row.model.value
                 ToolTip.visible: hovered && valueField.unknown.length > 0
                 ToolTip.text: valueMark.tooltip
-                onTextEdited: row.model.value = text
+                Keys.onPressed: (event) => valueCompleter.handleKey(event)
+                onTextEdited: {
+                    row.model.value = text
+                    valueCompleter.refresh()
+                }
                 onTextChanged: if (!activeFocus) cursorPosition = 0
                 onActiveFocusChanged: if (!activeFocus) cursorPosition = 0
 
@@ -195,6 +214,17 @@ ColumnLayout {
                     id: valueMark
 
                     names: valueField.unknown
+                }
+
+                BsVariableCompleter {
+                    id: valueCompleter
+
+                    target: valueField
+                    names: root.knownVariables ?? []
+                    onCompleted: (text, cursorPosition) => {
+                        row.model.value = text
+                        valueField.cursorPosition = cursorPosition
+                    }
                 }
             }
 

@@ -1871,6 +1871,9 @@ Item {
             sendForFind(window, "/json/5");
             const body = findChild(window.contentItem, "bodyArea");
             tryVerify(() => body.text.indexOf("\"id\": 4") >= 0);
+            // A field takes the focus only in the active window.
+            window.requestActivate();
+            tryCompare(window, "active", true);
             cppTestHost.pressKey(window, Qt.Key_F, Qt.ControlModifier);
             tryCompare(field, "activeFocus", true);
             tryCompare(count, "text", "1 of 5");
@@ -2924,6 +2927,24 @@ Item {
             compare(password.visible, false);
             compare(findChild(pane, "tokenField").visible, true);
             compare(findChild(pane, "tokenField").echoMode, TextInput.Password);
+        }
+
+        /*! Verifies that typing {{ in the URL offers the variables and Enter inserts one. */
+        function test_urlCompleterInsertsVariable() {
+            const window = createMain();
+            cppEnvironments.activeIndex = 0;
+            findChild(window.contentItem, "tree").parent.selectNode("r2");
+            cppRequestEditor.url = "";
+            const url = findChild(window.contentItem, "urlField");
+            const area = findChild(url, "editArea");
+            area.forceActiveFocus();
+            tryCompare(area, "activeFocus", true);
+
+            area.insert(0, "{{ba");
+            // The list opens at once; a popup is no child of the field, so only its effect is checked.
+            cppTestHost.pressKey(window, Qt.Key_Return, Qt.NoModifier);
+            compare(cppRequestEditor.url, "{{baseUrl}}");
+            compare(url.cursorPosition, 11);
         }
 
         /*! Verifies that an auth field naming an unknown variable is framed. */
