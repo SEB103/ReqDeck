@@ -23,6 +23,7 @@ import QtQuick.Controls.Material
 MenuBar {
     id: appMenuBar
 
+    /*! Topic of the F1 help. */
     property string helpTopic: "menu"
 
     /*! Whether the menu should describe the current theme as dark. */
@@ -155,6 +156,7 @@ MenuBar {
     }
 
     Menu {
+        /*! Topic of the F1 help. */
         property string helpTopic: "menu"
 
         title: qsTr("&File")
@@ -179,6 +181,7 @@ MenuBar {
         Menu {
             id: recentMenu
 
+            /*! Topic of the F1 help. */
             property string helpTopic: "menu"
 
             // A submenu entry copies the whole Menu.icon, so an unset size would
@@ -262,6 +265,7 @@ MenuBar {
     }
 
     Menu {
+        /*! Topic of the F1 help. */
         property string helpTopic: "menu"
 
         title: qsTr("&Request")
@@ -318,6 +322,7 @@ MenuBar {
     }
 
     Menu {
+        /*! Topic of the F1 help. */
         property string helpTopic: "menu"
 
         title: qsTr("&View")
@@ -341,6 +346,7 @@ MenuBar {
     }
 
     Menu {
+        /*! Topic of the F1 help. */
         property string helpTopic: "menu"
 
         title: qsTr("&Help")

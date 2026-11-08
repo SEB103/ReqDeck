@@ -52,7 +52,7 @@
             "title": "Getting started",
             "what": "ReqDeck sends requests to web services (APIs) and shows what they answer.",
             "why": "You can try an API without writing code, and keep the requests you need.",
-            "example": "Open Samples on the start screen, pick \"List users\", and press Send.",
+            "example": "Open Samples on the start screen, open the folder JSONPlaceholder, pick \"Get a post\", and press Send.",
             "next": "Point at any field or button and press F1 to learn what it does.",
             "chapter": "first-request"
         },
@@ -495,6 +495,14 @@
             "example": "\"The workspace could not be saved.\"",
             "next": "Close it with the cross; the log keeps all messages.",
             "chapter": "troubleshooting"
+        },
+        "launcher.language": {
+            "title": "Language",
+            "what": "The language of menus, buttons, and messages.",
+            "why": "Use ReqDeck in the language you read best.",
+            "example": "English.",
+            "next": "The change applies at once; Settings in the main window offers the same choice.",
+            "chapter": "first-request"
         }
     },
     "chapters": [

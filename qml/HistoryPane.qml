@@ -68,6 +68,9 @@ Item {
         ListView {
             id: historyList
 
+            /*! Topic of the F1 help. */
+            property string helpTopic: "history.list"
+
             objectName: "historyList"
 
             Layout.fillWidth: true
@@ -170,6 +173,7 @@ Item {
         }
 
         Button {
+            /*! Topic of the F1 help. */
             property string helpTopic: "history.clear"
 
             objectName: "clearHistory"
@@ -184,6 +188,7 @@ Item {
     Dialog {
         id: clearConfirmation
 
+        /*! Topic of the F1 help. */
         property string helpTopic: "history.clear"
 
         objectName: "clearConfirmation"

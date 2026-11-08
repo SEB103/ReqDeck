@@ -20,6 +20,7 @@ import Base as Base
 Item {
     id: root
 
+    /*! Topic of the F1 help. */
     property string helpTopic: "response.body"
 
     Binding {
@@ -62,6 +63,7 @@ Item {
         }
 
         Button {
+            /*! Topic of the F1 help. */
             property string helpTopic: "request.send"
 
             objectName: "cancelButton"
@@ -86,6 +88,7 @@ Item {
             spacing: 10
 
             Base.BsStatusChip {
+                /*! Topic of the F1 help. */
                 property string helpTopic: "response.status"
 
                 objectName: "statusChip"
@@ -147,6 +150,7 @@ Item {
         TabBar {
             id: responseTabs
 
+            /*! Topic of the F1 help. */
             property string helpTopic: "response.tabs"
 
             objectName: "responseTabs"
@@ -176,6 +180,7 @@ Item {
                     spacing: 8
 
                     Base.BsSegmentedControl {
+                        /*! Topic of the F1 help. */
                         property string helpTopic: "response.pretty"
 
                         objectName: "prettySwitch"
@@ -233,6 +238,7 @@ Item {
                         TextArea {
                             id: bodyArea
 
+                            /*! Topic of the F1 help. */
                             property string helpTopic: "response.body"
 
                             /*! Returns the wrap mode for the body that is shown now. */
@@ -286,6 +292,7 @@ Item {
             }
 
             ListView {
+                /*! Topic of the F1 help. */
                 property string helpTopic: "response.headers"
 
                 objectName: "headersList"

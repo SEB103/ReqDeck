@@ -124,6 +124,9 @@ ColumnLayout {
             spacing: 4
 
             CheckBox {
+                /*! Topic of the F1 help. */
+                property string helpTopic: "table.enabled"
+
                 objectName: "enabledBox"
 
                 Layout.preferredWidth: root.sideColumnWidth

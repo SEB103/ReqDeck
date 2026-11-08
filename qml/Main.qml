@@ -52,7 +52,9 @@ ApplicationWindow {
         help is already shown.
     */
     function toggleHelp() {
-        const id = cppHelpLocator.currentTopic(mainWindow)
+        let id = cppHelpLocator.currentTopic(mainWindow)
+        if (!cppHelp.hasTopic(id))
+            id = "start"
         if (helpPanel.opened && helpPanel.topicId === id) {
             helpPanel.close()
             return
@@ -73,7 +75,9 @@ ApplicationWindow {
                                         qsTr("The guide was not found: %1").arg(cppHelp.guidePath()))
             return
         }
-        Qt.openUrlExternally(cppHelp.guideUrl())
+        if (!Qt.openUrlExternally(cppHelp.guideUrl()))
+            mainWindow.showNotification(2, // Diagnostics::Warning
+                                        qsTr("No program to open PDF files was found: %1").arg(cppHelp.guidePath()))
     }
 
     /*! Opens the web address \a key of the help links in the browser. */
@@ -324,6 +328,8 @@ ApplicationWindow {
     Shortcut {
         sequence: "F1"
         context: Qt.ApplicationShortcut
+        // Holding the key must not open and close the panel over and over.
+        autoRepeat: false
         onActivated: mainWindow.toggleHelp()
     }
 
@@ -331,13 +337,15 @@ ApplicationWindow {
     Shortcut {
         sequence: "Esc"
         context: Qt.ApplicationShortcut
-        enabled: helpPanel.opened
+        // Visible, not opened: the panel counts as opened only after it faded in.
+        enabled: helpPanel.visible
         onActivated: helpPanel.close()
     }
 
     Base.BsHelpPanel {
         id: helpPanel
 
+        /*! Topic of the F1 help. */
         property string helpTopic: "help.panel"
 
         /*! Id of the shown topic. */
@@ -499,6 +507,7 @@ ApplicationWindow {
     Dialog {
         id: newWorkspaceDialog
 
+        /*! Topic of the F1 help. */
         property string helpTopic: "dialog.workspace"
 
         /*! Local path of the destination folder for the new workspace. */
@@ -599,6 +608,7 @@ ApplicationWindow {
     Dialog {
         id: unsavedDialog
 
+        /*! Topic of the F1 help. */
         property string helpTopic: "dialog.confirm"
 
         x: Math.round((mainWindow.width - width) / 2)
@@ -638,6 +648,7 @@ ApplicationWindow {
     Dialog {
         id: workspaceErrorDialog
 
+        /*! Topic of the F1 help. */
         property string helpTopic: "dialog.confirm"
 
         x: Math.round((mainWindow.width - width) / 2)
@@ -662,6 +673,7 @@ ApplicationWindow {
     Dialog {
         id: settingsDialog
 
+        /*! Topic of the F1 help. */
         property string helpTopic: "dialog.settings"
 
         x: Math.round((mainWindow.width - width) / 2)

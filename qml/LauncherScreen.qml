@@ -22,6 +22,7 @@ import Base as Base
 Pane {
     id: launcher
 
+    /*! Topic of the F1 help. */
     property string helpTopic: "start"
 
     /*! Whether child controls should follow the dark theme state. */
@@ -93,8 +94,8 @@ Pane {
                 Base.BsLanguageSelector {
                     id: launcherLanguageCombo
 
-                    property string helpTopic: "dialog.settings"
-
+                    /*! Topic of the F1 help. */
+                    property string helpTopic: "launcher.language"
                 }
             }
 
@@ -172,6 +173,7 @@ Pane {
                 delegate: ItemDelegate {
                     id: recentRow
 
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "launcher.recent"
 
                     required property int index
@@ -242,6 +244,7 @@ Pane {
                 Item { Layout.fillWidth: true }
 
                 Button {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "launcher.samples"
 
                     objectName: "openSamplesButton"
@@ -252,6 +255,7 @@ Pane {
                 }
 
                 Button {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "launcher.open"
 
                     text: qsTr("Open Workspace…")
@@ -259,6 +263,7 @@ Pane {
                 }
 
                 Button {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "launcher.create"
 
                     text: qsTr("Create New Workspace")

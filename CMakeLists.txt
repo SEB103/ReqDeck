@@ -156,15 +156,18 @@ install(
 )
 
 # The beginner guide is opened by the system PDF viewer, so it ships as files in
-# help/ next to the executable. Development builds get a copy after each link;
-# packaging/help/build_guide.py makes the PDF files from resources/help.
+# help/ next to the executable. Development builds get a copy on each build, so a
+# new PDF reaches them without a relink; packaging/help/build_guide.py makes the
+# PDF files from resources/help.
 set(REQDECK_GUIDE_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/help/ReqDeck-Guide.en.pdf"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/help/ReqDeck-Guide.ru.pdf"
 )
-add_custom_command(TARGET appReqDeck POST_BUILD
+add_custom_target(appReqDeckGuide ALL
     COMMAND "${CMAKE_COMMAND}" -E make_directory "$<TARGET_FILE_DIR:appReqDeck>/help"
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different ${REQDECK_GUIDE_FILES} "$<TARGET_FILE_DIR:appReqDeck>/help"
+    COMMENT "Copying the beginner guide"
     VERBATIM
 )
+add_dependencies(appReqDeck appReqDeckGuide)
 install(FILES ${REQDECK_GUIDE_FILES} DESTINATION "${CMAKE_INSTALL_BINDIR}/help")

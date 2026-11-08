@@ -22,6 +22,7 @@ import Base as Base
 Dialog {
     id: root
 
+    /*! Topic of the F1 help. */
     property string helpTopic: "environments.list"
 
     /*! Whether an environment is shown for editing. */
@@ -162,6 +163,7 @@ Dialog {
                 spacing: 2
 
                 ToolButton {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "environments.add"
 
                     objectName: "addEnvironment"
@@ -181,6 +183,7 @@ Dialog {
                 }
 
                 ToolButton {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "environments.duplicate"
 
                     objectName: "duplicateEnvironment"
@@ -201,6 +204,7 @@ Dialog {
                 }
 
                 ToolButton {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "environments.remove"
 
                     objectName: "removeEnvironment"
@@ -229,6 +233,7 @@ Dialog {
             TextField {
                 id: nameField
 
+                /*! Topic of the F1 help. */
                 property string helpTopic: "environments.name"
 
                 objectName: "environmentName"
@@ -252,6 +257,7 @@ Dialog {
             // Stored secrets are matched by key and position, so editing rows
             // before they are read would lose them or give them to the wrong row.
             Base.BsKeyValueTable {
+                /*! Topic of the F1 help. */
                 property string helpTopic: "environments.variables"
 
                 objectName: "variablesTable"
@@ -270,6 +276,7 @@ Dialog {
     Dialog {
         id: removeConfirmation
 
+        /*! Topic of the F1 help. */
         property string helpTopic: "environments.remove"
 
         objectName: "removeConfirmation"

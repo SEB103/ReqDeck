@@ -19,6 +19,7 @@ import QtQuick.Layouts
 Rectangle {
     id: root
 
+    /*! Topic of the F1 help. */
     property string helpTopic: "log.panel"
 
     /*! Display name of the open workspace; empty when none is open. */

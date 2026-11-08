@@ -64,3 +64,14 @@ path = [
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Copyright (C) Google LLC"
 SPDX-License-Identifier = "Apache-2.0"
+
+# Screenshots of the application and the beginner guide made from them show the
+# Material Symbols icons above, so both licenses apply.
+[[annotations]]
+path = [
+    "packaging/help/shots/**",
+    "resources/help/ReqDeck-Guide.*.pdf",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = ["Copyright (C) 2026 ReqDeck Project", "Copyright (C) Google LLC"]
+SPDX-License-Identifier = "GPL-3.0-or-later AND Apache-2.0"

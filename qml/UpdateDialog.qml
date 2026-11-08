@@ -25,6 +25,7 @@ import Base as Base
 Dialog {
     id: root
 
+    /*! Topic of the F1 help. */
     property string helpTopic: "dialog.update"
 
     /*! Whether the surrounding window uses the dark Material theme. */

@@ -225,6 +225,47 @@ public:
             m_history.record(request, response);
     }
 
+    /*! Sends \a window the event of the pointer leaving it. */
+    Q_INVOKABLE void leaveWindow(QQuickWindow *window)
+    {
+        QEvent leave(QEvent::Leave);
+        QCoreApplication::sendEvent(window, &leave);
+    }
+
+    /*!
+     * Returns whether \a item names its topic itself or takes it from something it
+     * is part of: a dialog or a menu names one topic for all it holds, a list or a
+     * tree for its rows, and a control such as a tab bar or one of the compound Base
+     * controls below for its parts. A plain area such as a pane does not, so a
+     * control added there without a topic of its own is caught.
+     */
+    static bool ownsTopic(const QQuickItem *item)
+    {
+        static const QStringList compound {
+            QStringLiteral("BsKeyValueTable"), QStringLiteral("BsSegmentedControl"),
+            QStringLiteral("BsLogPanel"), QStringLiteral("BsStatusBar"),
+            QStringLiteral("BsNotificationBanner")};
+        for (const QObject *object = item; object;) {
+            if (object != item
+                && (object->inherits("QQuickPopup") || object->inherits("QQuickItemView")
+                    || object->inherits("QQuickTableView"))) {
+                return true;
+            }
+            if (!object->property("helpTopic").toString().isEmpty()) {
+                const QString type =
+                    QString::fromLatin1(object->metaObject()->className()).section(u'_', 0, 0);
+                return object == item
+                    || (object->inherits("QQuickControl") && !object->inherits("QQuickPane"))
+                    || compound.contains(type);
+            }
+            const auto *parent = qobject_cast<const QQuickItem *>(object);
+            object = parent && parent->parentItem() && !parent->inherits("QQuickPopupItem")
+                ? static_cast<const QObject *>(parent->parentItem())
+                : object->parent();
+        }
+        return false;
+    }
+
     /*!
      * Returns the controls of \a window a user can work with that have no help
      * topic, or one unknown to the help in either language. Closed popups are
@@ -268,7 +309,8 @@ public:
                 continue;
 
             const QString topic = HelpLocator::topicOf(item);
-            if (topic.isEmpty() || !m_help.hasTopic(topic) || !russian.hasTopic(topic)) {
+            if (topic.isEmpty() || !m_help.hasTopic(topic) || !russian.hasTopic(topic)
+                || !ownsTopic(item)) {
                 QStringList chain;
                 for (const QObject *object = item; object && chain.size() < 4;
                      object = qobject_cast<const QQuickItem *>(object)
@@ -336,7 +378,7 @@ public:
     }
 
     /*!
-     * Saves the part of the window that  item covers to  path, popups above it
+     * Saves the part of the window that \a item covers to \a path, popups above it
      * included, which grabImage() leaves out or misplaces.
      */
     Q_INVOKABLE bool saveGrab(QQuickItem *item, const QString &path) const
@@ -347,7 +389,7 @@ public:
                             path);
     }
 
-    /*! Saves the area  scene of  window, in scene coordinates, to  path. */
+    /*! Saves the area \a scene of \a window, in scene coordinates, to \a path. */
     Q_INVOKABLE bool saveGrabArea(QQuickWindow *window, const QRectF &scene, const QString &path) const
     {
         if (!window)

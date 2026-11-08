@@ -138,6 +138,7 @@ Pane {
         Base.BsNotificationBanner {
             id: notificationBanner
 
+            /*! Topic of the F1 help. */
             property string helpTopic: "notification"
 
             Layout.fillWidth: true
@@ -181,6 +182,7 @@ Pane {
                     TabBar {
                         id: sidebarTabs
 
+                        /*! Topic of the F1 help. */
                         property string helpTopic: "sidebar.tabs"
 
                         objectName: "sidebarTabs"
@@ -205,6 +207,7 @@ Pane {
                         CollectionPane {
                             id: collectionPane
 
+                            /*! Topic of the F1 help. */
                             property string helpTopic: "collection.tree"
 
                         }
@@ -212,6 +215,7 @@ Pane {
                         HistoryPane {
                             id: historyPane
 
+                            /*! Topic of the F1 help. */
                             property string helpTopic: "history.list"
 
                         }
@@ -249,6 +253,7 @@ Pane {
         Base.BsLogPanel {
             id: logPanel
 
+            /*! Topic of the F1 help. */
             property string helpTopic: "log.panel"
 
             Layout.fillWidth: true

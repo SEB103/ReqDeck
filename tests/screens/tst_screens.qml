@@ -1756,6 +1756,42 @@ Item {
             compare(cppHelpLocator.currentTopic(root.Window.window), "inner");
         }
 
+        /*! Verifies that a body scrolled out of its view does not hide the controls above it. */
+        function test_scrolledBodyDoesNotHideControls() {
+            const window = createMain();
+            findChild(window.contentItem, "tree").parent.selectNode("r2");
+            cppRequestEditor.url = cppTestHost.serverUrl("/json/300");
+            cppRequestEditor.send();
+            tryCompare(cppResponse, "busy", false, 10000);
+            const area = findChild(window.contentItem, "bodyArea");
+            // The text area lies in the content item of the scroll view's flickable.
+            const flickable = area.parent.parent;
+            tryVerify(() => area.height > flickable.height + 500);
+            flickable.contentY = area.height - flickable.height;
+            waitForRendering(window.contentItem);
+
+            for (const [name, topic] of [["responseTabs", "response.tabs"], ["statusChip", "response.status"]]) {
+                const item = findChild(window.contentItem, name);
+                const point = item.mapToItem(null, item.width / 2, item.height / 2);
+                compare(cppHelpLocator.topicAt(window, point), topic, name);
+            }
+        }
+
+        /*! Verifies that once the pointer left the window, the focused field decides. */
+        function test_leavingWindowLetsFocusDecide() {
+            const window = createMain();
+            const button = findChild(window.contentItem, "manageEnvironmentsButton");
+            mouseMove(button, button.width / 2, button.height / 2);
+            findChild(window.contentItem, "urlField").forceActiveFocus();
+
+            cppTestHost.leaveWindow(window);
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+
+            const panel = helpPanel(window);
+            tryCompare(panel, "opened", true);
+            compare(findChild(panel, "helpTitle").text, "Address (URL)");
+        }
+
         /*! Verifies the general page when nothing has a topic. */
         function test_noTopicGivesStart() {
             const targets = createHelpTargets();
@@ -1968,10 +2004,12 @@ Item {
             const field = findChild(host, "environmentName");
             field.forceActiveFocus();
             field.selectAll();
-            keyClick(Qt.Key_Delete);
+            // Sent to the field's window directly: keyClick() is lost when the
+            // test window is not active, which happens after another window closed.
+            cppTestHost.pressKey(field.Window.window, Qt.Key_Delete, Qt.NoModifier);
             compare(field.text, "");
 
-            keyClick(Qt.Key_Return);
+            cppTestHost.pressKey(field.Window.window, Qt.Key_Return, Qt.NoModifier);
 
             compare(field.text, "Created");
             compare(cppEnvironments.names[0], "Created");

@@ -72,6 +72,7 @@ Item {
         Base.BsInlineTitle {
             id: nameTitle
 
+            /*! Topic of the F1 help. */
             property string helpTopic: "request.name"
 
             objectName: "nameField"
@@ -94,6 +95,7 @@ Item {
             ComboBox {
                 id: methodCombo
 
+                /*! Topic of the F1 help. */
                 property string helpTopic: "request.method"
 
                 objectName: "methodCombo"
@@ -125,6 +127,7 @@ Item {
             }
 
             Base.BsSingleLineEdit {
+                /*! Topic of the F1 help. */
                 property string helpTopic: "request.url"
 
                 objectName: "urlField"
@@ -141,6 +144,7 @@ Item {
 
             // Taking the focus first commits a field still being edited.
             Button {
+                /*! Topic of the F1 help. */
                 property string helpTopic: "request.send"
 
                 objectName: "sendButton"
@@ -165,6 +169,7 @@ Item {
         TabBar {
             id: tabs
 
+            /*! Topic of the F1 help. */
             property string helpTopic: "request.tabs"
 
             objectName: "tabs"
@@ -197,6 +202,7 @@ Item {
             currentIndex: tabs.currentIndex
 
             Base.BsKeyValueTable {
+                /*! Topic of the F1 help. */
                 property string helpTopic: "request.params"
 
                 objectName: "paramsTable"
@@ -207,6 +213,7 @@ Item {
             }
 
             Base.BsKeyValueTable {
+                /*! Topic of the F1 help. */
                 property string helpTopic: "request.headers"
 
                 objectName: "headersTable"
@@ -223,6 +230,7 @@ Item {
                     spacing: 6
 
                     ComboBox {
+                        /*! Topic of the F1 help. */
                         property string helpTopic: "request.bodyMode"
 
                         Layout.preferredWidth: 180
@@ -232,6 +240,7 @@ Item {
                     }
 
                     ComboBox {
+                        /*! Topic of the F1 help. */
                         property string helpTopic: "request.rawType"
 
                         Layout.preferredWidth: 120
@@ -253,6 +262,7 @@ Item {
                     TextArea {
                         id: rawBodyArea
 
+                        /*! Topic of the F1 help. */
                         property string helpTopic: "request.rawBody"
 
                         /*! The request's body as last shown or written. */
@@ -295,6 +305,7 @@ Item {
                 }
 
                 Base.BsKeyValueTable {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "request.form"
 
                     objectName: "formTable"
@@ -318,6 +329,7 @@ Item {
                 spacing: 6
 
                 ComboBox {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "request.authType"
 
                     Layout.preferredWidth: 180
@@ -327,6 +339,7 @@ Item {
                 }
 
                 TextField {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "request.authUser"
 
                     Layout.fillWidth: true
@@ -338,6 +351,7 @@ Item {
                 }
 
                 TextField {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "request.authPassword"
 
                     objectName: "passwordField"
@@ -352,6 +366,7 @@ Item {
                 }
 
                 TextField {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "request.token"
 
                     objectName: "tokenField"
@@ -366,6 +381,7 @@ Item {
                 }
 
                 TextField {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "request.apiKeyName"
 
                     Layout.fillWidth: true
@@ -377,6 +393,7 @@ Item {
                 }
 
                 TextField {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "request.apiKeyValue"
 
                     Layout.fillWidth: true
@@ -389,6 +406,7 @@ Item {
                 }
 
                 ComboBox {
+                    /*! Topic of the F1 help. */
                     property string helpTopic: "request.apiKeyPlace"
 
                     Layout.preferredWidth: 180
@@ -408,6 +426,7 @@ Item {
                     }
 
                     SpinBox {
+                        /*! Topic of the F1 help. */
                         property string helpTopic: "request.timeout"
 
                         objectName: "timeoutBox"

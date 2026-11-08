@@ -29,7 +29,9 @@ PROJECT = HERE.parent.parent
 HELP_DIR = PROJECT / "resources" / "help"
 SHOTS_DIR = HERE / "shots"
 LOGO = PROJECT / "resources" / "images" / "app" / "ReqDeckLogo.png"
-DEFAULT_EDGE = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
+EDGE_LOCATIONS = [Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"),
+                  Path(r"C:\Program Files\Microsoft\Edge\Application\msedge.exe")]
+DEFAULT_EDGE = next((path for path in EDGE_LOCATIONS if path.is_file()), EDGE_LOCATIONS[0])
 
 # Light theme colors of BsTheme.methodColor() and BsTheme.statusColor().
 METHOD_CLASSES = {"GET": "get", "POST": "post", "PUT": "put", "PATCH": "patch", "DELETE": "delete"}
@@ -134,14 +136,15 @@ def page_html(help_data):
     parts.append('<section class="contents"><h2>%s</h2><ol>' % html.escape(guide["contents"]))
     for number, chapter in enumerate(chapters, 1):
         parts.append('<li><a href="#%s"><span class="num">%d</span>%s</a></li>'
-                     % (chapter["id"], number, html.escape(chapter["title"])))
+                     % (html.escape(chapter["id"], quote=True), number, html.escape(chapter["title"])))
     parts.append('<li><a href="#keys"><span class="num">★</span>%s</a></li>' % html.escape(guide["keys"]))
     parts.append('<li><a href="#links"><span class="num">↗</span>%s</a></li>' % html.escape(guide["links"]))
     parts.append("</ol></section>")
 
     for number, chapter in enumerate(chapters, 1):
         parts.append('<section class="chapter" id="%s"><header><span class="badge">%s %d</span><h2>%s</h2></header>'
-                     % (chapter["id"], html.escape(guide["chapter"]), number, html.escape(chapter["title"])))
+                     % (html.escape(chapter["id"], quote=True), html.escape(guide["chapter"]), number,
+                        html.escape(chapter["title"])))
         parts.extend(block_html(chapter["id"], block, guide) for block in chapter["blocks"])
         parts.append("</section>")
 
@@ -163,20 +166,27 @@ def page_html(help_data):
 
 
 def print_pdf(edge, page, target):
+    """Prints page to target; the old file goes first, so it cannot pass for a new one."""
+    target.unlink(missing_ok=True)
     with tempfile.TemporaryDirectory() as profile:
         command = [str(edge), "--headless", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
                    "--user-data-dir=" + profile, "--no-pdf-header-footer", "--generate-pdf-document-outline",
                    "--print-to-pdf=" + str(target), page.as_uri()]
-        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=180)
-    if not target.is_file() or target.read_bytes()[:5] != b"%PDF-":
-        raise SystemExit("Edge did not write %s" % target)
+        try:
+            result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=180,
+                                    text=True, errors="replace")
+        except subprocess.TimeoutExpired:
+            raise SystemExit("Edge did not finish %s within 180 s." % target) from None
+    if result.returncode != 0 or not target.is_file() or target.read_bytes()[:5] != b"%PDF-":
+        raise SystemExit("Edge did not write %s (exit code %d):\n%s"
+                         % (target, result.returncode, result.stderr.strip()[-2000:]))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("languages", nargs="*", default=["en", "ru"])
     parser.add_argument("--edge", type=Path, default=DEFAULT_EDGE, help="path of msedge.exe")
-    parser.add_argument("--html-only", action="store_true", help="write the HTML pages next to the PDF files")
+    parser.add_argument("--html-only", action="store_true", help="write the HTML pages to build/ instead of printing them")
     args = parser.parse_args()
     if not args.html_only and not args.edge.is_file():
         raise SystemExit("Microsoft Edge was not found at %s; pass --edge." % args.edge)

@@ -66,3 +66,9 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 - Keyboard shortcuts, shown in the menus, and Open Samples in the launcher.
 - New look: colors for methods and status, compact headers and tabs, an inline
   request title, line numbers in the response, and tables with column titles.
+- Help with F1: a short explanation, in English or Russian after the system
+  language, of the control under the pointer or the field being typed in, also
+  inside dialogs.
+- Beginner guide as a PDF in English and Russian, opened from the Help menu and
+  the help panel, with links to a public API for practice and to a reference of
+  HTTP status codes.

@@ -18,7 +18,9 @@ namespace {
  * \a item, or null.
  *
  * Children are tried from the top of the stacking order down, and a child may
- * lie outside its parent, as popups in the overlay do. An item without a topic
+ * lie outside its parent, as popups in the overlay do, unless the parent clips:
+ * the hidden part of a scrolled text must not stand in for the controls above
+ * its view, just as it gets no clicks there. An item without a topic
  * does not end the search: the overlay for popups covers the whole window and
  * has none, and neither has the dimmer of a modal dialog. Disabled items count:
  * a greyed-out button still deserves an explanation.
@@ -26,6 +28,8 @@ namespace {
 QQuickItem *itemAt(QQuickItem *item, const QPointF &scenePoint)
 {
     if (!item->isVisible() || qFuzzyIsNull(item->opacity()))
+        return nullptr;
+    if (item->clip() && !item->contains(item->mapFromScene(scenePoint)))
         return nullptr;
 
     QList<QQuickItem *> children = item->childItems();
@@ -105,6 +109,7 @@ QString HelpLocator::currentTopic(QQuickWindow *window) const
  * \brief Records whether the mouse or the keyboard was used last.
  *
  * F1 itself does not count, so that it can explain what the mouse points at.
+ * When the pointer leaves a window, its last position there no longer counts.
  * \param watched Unused.
  * \param event The event.
  * \return Always false: the event goes on.
@@ -119,6 +124,10 @@ bool HelpLocator::eventFilter(QObject *watched, QEvent *event)
             m_pointerWindow = window;
             m_pointerPosition = static_cast<QMouseEvent *>(event)->scenePosition();
         }
+        break;
+    case QEvent::Leave:
+        if (watched == m_pointerWindow)
+            m_pointerWindow = nullptr;
         break;
     case QEvent::KeyPress:
         if (static_cast<QKeyEvent *>(event)->key() != Qt::Key_F1)

@@ -49,6 +49,11 @@ Outlined and are embedded in the application resources.
 The SVG path data was not modified; only the file names were normalized. See
 `resources/images/README.md`.
 
+The screenshots in `packaging/help/shots/` and the beginner guide PDF files in
+`resources/help/`, installed to `help/`, show these icons. The PDF files also
+embed subsets of the Segoe UI and Consolas fonts of Windows, as written by the
+Microsoft Edge PDF printer.
+
 ## Country flag (UI-language selector)
 
 The SVG flag `resources/images/flags/gb.svg` is used by the UI-language selector.

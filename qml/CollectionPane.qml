@@ -111,6 +111,9 @@ Item {
     TreeView {
         id: tree
 
+        /*! Topic of the F1 help. */
+        property string helpTopic: "collection.tree"
+
         objectName: "tree"
 
         anchors.fill: parent
