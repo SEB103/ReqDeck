@@ -90,6 +90,12 @@ private slots:
     /*! Verifies the name of a request made from an entry. */
     void displayNameNamesTheRequest();
 
+    /*! Verifies that the search matches all words, in any order, without case. */
+    void filterMatchesWordsInAnyOrder();
+
+    /*! Verifies that an omitted body is reported per row. */
+    void bodyOmittedIsExposed();
+
     /*! Verifies that entries another window added appear with the next record. */
     void recordShowsEntriesOfOtherWindow();
 };
@@ -111,6 +117,46 @@ void HistoryModelTest::loadsExistingEntries()
     QCOMPARE(model.data(model.index(0), HistoryModel::UrlRole).toString(),
              QStringLiteral("http://earlier"));
     QCOMPARE(failed.count(), 0);
+}
+
+void HistoryModelTest::filterMatchesWordsInAnyOrder()
+{
+    QTemporaryDir dir;
+    HistoryModel model(dir.filePath(QStringLiteral("history.json")));
+    model.record(makeRequest(QStringLiteral("http://a/users")), makeResponse(200));
+    model.record(makeRequest(QStringLiteral("http://b/orders")), makeResponse(404));
+    QAbstractItemModel *filtered = model.property("filtered").value<QAbstractItemModel *>();
+    QVERIFY(filtered);
+    QAbstractItemModelTester tester(filtered, QAbstractItemModelTester::FailureReportingMode::QtTest);
+    QCOMPARE(filtered->rowCount(), 2);
+
+    model.setProperty("filterText", QStringLiteral("ORDERS post"));
+    QCOMPARE(filtered->rowCount(), 1);
+    QCOMPARE(filtered->index(0, 0).data(HistoryModel::UrlRole).toString(), QStringLiteral("http://b/orders"));
+    QCOMPARE(model.sourceRow(0), 0);
+
+    model.setProperty("filterText", QStringLiteral("200"));
+    QCOMPARE(filtered->rowCount(), 1);
+    QCOMPARE(model.sourceRow(0), 1);
+
+    model.setProperty("filterText", QStringLiteral("a.b(c"));
+    QCOMPARE(filtered->rowCount(), 0);
+    model.setProperty("filterText", QString());
+    QCOMPARE(filtered->rowCount(), 2);
+    QCOMPARE(model.sourceRow(5), -1);
+}
+
+void HistoryModelTest::bodyOmittedIsExposed()
+{
+    QTemporaryDir dir;
+    HistoryModel model(dir.filePath(QStringLiteral("history.json")));
+    RequestSpec request = makeRequest(QStringLiteral("http://big"));
+    request.body.mode = BodyMode::Raw;
+    request.body.raw = QString(HistoryStore::kMaxStoredBodyChars + 1, u'x');
+    model.record(request, makeResponse(200));
+
+    QCOMPARE(model.data(model.index(0), HistoryModel::BodyOmittedRole).toBool(), true);
+    QVERIFY(model.roleNames().values().contains("bodyOmitted"));
 }
 
 void HistoryModelTest::recordShowsEntriesOfOtherWindow()

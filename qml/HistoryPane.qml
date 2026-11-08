@@ -34,7 +34,7 @@ Item {
     */
     function openRow(row) {
         historyList.forceActiveFocus(Qt.MouseFocusReason)
-        const id = cppHistory.openEntry(row, cppCollection)
+        const id = cppHistory.openEntry(cppHistory.sourceRow(row), cppCollection)
         if (id.length > 0)
             root.entryOpened(id)
     }
@@ -65,6 +65,21 @@ Item {
         anchors.fill: parent
         spacing: 4
 
+        TextField {
+            /*! Topic of the F1 help. */
+            property string helpTopic: "history.search"
+
+            objectName: "historySearch"
+
+            Layout.fillWidth: true
+            placeholderText: qsTr("Search history")
+            selectByMouse: true
+            text: cppHistory.filterText
+            Accessible.name: qsTr("Search history")
+            onTextChanged: cppHistory.filterText = text
+            Keys.onDownPressed: historyList.forceActiveFocus(Qt.TabFocusReason)
+        }
+
         ListView {
             id: historyList
 
@@ -78,7 +93,7 @@ Item {
             clip: true
             activeFocusOnTab: true
             currentIndex: -1
-            model: cppHistory
+            model: cppHistory.filtered
             Accessible.name: qsTr("History")
             Keys.onUpPressed: historyList.currentIndex = Math.max(0, historyList.currentIndex - 1)
             Keys.onDownPressed: historyList.currentIndex = Math.min(historyList.count - 1, historyList.currentIndex + 1)
@@ -96,6 +111,7 @@ Item {
                 required property double elapsedMs
                 required property string errorString
                 required property string timeText
+                required property bool bodyOmitted
                 required property int index
 
                 width: ListView.view.width
@@ -149,6 +165,15 @@ Item {
                         }
 
                         Label {
+                            objectName: "historyBodyOmitted"
+
+                            visible: entry.bodyOmitted
+                            opacity: 0.7
+                            font.pixelSize: 11
+                            text: qsTr("body not kept")
+                        }
+
+                        Label {
                             textFormat: Text.PlainText
                             opacity: 0.7
                             font.pixelSize: 11
@@ -168,7 +193,18 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
                 opacity: 0.6
-                text: qsTr("Sent requests appear here.")
+                text: cppHistory.filterText.trim().length > 0 ? qsTr("No entry matches the search.")
+                                                              : qsTr("Sent requests appear here.")
+            }
+
+            Rectangle {
+                parent: historyList
+                anchors.fill: parent
+                visible: historyList.activeFocus
+                color: "transparent"
+                radius: 2
+                border.width: 1
+                border.color: Base.BsTheme.accent
             }
         }
 
@@ -179,7 +215,7 @@ Item {
             objectName: "clearHistory"
 
             flat: true
-            enabled: historyList.count > 0
+            enabled: historyList.count > 0 || cppHistory.filterText.length > 0
             text: qsTr("Clear history")
             onClicked: clearConfirmation.open()
         }

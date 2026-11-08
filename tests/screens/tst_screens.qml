@@ -2929,6 +2929,30 @@ Item {
             compare(findChild(pane, "tokenField").echoMode, TextInput.Password);
         }
 
+        /*! Verifies that the history search narrows the list and an entry still opens. */
+        function test_historySearchFilters() {
+            cppTestHost.addHistory("http://localhost:9/orders", 1, "Connection refused");
+            cppTestHost.addHistory("http://localhost:9/users", 1);
+            const window = createMain();
+            const list = findChild(window.contentItem, "historyList");
+            const search = findChild(window.contentItem, "historySearch");
+            tryCompare(list, "count", 2);
+
+            search.text = "orders";
+            tryCompare(list, "count", 1);
+            // The delegates follow the filtered rows after the layout.
+            tryVerify(() => {
+                const item = list.itemAtIndex(0);
+                return item !== null && findChild(item, "historyUrl").text === "http://localhost:9/orders";
+            });
+
+            search.text = "nothing-like-this";
+            tryCompare(list, "count", 0);
+            compare(findChild(list, "emptyHint").text, "No entry matches the search.");
+            search.text = "";
+            tryCompare(list, "count", 2);
+        }
+
         /*! Verifies that typing {{ in the URL offers the variables and Enter inserts one. */
         function test_urlCompleterInsertsVariable() {
             const window = createMain();

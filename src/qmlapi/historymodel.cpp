@@ -3,6 +3,8 @@
 
 #include "qmlapi/historymodel.h"
 
+#include <QRegularExpression>
+
 #include "core/http/responsedata.h"
 #include "core/workspace/collectiontree.h"
 #include "qmlapi/collectiontreemodel.h"
@@ -18,7 +20,10 @@
 HistoryModel::HistoryModel(const QString &filePath, QObject *parent)
     : QAbstractListModel(parent)
     , m_store(filePath)
+    , m_filtered(new QSortFilterProxyModel(this))
 {
+    m_filtered->setSourceModel(this);
+    m_filtered->setFilterRole(SearchRole);
 }
 
 /*!
@@ -53,6 +58,12 @@ QVariant HistoryModel::data(const QModelIndex &index, int role) const
         return entry.errorString;
     case TimeRole:
         return entry.timestamp.toLocalTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"));
+    case BodyOmittedRole:
+        return entry.bodyOmitted;
+    case SearchRole:
+        return QStringList {QString::fromLatin1(httpMethodVerb(entry.request.method)), entry.request.url,
+                            QString::number(entry.statusCode), entry.errorString}
+            .join(u' ');
     default:
         return {};
     }
@@ -69,7 +80,53 @@ QHash<int, QByteArray> HistoryModel::roleNames() const
             {StatusCodeRole, QByteArrayLiteral("statusCode")},
             {ElapsedRole, QByteArrayLiteral("elapsedMs")},
             {ErrorRole, QByteArrayLiteral("errorString")},
-            {TimeRole, QByteArrayLiteral("timeText")}};
+            {TimeRole, QByteArrayLiteral("timeText")},
+            {BodyOmittedRole, QByteArrayLiteral("bodyOmitted")}};
+}
+
+/*!
+ * \brief Returns the entries that match filterText(), newest first.
+ */
+QAbstractItemModel *HistoryModel::filtered() const
+{
+    return m_filtered;
+}
+
+QString HistoryModel::filterText() const
+{
+    return m_filterText;
+}
+
+/*!
+ * \brief Shows only entries that contain every word of \a text.
+ *
+ * The words may come in any order and match without regard to case, each as
+ * plain text, so "orders post" finds "POST .../orders".
+ * \param text The search words, separated by spaces.
+ */
+void HistoryModel::setFilterText(const QString &text)
+{
+    if (m_filterText == text)
+        return;
+    m_filterText = text;
+    QString pattern;
+    for (const QString &word : text.split(u' ', Qt::SkipEmptyParts))
+        pattern += QStringLiteral("(?=.*%1)").arg(QRegularExpression::escape(word));
+    m_filtered->setFilterRegularExpression(
+        QRegularExpression(pattern, QRegularExpression::CaseInsensitiveOption | QRegularExpression::DotMatchesEverythingOption));
+    emit filterTextChanged();
+}
+
+/*!
+ * \brief Returns the row of this model shown at \a filteredRow of filtered().
+ * \param filteredRow A row of the list view.
+ * \return The row, or -1 for an invalid one.
+ */
+int HistoryModel::sourceRow(int filteredRow) const
+{
+    if (filteredRow < 0 || filteredRow >= m_filtered->rowCount())
+        return -1;
+    return m_filtered->mapToSource(m_filtered->index(filteredRow, 0)).row();
 }
 
 /*!

@@ -559,6 +559,14 @@
             "example": "{{ba offers {{baseUrl}}.",
             "next": "Arrow keys choose, Enter or Tab inserts, Escape closes the list.",
             "chapter": "variables"
+        },
+        "history.search": {
+            "title": "Search history",
+            "what": "Shows only the entries that contain every word you type, in the method, address, status, or error.",
+            "why": "To find an earlier request among many.",
+            "example": "post orders finds POST requests to an address with orders.",
+            "next": "Press the Down arrow to move into the list, then Enter to make a request of the entry.",
+            "chapter": "history"
         }
     },
     "chapters": [
