@@ -724,6 +724,10 @@
                     "type": "shot",
                     "file": "response.png",
                     "caption": "Status, time, size, and the body of the answer."
+                },
+                {
+                    "type": "tip",
+                    "text": "Ctrl+F finds text in the answer. The save button beside the size writes the answer to a file, also a very large one, of which only the start is shown."
                 }
             ]
         },
@@ -772,6 +776,10 @@
                         [
                             "Certificate error",
                             "The server's HTTPS certificate is not trusted, common on test servers. If you know the server, press Continue."
+                        ],
+                        [
+                            "Proxy or company network",
+                            "ReqDeck uses the proxy set in Windows, like your browser. Requests to your own computer always go directly."
                         ]
                     ]
                 },

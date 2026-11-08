@@ -72,3 +72,12 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 - Beginner guide as a PDF in English and Russian, opened from the Help menu and
   the help panel, with links to a public API for practice and to a reference of
   HTTP status codes.
+- Ctrl+F in the response, with a count of matches and F3 to move between them.
+- Save the response to a file, exactly as received; responses too large for
+  memory are kept on disk, shown in part, and saved whole.
+- An untrusted server certificate can be accepted for one request and its host,
+  with a warning in the response and an entry in the log.
+- Requests use the proxy configured in Windows, except to this computer.
+
+### Fixed
+- Responses over HTTP/2 show the name of their status, for example 200 OK.
