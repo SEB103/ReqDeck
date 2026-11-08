@@ -38,6 +38,9 @@ ColumnLayout {
     /*! Text shown while the table has no rows. */
     property string emptyHint: ""
 
+    /*! Names of the variables that resolve; a field naming another one is framed. Null checks nothing. */
+    property var knownVariables: null
+
     /*! Width of the column with the enable switch and of the one with the remove button. */
     readonly property int sideColumnWidth: 40
 
@@ -136,6 +139,11 @@ ColumnLayout {
             }
 
             TextField {
+                id: keyField
+
+                /*! Variables in the key that do not resolve. */
+                readonly property var unknown: BsVariables.unknownIn(text, root.knownVariables)
+
                 objectName: "keyField"
 
                 Layout.fillWidth: true
@@ -146,13 +154,26 @@ ColumnLayout {
                 selectByMouse: true
                 Accessible.name: root.keyTitle + " " + (row.index + 1)
                 text: row.model.key
+                ToolTip.visible: hovered && keyField.unknown.length > 0
+                ToolTip.text: keyMark.tooltip
                 onTextEdited: row.model.key = text
                 // Out of editing, a long text shows its start, not its end.
                 onTextChanged: if (!activeFocus) cursorPosition = 0
                 onActiveFocusChanged: if (!activeFocus) cursorPosition = 0
+
+                BsUnknownVariablesMark {
+                    id: keyMark
+
+                    names: keyField.unknown
+                }
             }
 
             TextField {
+                id: valueField
+
+                /*! Variables in the value that do not resolve. */
+                readonly property var unknown: BsVariables.unknownIn(text, root.knownVariables)
+
                 objectName: "valueField"
 
                 Layout.fillWidth: true
@@ -164,9 +185,17 @@ ColumnLayout {
                 Accessible.name: root.valueTitle + " " + (row.index + 1)
                 echoMode: root.showSecret && row.model.secret ? TextInput.Password : TextInput.Normal
                 text: row.model.value
+                ToolTip.visible: hovered && valueField.unknown.length > 0
+                ToolTip.text: valueMark.tooltip
                 onTextEdited: row.model.value = text
                 onTextChanged: if (!activeFocus) cursorPosition = 0
                 onActiveFocusChanged: if (!activeFocus) cursorPosition = 0
+
+                BsUnknownVariablesMark {
+                    id: valueMark
+
+                    names: valueField.unknown
+                }
             }
 
             CheckBox {

@@ -5,6 +5,8 @@ qt_add_library(Base STATIC)
 
 # Shared accent tokens and chrome palette, bound to the window theme by Main.qml.
 set_source_files_properties(BsTheme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+# Finds {{variable}} references for fields that cannot be highlighted.
+set_source_files_properties(BsVariables.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
 qt_add_qml_module(Base
     URI Base
@@ -28,6 +30,8 @@ qt_add_qml_module(Base
         BsTabButton.qml
         BsTheme.qml
         BsTopBarActions.qml
+        BsUnknownVariablesMark.qml
+        BsVariables.qml
 )
 
 target_link_libraries(Base

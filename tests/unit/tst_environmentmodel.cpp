@@ -129,6 +129,9 @@ private slots:
     /*! Verifies that nothing happens without a workspace. */
     void withoutWorkspaceDoesNothing();
 
+    /*! Verifies the names that resolve in the active environment, and their signal. */
+    void activeVariableNamesFollowActive();
+
     /*! Verifies that a secret variable goes to the active environment under a free name. */
     void addSecretVariableToActive();
 
@@ -184,6 +187,17 @@ void EnvironmentModelTest::cleanup()
     m_model.reset();
     m_manager.reset();
     m_dir.reset();
+}
+
+void EnvironmentModelTest::activeVariableNamesFollowActive()
+{
+    QSignalSpy changed(m_model.get(), &EnvironmentModel::activeVariablesChanged);
+    QCOMPARE(m_model->property("activeVariableNames").toStringList(), QStringList());
+
+    m_model->setActiveIndex(0);
+
+    QCOMPARE(m_model->property("activeVariableNames").toStringList(), QStringList({QStringLiteral("baseUrl")}));
+    QVERIFY(changed.count() > 0);
 }
 
 void EnvironmentModelTest::addSecretVariableToActive()

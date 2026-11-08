@@ -207,6 +207,8 @@ Item {
 
                 objectName: "paramsTable"
 
+                knownVariables: cppEnvironments.activeVariableNames
+
                 model: cppRequestEditor.paramsModel
                 keyTitle: qsTr("Parameter")
                 emptyHint: qsTr("Add a parameter to send it in the URL.")
@@ -217,6 +219,8 @@ Item {
                 property string helpTopic: "request.headers"
 
                 objectName: "headersTable"
+
+                knownVariables: cppEnvironments.activeVariableNames
 
                 model: cppRequestEditor.headersModel
                 keyTitle: qsTr("Header")
@@ -310,6 +314,8 @@ Item {
 
                     objectName: "formTable"
 
+                    knownVariables: cppEnvironments.activeVariableNames
+
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     visible: cppRequestEditor.bodyMode === 2 // BodyMode::FormUrlEncoded
@@ -354,6 +360,11 @@ Item {
                     /*! Topic of the F1 help. */
                     property string helpTopic: "request.authPassword"
 
+                    id: passwordField
+
+                    /*! Variables in the field that do not resolve. */
+                    readonly property var unknown: Base.BsVariables.unknownIn(text, cppEnvironments.activeVariableNames)
+
                     objectName: "passwordField"
 
                     Layout.fillWidth: true
@@ -362,12 +373,25 @@ Item {
                     placeholderText: qsTr("Password")
                     selectByMouse: true
                     text: cppRequestEditor.authPassword
+                    ToolTip.visible: hovered && passwordField.unknown.length > 0
+                    ToolTip.text: passwordFieldMark.tooltip
                     onTextEdited: cppRequestEditor.authPassword = text
+
+                    Base.BsUnknownVariablesMark {
+                        id: passwordFieldMark
+
+                        names: passwordField.unknown
+                    }
                 }
 
                 TextField {
                     /*! Topic of the F1 help. */
                     property string helpTopic: "request.token"
+
+                    id: tokenField
+
+                    /*! Variables in the field that do not resolve. */
+                    readonly property var unknown: Base.BsVariables.unknownIn(text, cppEnvironments.activeVariableNames)
 
                     objectName: "tokenField"
 
@@ -377,7 +401,15 @@ Item {
                     placeholderText: qsTr("Token")
                     selectByMouse: true
                     text: cppRequestEditor.authToken
+                    ToolTip.visible: hovered && tokenField.unknown.length > 0
+                    ToolTip.text: tokenFieldMark.tooltip
                     onTextEdited: cppRequestEditor.authToken = text
+
+                    Base.BsUnknownVariablesMark {
+                        id: tokenFieldMark
+
+                        names: tokenField.unknown
+                    }
                 }
 
                 TextField {
@@ -395,6 +427,8 @@ Item {
                 TextField {
                     /*! Topic of the F1 help. */
                     property string helpTopic: "request.apiKeyValue"
+                    /*! Variables in the field that do not resolve. */
+                    readonly property var unknown: Base.BsVariables.unknownIn(text, cppEnvironments.activeVariableNames)
 
                     Layout.fillWidth: true
                     visible: cppRequestEditor.authType === 3 // AuthType::ApiKey
@@ -402,7 +436,15 @@ Item {
                     placeholderText: qsTr("Key value")
                     selectByMouse: true
                     text: cppRequestEditor.apiKeyValue
+                    ToolTip.visible: hovered && unknown.length > 0
+                    ToolTip.text: apiKeyValueMark.tooltip
                     onTextEdited: cppRequestEditor.apiKeyValue = text
+
+                    Base.BsUnknownVariablesMark {
+                        id: apiKeyValueMark
+
+                        names: parent.unknown
+                    }
                 }
 
                 RowLayout {

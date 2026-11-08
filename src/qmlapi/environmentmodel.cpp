@@ -435,4 +435,23 @@ void EnvironmentModel::refreshHighlighter()
 {
     m_highlighter->setVariables(
         VariableResolver::fromKeyValues(activeEnvironmentVariables(m_manager->workspaceData())));
+    emit activeVariablesChanged();
+}
+
+/*!
+ * \brief Returns the names of the variables that resolve in the active environment.
+ *
+ * Fields that cannot be highlighted per character compare their references with
+ * these names. The rules are those of VariableResolver::fromKeyValues(): enabled
+ * rows with a key, and no secret without a value.
+ */
+QStringList EnvironmentModel::activeVariableNames() const
+{
+    QStringList names;
+    for (const KeyValue &row : activeEnvironmentVariables(m_manager->workspaceData())) {
+        const QString key = row.key.trimmed();
+        if (row.enabled && !key.isEmpty() && !names.contains(key))
+            names.append(key);
+    }
+    return names;
 }

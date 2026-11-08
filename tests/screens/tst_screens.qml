@@ -2926,6 +2926,19 @@ Item {
             compare(findChild(pane, "tokenField").echoMode, TextInput.Password);
         }
 
+        /*! Verifies that an auth field naming an unknown variable is framed. */
+        function test_authFieldFlagsUnknownVariable() {
+            const pane = createRequest("r1");
+            findChild(pane, "tabs").currentIndex = 3;
+            cppRequestEditor.authType = 2; // AuthType::Bearer
+            cppRequestEditor.authToken = "{{noSuchVariable}}";
+            const mark = findChild(findChild(pane, "tokenField"), "unknownMark");
+
+            tryCompare(mark, "visible", true);
+            cppRequestEditor.authToken = "plain";
+            compare(mark.visible, false);
+        }
+
         /*! Verifies that a typed token is offered to move into a secret, and moves there on a click. */
         function test_typedTokenMovesToSecret() {
             const pane = createRequest("r1");

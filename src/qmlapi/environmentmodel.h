@@ -34,6 +34,9 @@ class EnvironmentModel : public QAbstractListModel
     /** Row of the active environment, or -1 when none is active. */
     Q_PROPERTY(int activeIndex READ activeIndex WRITE setActiveIndex NOTIFY activeChanged)
 
+    /** Names of the variables that resolve in the active environment; empty without one. */
+    Q_PROPERTY(QStringList activeVariableNames READ activeVariableNames NOTIFY activeVariablesChanged)
+
     /** Row of the environment shown in the editor, or -1. */
     Q_PROPERTY(int editedRow READ editedRow WRITE setEditedRow NOTIFY editedRowChanged)
 
@@ -84,6 +87,9 @@ public:
     /** Returns the name of the environment shown in the editor. */
     QString editedName() const;
 
+    /** Returns the names of the variables that resolve in the active environment. */
+    QStringList activeVariableNames() const;
+
     /** Returns the variables of the environment shown in the editor. */
     EnvironmentVariablesModel *variablesModel() const;
 
@@ -125,6 +131,9 @@ signals:
 
     /** Emitted when the active environment or its row changes. */
     void activeChanged();
+
+    /** Emitted when the variables of the active environment may have changed. */
+    void activeVariablesChanged();
 
     /** Emitted when the row shown in the editor changes. */
     void editedRowChanged();

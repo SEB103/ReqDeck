@@ -653,6 +653,10 @@
                 {
                     "type": "warn",
                     "text": "Tick Secret for passwords and keys. Their values are then kept out of the workspace file."
+                },
+                {
+                    "type": "tip",
+                    "text": "A field that names a variable the active environment does not have gets a red frame. Point at the field to see which variable is missing."
                 }
             ]
         },

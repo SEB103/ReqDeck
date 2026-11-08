@@ -345,6 +345,34 @@ Item {
             compare(rowChild(table, 1, "enabledBox").checked, false);
         }
 
+        /*! Verifies that only names missing from the known list are reported, once each. */
+        function test_unknownVariablesFound() {
+            compare(BsVariables.unknownIn("{{ a }}/{{b}}?x={{a}}&y={{c.d-e}}", ["b"]), ["a", "c.d-e"]);
+            compare(BsVariables.unknownIn("{{b}}", ["b"]), []);
+            compare(BsVariables.unknownIn("{{a}}", null), []);
+            compare(BsVariables.unknownIn("{{1bad}} {single}", []), []);
+        }
+
+        /*! Verifies that a table field with an unknown variable is framed, and only then. */
+        function test_tableFlagsUnknownVariables() {
+            resetKeyValueModel();
+            keyValueModel.set(0, {key: "Accept", value: "{{known}}/{{missing}}", enabled: true});
+            const table = createTemporaryObject(keyValueTableComponent, root);
+            verify(table !== null);
+            waitForRendering(table);
+            const valueMark = findChild(rowChild(table, 0, "valueField"), "unknownMark");
+            const keyMark = findChild(rowChild(table, 0, "keyField"), "unknownMark");
+
+            compare(valueMark.visible, false);
+            table.knownVariables = ["known"];
+            compare(valueMark.visible, true);
+            compare(keyMark.visible, false);
+            verify(valueMark.tooltip.indexOf("{{missing}}") >= 0);
+
+            table.knownVariables = ["known", "missing"];
+            compare(valueMark.visible, false);
+        }
+
         /*! Verifies that a long key or value shows its start while the field is not being edited. */
         function test_longValueShowsStart() {
             resetKeyValueModel();
