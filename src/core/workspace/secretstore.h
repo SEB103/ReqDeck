@@ -61,6 +61,15 @@ public:
     /** Returns the secret values of \a data as save() stores them, to tell whether they changed. */
     static QJsonObject valuesOf(const WorkspaceData &data);
 
+    /** Returns the values of \a data that the secrets file holds; empty unless it reads Ok. */
+    QJsonObject storedValues(const WorkspaceData &data) const;
+
+    /**
+     * Returns in \a content the secrets file of \a workspaceId, a plain one encrypted
+     * with all its values; nullopt when there is none. False when it cannot be read or encrypted.
+     */
+    bool sealedSnapshot(const QString &workspaceId, std::optional<QByteArray> &content) const;
+
     /** Returns the content of the secrets file; nullopt when missing or unreadable. */
     std::optional<QByteArray> snapshot(const QString &workspaceId) const;
 

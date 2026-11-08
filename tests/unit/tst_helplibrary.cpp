@@ -224,7 +224,7 @@ void HelpLibraryTest::guideChaptersExist()
     const QStringList chapters {QStringLiteral("first-request"), QStringLiteral("requests"),
                                 QStringLiteral("variables"), QStringLiteral("auth"),
                                 QStringLiteral("response"), QStringLiteral("history"),
-                                QStringLiteral("troubleshooting")};
+                                QStringLiteral("data"), QStringLiteral("troubleshooting")};
     const QStringList blockTypes {QStringLiteral("p"), QStringLiteral("steps"), QStringLiteral("shot"),
                                   QStringLiteral("tip"), QStringLiteral("warn"), QStringLiteral("table")};
 

@@ -105,6 +105,17 @@ bool WorkspaceBackup::save(const QString &workspaceId, const Copy &copy, QString
 }
 
 /*!
+ * \brief Returns when the copy of \a workspaceId was made, without reading it.
+ * \param workspaceId The UUID of the workspace.
+ */
+QDateTime WorkspaceBackup::created(const QString &workspaceId) const
+{
+    if (!exists(workspaceId))
+        return {};
+    return QFileInfo(QDir(folderPath(workspaceId)).filePath(kWorkspaceFile)).lastModified();
+}
+
+/*!
  * \brief Returns the copy of \a workspaceId.
  * \param workspaceId The UUID of the workspace.
  * \return The copy, or std::nullopt when there is none or a file of it cannot be read.

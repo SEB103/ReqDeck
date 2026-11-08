@@ -179,8 +179,8 @@ QList<QNetworkProxy> HttpExecutor::proxiesFor(const QUrl &url) const
  *
  * A body file is deleted with its response, but not when the application
  * crashed or was killed. Only files untouched for a day go: a younger one may
- * belong to another running instance, which would lose the body it can still
- * save, because Windows lets a file be deleted while it is open.
+ * belong to another running instance that can still save it, and whether
+ * Windows refuses to delete a file that is open depends on how it was opened.
  * \param directory The temporary folder, normally QDir::tempPath().
  * \return The number of files removed.
  */

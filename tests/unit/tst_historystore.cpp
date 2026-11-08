@@ -3,6 +3,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QLockFile>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -154,6 +155,9 @@ private slots:
 
     /*! Verifies that clear() also removes a set-aside corrupt file. */
     void clearRemovesCorruptFile();
+
+    /*! Verifies that a clear while another instance holds the lock changes nothing. */
+    void clearWhileLockedKeepsEntries();
 };
 
 void HistoryStoreTest::addPrependsNewestFirst()
@@ -781,6 +785,24 @@ void HistoryStoreTest::clearRemovesCorruptFile()
 
     QVERIFY(!QFile::exists(path));
     QVERIFY(!QFile::exists(path + QStringLiteral(".corrupt")));
+}
+
+void HistoryStoreTest::clearWhileLockedKeepsEntries()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("history.json"));
+    HistoryStore store(path);
+    QVERIFY(store.add(makeEntry(QStringLiteral("http://a"))));
+    QLockFile other(path + QStringLiteral(".lock"));
+    QVERIFY(other.tryLock(0));
+
+    QString error;
+    QVERIFY(!store.clear(&error));
+
+    QVERIFY(!error.isEmpty());
+    QCOMPARE(store.entries().size(), 1);
+    QVERIFY(QFile::exists(path));
 }
 
 QTEST_GUILESS_MAIN(HistoryStoreTest)

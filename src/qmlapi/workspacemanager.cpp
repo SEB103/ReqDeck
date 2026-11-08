@@ -337,9 +337,10 @@ bool WorkspaceManager::createWorkspaceAtPath(const QString &pathOrUrl)
  * count as an unsaved change. Secret values that cannot be read are reported as
  * a warning, because the workspace itself is intact. A file that could not be
  * read at all stays protected: the next save reads it again first. A plain
- * secrets file of an older version is encrypted at once. One encrypted on
- * another computer or by another user is reported and kept; saving is allowed,
- * and the file is replaced only once a secret value is saved here.
+ * secrets file of an older version is copied (encrypted) and then encrypted at
+ * once. One encrypted on another computer or by another user is reported and
+ * kept; saving is allowed, and the file is copied and replaced only once a
+ * secret value is saved here.
  */
 bool WorkspaceManager::openWorkspace(const QString &pathOrUrl)
 {
@@ -361,13 +362,19 @@ bool WorkspaceManager::openWorkspace(const QString &pathOrUrl)
     const SecretStore::ReadStatus secrets = store.applyTo(result.data);
     QString migrationError;
     bool migrationFailed = false;
+    bool copyFailed = false;
     if (secrets == SecretStore::ReadStatus::Ok && store.isPlain(result.data.id)) {
-        // The copy holds the encrypted values, so no plain value stays behind.
-        migrationFailed = !store.save(result.data, &migrationError)
-                          || !keepPreviousCopy(path, result.data.id, &migrationError);
+        // The copy is made first and holds the old values encrypted; encrypting
+        // the file still goes ahead without it, because plain values are worse.
+        copyFailed = !keepPreviousCopy(path, result.data.id);
+        migrationFailed = !store.save(result.data, &migrationError);
     }
 
     setActiveWorkspace(path, result.data);
+    // Only what the file holds counts as stored: a value kept in the workspace
+    // file must reach the secrets file with the next save, changed or not.
+    m_storedSecrets = store.storedValues(result.data);
+    m_secretsUnavailable = secrets == SecretStore::ReadStatus::Unavailable;
     emit workspaceReplaced();
     setSecretsUnread(secrets == SecretStore::ReadStatus::Unreadable);
     addOrUpdateRecent(path, name);
@@ -388,6 +395,12 @@ bool WorkspaceManager::openWorkspace(const QString &pathOrUrl)
         notify(Diagnostics::Warning, [=, this] {
             return tr("The secret values of workspace %1 are still stored unencrypted: %2")
                 .arg(name, migrationError);
+        });
+    } else if (copyFailed) {
+        notify(Diagnostics::Warning, [=, this] {
+            return tr("The secret values of workspace %1 were encrypted, but no copy of the old file "
+                      "could be made.")
+                .arg(name);
         });
     }
     return true;
@@ -469,17 +482,19 @@ bool WorkspaceManager::writeActiveWorkspaceTo(const QString &path, const QString
     }
 
     const bool sameFile = canonicalKey(path) == canonicalKey(m_activePath);
-    if (sameFile && data.schemaVersion < kWorkspaceSchemaVersion) {
-        QString copyError;
-        if (!keepPreviousCopy(m_activePath, data.id, &copyError)) {
-            emit workspaceError(copyError);
-            return false;
-        }
+    // A plain file left by a failed encryption on open is written again in any case.
+    const bool writeSecrets =
+        !sameFile || SecretStore::valuesOf(data) != m_storedSecrets || store.isPlain(data.id);
+    const bool replacesForeign = sameFile && writeSecrets && m_secretsUnavailable;
+    if (sameFile && (data.schemaVersion < kWorkspaceSchemaVersion || replacesForeign)
+        && !keepPreviousCopy(m_activePath, data.id)) {
+        emit workspaceError(tr("A copy of workspace %1 could not be made, so it was not saved.")
+                                .arg(displayName));
+        return false;
     }
     data.schemaVersion = kWorkspaceSchemaVersion;
     if (!sameFile)
         data.id = newItemId();
-    const bool writeSecrets = !sameFile || SecretStore::valuesOf(data) != m_storedSecrets;
 
     std::optional<QByteArray> previousSecrets;
     QString error;
@@ -503,7 +518,9 @@ bool WorkspaceManager::writeActiveWorkspaceTo(const QString &path, const QString
         return false;
     }
 
+    const bool stillUnavailable = m_secretsUnavailable && sameFile && !writeSecrets;
     setActiveWorkspace(path, data);
+    m_secretsUnavailable = stillUnavailable;
     addOrUpdateRecent(path, displayName);
     notify(Diagnostics::Info, [=, this] {
         return tr("Saved workspace %1.").arg(displayName);
@@ -640,6 +657,7 @@ void WorkspaceManager::setActiveWorkspace(const QString &path, const WorkspaceDa
     m_activePath = QDir::cleanPath(QFileInfo(path).absoluteFilePath());
     m_data = data;
     m_storedSecrets = SecretStore::valuesOf(data);
+    m_secretsUnavailable = false;
     setDirty(false);
     emit activeWorkspaceChanged();
     emit previousCopyChanged();
@@ -668,25 +686,23 @@ void WorkspaceManager::clearActiveWorkspace()
  * \internal
  * \brief Copies the workspace file at \a path and the secrets of \a workspaceId.
  *
- * Called before a file format changes. A copy that exists is replaced, so the
- * copy always shows the files as they were before the latest change.
+ * Called before a file format changes and before secrets encrypted elsewhere
+ * are replaced. A copy that exists is replaced, so the copy always shows the
+ * files as they were before the latest such change. Plain secrets are copied
+ * encrypted (see SecretStore::sealedSnapshot()).
  * \param path The workspace file.
  * \param workspaceId The UUID of the workspace.
- * \param errorString Receives the reason on failure.
  * \return True when the copy was written.
  */
-bool WorkspaceManager::keepPreviousCopy(const QString &path, const QString &workspaceId, QString *errorString)
+bool WorkspaceManager::keepPreviousCopy(const QString &path, const QString &workspaceId)
 {
     QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        *errorString = tr("A copy of the workspace could not be made, so it was not changed.");
+    if (!file.open(QIODevice::ReadOnly))
         return false;
-    }
     WorkspaceBackup::Copy copy;
     copy.workspace = file.readAll();
-    copy.secrets = SecretStore(secretsDir()).snapshot(workspaceId);
-    if (!WorkspaceBackup(backupsDir()).save(workspaceId, copy)) {
-        *errorString = tr("A copy of the workspace could not be made, so it was not changed.");
+    if (!SecretStore(secretsDir()).sealedSnapshot(workspaceId, copy.secrets)
+        || !WorkspaceBackup(backupsDir()).save(workspaceId, copy)) {
         return false;
     }
     emit previousCopyChanged();
@@ -702,8 +718,8 @@ QString WorkspaceManager::previousCopyDate() const
 {
     if (!hasActiveWorkspace())
         return {};
-    const std::optional<WorkspaceBackup::Copy> copy = WorkspaceBackup(backupsDir()).load(m_data.id);
-    return copy ? QLocale().toString(copy->created, QLocale::ShortFormat) : QString();
+    const QDateTime created = WorkspaceBackup(backupsDir()).created(m_data.id);
+    return created.isValid() ? QLocale().toString(created, QLocale::ShortFormat) : QString();
 }
 
 /*!
@@ -727,7 +743,9 @@ bool WorkspaceManager::restorePreviousCopy()
     const QString path = m_activePath;
     const SecretStore store(secretsDir());
     const std::optional<QByteArray> currentSecrets = store.snapshot(m_data.id);
-    if (!store.restore(m_data.id, copy->secrets)) {
+    // Without the current secrets there would be nothing to put back if the
+    // workspace file cannot be written.
+    if ((!currentSecrets && QFile::exists(store.filePath(m_data.id))) || !store.restore(m_data.id, copy->secrets)) {
         emit workspaceError(tr("The previous copy could not be restored."));
         return false;
     }

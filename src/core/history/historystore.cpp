@@ -541,22 +541,23 @@ bool HistoryStore::add(HistoryEntry entry, QString *errorString)
  * \brief Removes all entries, the file, and a set-aside "<file>.corrupt".
  *
  * The lock keeps another instance from writing the old entries back in the
- * middle of it; that instance shows the empty history with its next add.
+ * middle of it; that instance shows the empty history with its next add. When
+ * the file cannot be locked or removed, nothing changes, also in memory.
  * \param errorString Receives the reason on failure when it is not null.
  * \return False when the file could not be locked or removed.
  */
 bool HistoryStore::clear(QString *errorString)
 {
-    m_entries.clear();
-    m_pending.clear();
     QLockFile lock(m_filePath + QStringLiteral(".lock"));
     if (QFileInfo(m_filePath).absoluteDir().exists() && !lock.tryLock(kLockTimeoutMs))
         return fail(errorString, QStringLiteral("The history file is in use."));
+    if (QFile::exists(m_filePath) && !QFile::remove(m_filePath))
+        return fail(errorString, QStringLiteral("The history file could not be removed."));
     const QString corrupt = m_filePath + QStringLiteral(".corrupt");
     if (QFile::exists(corrupt))
         QFile::remove(corrupt);
-    if (QFile::exists(m_filePath) && !QFile::remove(m_filePath))
-        return fail(errorString, QStringLiteral("The history file could not be removed."));
+    m_entries.clear();
+    m_pending.clear();
     m_unread = false;
     return true;
 }

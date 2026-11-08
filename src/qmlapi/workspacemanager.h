@@ -302,14 +302,17 @@ protected:
     /** Whether the active workspace has unsaved changes. */
     bool m_dirty {false};
 
-    /** Copies \a path and the secrets of \a workspaceId before a format change. */
-    bool keepPreviousCopy(const QString &path, const QString &workspaceId, QString *errorString);
+    /** Copies \a path and the secrets of \a workspaceId before they change for good. */
+    bool keepPreviousCopy(const QString &path, const QString &workspaceId);
 
     /** Whether stored secrets of the active workspace could not be read yet. */
     bool m_secretsUnread {false};
 
     /** Secret values as the secrets file holds them, so that an unchanged save does not rewrite it. */
     QJsonObject m_storedSecrets;
+
+    /** Whether the secrets file was encrypted elsewhere and is not copied yet. */
+    bool m_secretsUnavailable {false};
 
     /** Last notification, kept re-buildable so retranslate() can refresh it. */
     RetranslatableStatus m_lastStatus;

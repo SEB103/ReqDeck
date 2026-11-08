@@ -243,6 +243,58 @@ QJsonObject SecretStore::valuesOf(const WorkspaceData &data)
 }
 
 /*!
+ * \brief Returns the values of \a data that the secrets file holds.
+ *
+ * A value kept in the workspace file instead, or entered since, is not among
+ * them, so comparing with valuesOf() tells whether the file must be written.
+ * \param data The workspace.
+ * \return The values as valuesOf() gives them; empty when the file does not read Ok.
+ */
+QJsonObject SecretStore::storedValues(const WorkspaceData &data) const
+{
+    WorkspaceData fromFile = data;
+    for (Environment &environment : fromFile.environments) {
+        for (EnvironmentVariable &variable : environment.variables) {
+            if (variable.secret)
+                variable.value.clear();
+        }
+    }
+    return read(fromFile, false) == ReadStatus::Ok ? valuesOf(fromFile) : QJsonObject();
+}
+
+/*!
+ * \brief Returns the secrets file of \a workspaceId in a form safe to copy.
+ *
+ * An encrypted file is returned as it is. A plain file of schema 1 is returned
+ * encrypted, with every value it holds, also those no variable uses any more,
+ * so a copy never keeps a plain value.
+ * \param workspaceId The UUID of the workspace.
+ * \param content Receives the content, or std::nullopt when there is no file.
+ * \return False when the file exists but cannot be read or encrypted.
+ */
+bool SecretStore::sealedSnapshot(const QString &workspaceId, std::optional<QByteArray> &content) const
+{
+    content = snapshot(workspaceId);
+    if (!content)
+        return !QFile::exists(filePath(workspaceId));
+    const QJsonObject root = QJsonDocument::fromJson(*content).object();
+    if (root.value(QLatin1StringView("schema")).toInt() != kPlainSecretsSchemaVersion)
+        return true;
+
+    QJsonObject values;
+    values.insert(QLatin1StringView("environments"), root.value(QLatin1StringView("environments")));
+    const std::optional<QByteArray> sealed = m_cipher.protect(QJsonDocument(values).toJson(QJsonDocument::Compact));
+    if (!sealed)
+        return false;
+    QJsonObject wrapper;
+    wrapper.insert(QLatin1StringView("schema"), kSecretsSchemaVersion);
+    wrapper.insert(QLatin1StringView("protection"), kDpapiProtection);
+    wrapper.insert(QLatin1StringView("data"), QString::fromLatin1(sealed->toBase64()));
+    content = QJsonDocument(wrapper).toJson(QJsonDocument::Indented);
+    return true;
+}
+
+/*!
  * \brief Returns the content of the secrets file of \a workspaceId.
  * \param workspaceId The UUID of the workspace.
  * \return The content, or std::nullopt when the file is missing or unreadable.

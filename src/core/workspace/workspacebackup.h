@@ -44,6 +44,9 @@ public:
     /** Replaces the copy of \a workspaceId with \a copy; fails for an invalid id. */
     bool save(const QString &workspaceId, const Copy &copy, QString *errorString = nullptr) const;
 
+    /** Returns when the copy of \a workspaceId was made; invalid without one. */
+    QDateTime created(const QString &workspaceId) const;
+
     /** Returns the copy of \a workspaceId, or nullopt when there is none or it cannot be read. */
     std::optional<Copy> load(const QString &workspaceId) const;
 

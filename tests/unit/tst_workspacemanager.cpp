@@ -229,6 +229,15 @@ private slots:
     /*! Verifies that the backup store refuses an id that is not a UUID. */
     void backupRejectsInvalidId();
 
+    /*! Verifies that a secret value kept in the workspace file survives a save without changes. */
+    void inlineSecretSurvivesUnchangedSave();
+
+    /*! Verifies that the copy before encryption keeps values no variable uses any more. */
+    void migrationCopyKeepsEveryValue();
+
+    /*! Verifies that a file of another computer is copied before the first value replaces it. */
+    void unavailableFileCopiedBeforeReplaced();
+
 private:
     /*! Builds a settings store inside \a dir for one test. */
     static QSettings *makeSettings(QTemporaryDir &dir, QObject *parent);
@@ -1151,6 +1160,81 @@ void WorkspaceManagerTest::restoreWithoutCopyFails()
 
     QCOMPARE(errors.count(), 1);
     QCOMPARE(readFile(path), before);
+}
+
+void WorkspaceManagerTest::inlineSecretSurvivesUnchangedSave()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("Inline.reqdeck"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("{\"schema\": 1, \"id\": \"3f2b8c1e-7a44-4a8e-9a55-0c1d2e3f4a5b\", \"environments\": [{\"id\": "
+               "\"e1\", \"name\": \"E\", \"variables\": [{\"key\": \"k\", \"value\": \"inline\", \"secret\": true}]}]}");
+    file.close();
+    {
+        TestableWorkspaceManager manager;
+        manager.setSettings(makeSettings(dir, &manager));
+        manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+        QVERIFY(manager.openWorkspace(path));
+        QVERIFY(manager.saveWorkspace());
+    }
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.openWorkspace(path));
+    QCOMPARE(manager.workspaceData().environments.at(0).variables.at(0).value, QStringLiteral("inline"));
+}
+
+void WorkspaceManagerTest::migrationCopyKeepsEveryValue()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString secretsFile = makePlainWorkspace(dir);
+    QVERIFY(!secretsFile.isEmpty());
+    QFile plain(secretsFile);
+    QVERIFY(plain.open(QIODevice::WriteOnly));
+    plain.write("{\"schema\":1,\"environments\":{\"e1\":{\"token\":[\"plain-one\"]},"
+                "\"gone\":{\"old\":[\"orphan-value\"]}}}");
+    plain.close();
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.openWorkspace(dir.filePath(QStringLiteral("Plain.reqdeck"))));
+
+    const std::optional<WorkspaceBackup::Copy> copy =
+        WorkspaceBackup(dir.filePath(QStringLiteral("backups"))).load(manager.workspaceData().id);
+    QVERIFY(copy && copy->secrets);
+    QVERIFY(!copy->secrets->contains("orphan-value"));
+    const QByteArray sealed = QByteArray::fromBase64(
+        QJsonDocument::fromJson(*copy->secrets).object().value(QLatin1StringView("data")).toString().toLatin1());
+    const QByteArray values = SecretCipher().unprotect(sealed).value_or(QByteArray());
+    QVERIFY2(values.contains("orphan-value"), values.constData());
+    QVERIFY(values.contains("plain-one"));
+}
+
+void WorkspaceManagerTest::unavailableFileCopiedBeforeReplaced()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString secretsFile = makeForeignWorkspace(dir);
+    QVERIFY(!secretsFile.isEmpty());
+    const QByteArray foreign = readFile(secretsFile);
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.openWorkspace(dir.filePath(QStringLiteral("Foreign.reqdeck"))));
+    manager.updateWorkspaceData(withSecret(manager.workspaceData(), QStringLiteral("entered-here")));
+    QVERIFY(manager.saveWorkspace());
+
+    const std::optional<WorkspaceBackup::Copy> copy =
+        WorkspaceBackup(dir.filePath(QStringLiteral("backups"))).load(manager.workspaceData().id);
+    QVERIFY(copy && copy->secrets);
+    QCOMPARE(*copy->secrets, foreign);
+    QVERIFY(manager.hasPreviousCopy());
 }
 
 void WorkspaceManagerTest::backupRejectsInvalidId()
