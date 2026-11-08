@@ -172,7 +172,9 @@ void HttpExecutor::setIgnoreTlsErrors(bool ignore)
  * \brief Starts \a request asynchronously.
  *
  * Redirects are followed by the executor according to
- * BuiltRequest::followRedirects (see handleFinished()). Do not delete the
+ * BuiltRequest::followRedirects (see handleFinished()). Certificate errors
+ * are ignored only for the host in BuiltRequest::tlsExceptionHost, so a
+ * redirect to another host with a bad certificate still fails. Do not delete the
  * executor from a slot connected to busyChanged() or finished(); use
  * deleteLater() instead.
  * \param request A request produced by RequestBuilder.
@@ -188,6 +190,7 @@ bool HttpExecutor::send(const BuiltRequest &request)
     m_redirectCount = 0;
     m_abortRequested = false;
     m_tlsErrors.clear();
+    m_tlsErrorsIgnored = false;
     m_timer.start();
     startReply();
 
@@ -255,12 +258,19 @@ void HttpExecutor::startReply()
 #if QT_CONFIG(ssl)
     QNetworkReply *reply = m_reply;
     connect(reply, &QNetworkReply::sslErrors, this, [this, reply](const QList<QSslError> &errors) {
-        if (m_ignoreTlsErrors) {
-            reply->ignoreSslErrors();
-            return;
+        // The messages are kept also when they are ignored: the response must
+        // say that the server was not authenticated, and why.
+        for (const QSslError &error : errors) {
+            if (!m_tlsErrors.contains(error.errorString()))
+                m_tlsErrors.append(error.errorString());
         }
-        for (const QSslError &error : errors)
-            m_tlsErrors.append(error.errorString());
+        const QString &exception = m_current.tlsExceptionHost;
+        const bool excepted = !exception.isEmpty()
+                              && reply->url().host().compare(exception, Qt::CaseInsensitive) == 0;
+        if (m_ignoreTlsErrors || excepted) {
+            m_tlsErrorsIgnored = true;
+            reply->ignoreSslErrors();
+        }
     });
 #endif
 }
@@ -369,6 +379,11 @@ void HttpExecutor::handleFinished()
     if (response.error != ResponseError::None && response.errorString.isEmpty())
         response.errorString = reply->errorString();
     response.tlsErrors = std::exchange(m_tlsErrors, {});
+    response.tlsErrorsIgnored = std::exchange(m_tlsErrorsIgnored, false);
+    // An accepted certificate must not outlive its request: a connection kept
+    // alive would let the next request through without any check.
+    if (response.tlsErrorsIgnored)
+        m_network->clearConnectionCache();
 
     emit busyChanged(false);
     emit finished(response);

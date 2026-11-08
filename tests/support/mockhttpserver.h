@@ -11,6 +11,7 @@
 #include <QTcpServer>
 #include <QUrl>
 
+#include <memory>
 #include <utility>
 
 QT_BEGIN_NAMESPACE
@@ -40,11 +41,20 @@ public:
     /** Starts listening on an ephemeral port of 127.0.0.1; true on success. */
     bool start();
 
+    /**
+     * Starts listening for HTTPS with the self-signed test certificate, valid for
+     * localhost and 127.0.0.1 but trusted by nobody; true on success.
+     */
+    bool startTls();
+
     /** Returns the listening port; 0 before start(). */
     quint16 port() const;
 
     /** Returns the absolute URL of \a pathAndQuery on this server, for example "/echo?a=1". */
     QUrl url(const QString &pathAndQuery) const;
+
+    /** Returns url() with \a host instead of 127.0.0.1, for a second name of this server. */
+    QUrl url(const QString &pathAndQuery, const QString &host) const;
 
     /** Returns the number of complete requests received so far. */
     int requestCount() const;
@@ -74,8 +84,11 @@ private:
     /** Dispatches \a request to its route. */
     void route(QTcpSocket *socket, const Request &request);
 
-    /** Listening socket. */
-    QTcpServer m_server;
+    /** Listening socket; a QSslServer after startTls(). */
+    std::unique_ptr<QTcpServer> m_server;
+
+    /** Whether the server speaks HTTPS. */
+    bool m_tls {false};
 
     /** Unparsed input per connection. */
     QHash<QTcpSocket *, QByteArray> m_buffers;

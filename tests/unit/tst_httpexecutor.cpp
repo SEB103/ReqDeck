@@ -126,6 +126,15 @@ private slots:
     /*! Runs one status case. */
     void statusCodesAreResponsesNotErrors();
 
+    /*! Verifies that an untrusted certificate fails the request and keeps the messages. */
+    void tlsErrorKeepsMessages();
+    /*! Verifies that an exception for the host lets the request through and records the messages. */
+    void tlsExceptionCoversItsHost();
+    /*! Verifies that the exception does not reach another host, even by a redirect. */
+    void tlsExceptionCoversOnlyItsHost();
+    /*! Verifies that the exception ends with its request. */
+    void tlsExceptionIsOneRequest();
+
     /*! Provides statuses whose server sends no reason phrase. */
     void reasonPhraseFilledWhenMissing_data();
     /*! Verifies that a status without reason phrase gets the standard one, as HTTP/2 needs. */
@@ -306,6 +315,86 @@ void HttpExecutorTest::statusCodesAreResponsesNotErrors()
     QCOMPARE(response->error, ResponseError::None);
     QVERIFY(response->errorString.isEmpty());
     QVERIFY(!response->reasonPhrase.isEmpty());
+}
+
+/*!
+ * \internal
+ * \brief Returns an HTTPS mock server, started, or fails the calling test.
+ */
+static std::unique_ptr<MockHttpServer> startTlsServer()
+{
+    auto server = std::make_unique<MockHttpServer>();
+    if (!server->startTls())
+        return {};
+    return server;
+}
+
+void HttpExecutorTest::tlsErrorKeepsMessages()
+{
+    const auto server = startTlsServer();
+    QVERIFY(server);
+    HttpExecutor executor;
+
+    const auto response = sendAndWait(executor, buildRequest(specFor(server->url(QStringLiteral("/echo")))));
+
+    QVERIFY(response);
+    QCOMPARE(response->error, ResponseError::Tls);
+    QVERIFY(!response->tlsErrors.isEmpty());
+    QVERIFY(!response->tlsErrorsIgnored);
+    QCOMPARE(server->requestCount(), 0);
+}
+
+void HttpExecutorTest::tlsExceptionCoversItsHost()
+{
+    const auto server = startTlsServer();
+    QVERIFY(server);
+    HttpExecutor executor;
+    BuiltRequest request = buildRequest(specFor(server->url(QStringLiteral("/echo"))));
+    request.tlsExceptionHost = QStringLiteral("127.0.0.1");
+
+    const auto response = sendAndWait(executor, request);
+
+    QVERIFY(response);
+    QCOMPARE(response->error, ResponseError::None);
+    QCOMPARE(response->statusCode, 200);
+    QVERIFY(response->tlsErrorsIgnored);
+    QVERIFY(!response->tlsErrors.isEmpty());
+}
+
+void HttpExecutorTest::tlsExceptionCoversOnlyItsHost()
+{
+    const auto server = startTlsServer();
+    QVERIFY(server);
+    HttpExecutor executor;
+    const QUrl elsewhere = server->url(QStringLiteral("/echo"), QStringLiteral("localhost"));
+    const QString redirect = QStringLiteral("/redirect-to?url=")
+                             + QString::fromLatin1(QUrl::toPercentEncoding(elsewhere.toString()));
+    BuiltRequest request = buildRequest(specFor(server->url(redirect)));
+    request.tlsExceptionHost = QStringLiteral("127.0.0.1");
+
+    const auto response = sendAndWait(executor, request);
+
+    QVERIFY(response);
+    QCOMPARE(response->error, ResponseError::Tls);
+    QCOMPARE(server->requestCount(), 1);
+}
+
+void HttpExecutorTest::tlsExceptionIsOneRequest()
+{
+    const auto server = startTlsServer();
+    QVERIFY(server);
+    HttpExecutor executor;
+    BuiltRequest trusted = buildRequest(specFor(server->url(QStringLiteral("/echo"))));
+    trusted.tlsExceptionHost = QStringLiteral("127.0.0.1");
+    const auto first = sendAndWait(executor, trusted);
+    QVERIFY(first);
+    QCOMPARE(first->statusCode, 200);
+
+    const auto second = sendAndWait(executor, buildRequest(specFor(server->url(QStringLiteral("/echo")))));
+
+    QVERIFY(second);
+    QCOMPARE(second->error, ResponseError::Tls);
+    QVERIFY(!second->tlsErrorsIgnored);
 }
 
 void HttpExecutorTest::reasonPhraseFilledWhenMissing_data()

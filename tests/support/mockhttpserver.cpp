@@ -3,6 +3,10 @@
 
 #include "mockhttpserver.h"
 
+#include <QFile>
+#include <QSslConfiguration>
+#include <QSslKey>
+#include <QSslServer>
 #include <QHostAddress>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -74,7 +78,6 @@ void writeResponse(QTcpSocket *socket, int status,
 MockHttpServer::MockHttpServer(QObject *parent)
     : QObject(parent)
 {
-    connect(&m_server, &QTcpServer::newConnection, this, &MockHttpServer::acceptConnections);
 }
 
 /*!
@@ -83,7 +86,42 @@ MockHttpServer::MockHttpServer(QObject *parent)
  */
 bool MockHttpServer::start()
 {
-    return m_server.listen(QHostAddress::LocalHost, 0);
+    m_server = std::make_unique<QTcpServer>();
+    connect(m_server.get(), &QTcpServer::pendingConnectionAvailable, this,
+            &MockHttpServer::acceptConnections);
+    return m_server->listen(QHostAddress::LocalHost, 0);
+}
+
+/*!
+ * \brief Starts listening for HTTPS on an ephemeral port of the loopback interface.
+ *
+ * The certificate and key in testcert/ are for tests only. Connections become
+ * pending after the handshake, so the routes see decrypted requests.
+ * \return True when the files could be read and the server listens.
+ */
+bool MockHttpServer::startTls()
+{
+    QFile certificateFile(QStringLiteral(REQDECK_TEST_CERT_DIR "/test-only.crt"));
+    QFile keyFile(QStringLiteral(REQDECK_TEST_CERT_DIR "/test-only.key"));
+    if (!certificateFile.open(QIODevice::ReadOnly) || !keyFile.open(QIODevice::ReadOnly))
+        return false;
+    const QSslCertificate certificate(&certificateFile, QSsl::Pem);
+    const QSslKey key(&keyFile, QSsl::Rsa, QSsl::Pem);
+    if (certificate.isNull() || key.isNull())
+        return false;
+
+    QSslConfiguration configuration = QSslConfiguration::defaultConfiguration();
+    configuration.setLocalCertificate(certificate);
+    configuration.setPrivateKey(key);
+    configuration.setPeerVerifyMode(QSslSocket::VerifyNone);
+
+    auto server = std::make_unique<QSslServer>();
+    server->setSslConfiguration(configuration);
+    m_server = std::move(server);
+    m_tls = true;
+    connect(m_server.get(), &QTcpServer::pendingConnectionAvailable, this,
+            &MockHttpServer::acceptConnections);
+    return m_server->listen(QHostAddress::LocalHost, 0);
 }
 
 /*!
@@ -91,7 +129,7 @@ bool MockHttpServer::start()
  */
 quint16 MockHttpServer::port() const
 {
-    return m_server.serverPort();
+    return m_server ? m_server->serverPort() : quint16(0);
 }
 
 /*!
@@ -100,7 +138,20 @@ quint16 MockHttpServer::port() const
  */
 QUrl MockHttpServer::url(const QString &pathAndQuery) const
 {
-    return QUrl(QStringLiteral("http://127.0.0.1:%1%2").arg(port()).arg(pathAndQuery));
+    return url(pathAndQuery, QStringLiteral("127.0.0.1"));
+}
+
+/*!
+ * \brief Returns the absolute URL of \a pathAndQuery on this server under \a host.
+ * \param pathAndQuery Path with optional query, starting with '/'.
+ * \param host A name of the loopback interface, such as localhost.
+ */
+QUrl MockHttpServer::url(const QString &pathAndQuery, const QString &host) const
+{
+    return QUrl(QStringLiteral("%1://%2:%3%4")
+                    .arg(m_tls ? QStringLiteral("https") : QStringLiteral("http"), host)
+                    .arg(port())
+                    .arg(pathAndQuery));
 }
 
 /*!
@@ -116,7 +167,7 @@ int MockHttpServer::requestCount() const
  */
 void MockHttpServer::acceptConnections()
 {
-    while (QTcpSocket *socket = m_server.nextPendingConnection()) {
+    while (QTcpSocket *socket = m_server->nextPendingConnection()) {
         m_buffers.insert(socket, QByteArray());
         connect(socket, &QTcpSocket::readyRead, this, [this, socket]() { readRequest(socket); });
         connect(socket, &QTcpSocket::disconnected, this, [this, socket]() {

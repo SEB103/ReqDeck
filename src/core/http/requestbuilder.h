@@ -31,6 +31,8 @@ struct BuiltRequest
     bool followRedirects {true};
     /** Headers carrying credentials; removed when a redirect leaves the origin. */
     QList<QByteArray> credentialHeaders;
+    /** Host whose certificate errors this request ignores; empty for none. Never stored. */
+    QString tlsExceptionHost;
 };
 
 /** Turns a RequestSpec plus environment variables into a BuiltRequest. */

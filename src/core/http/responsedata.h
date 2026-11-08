@@ -53,8 +53,10 @@ struct ResponseData
     ResponseError error {ResponseError::None};
     /** Human-readable failure text; empty without an error. */
     QString errorString;
-    /** TLS validation messages reported for the connection. */
+    /** TLS validation messages reported for the connection, also when they were ignored. */
     QStringList tlsErrors;
+    /** Whether certificate errors were ignored, so the server was not authenticated. */
+    bool tlsErrorsIgnored {false};
 
     /** Returns whether an HTTP response with a status code was received. */
     bool hasStatus() const { return statusCode > 0; }

@@ -129,6 +129,11 @@ target_include_directories(ReqDeckTestSupport
         "${CMAKE_CURRENT_SOURCE_DIR}/support"
 )
 
+# A self-signed certificate for localhost and 127.0.0.1, for tests only.
+target_compile_definitions(ReqDeckTestSupport
+    PRIVATE REQDECK_TEST_CERT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/support/testcert"
+)
+
 target_link_libraries(ReqDeckTestSupport
     PUBLIC
         Qt6::Network

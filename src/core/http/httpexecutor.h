@@ -94,6 +94,9 @@ private:
     /** Whether abort() was called for the running request. */
     bool m_abortRequested {false};
 
+    /** Whether certificate errors were ignored for the running request. */
+    bool m_tlsErrorsIgnored {false};
+
     /** Whether TLS certificate errors are ignored. */
     bool m_ignoreTlsErrors {false};
 };
