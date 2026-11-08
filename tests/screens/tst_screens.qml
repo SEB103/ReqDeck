@@ -1905,6 +1905,8 @@ Item {
             const banner = findChild(window.contentItem, "certificateBanner");
             tryCompare(banner, "visible", true);
             verify(findChild(banner, "certificateText").text.indexOf("127.0.0.1") >= 0);
+            // The banner has just appeared; the click needs the button in its place.
+            waitForRendering(window.contentItem);
 
             mouseClick(findChild(banner, "trustCertificateButton"));
 
