@@ -72,6 +72,8 @@ Item {
         Base.BsInlineTitle {
             id: nameTitle
 
+            property string helpTopic: "request.name"
+
             objectName: "nameField"
 
             Layout.fillWidth: true
@@ -91,6 +93,8 @@ Item {
 
             ComboBox {
                 id: methodCombo
+
+                property string helpTopic: "request.method"
 
                 objectName: "methodCombo"
 
@@ -121,6 +125,8 @@ Item {
             }
 
             Base.BsSingleLineEdit {
+                property string helpTopic: "request.url"
+
                 objectName: "urlField"
 
                 Layout.fillWidth: true
@@ -135,6 +141,8 @@ Item {
 
             // Taking the focus first commits a field still being edited.
             Button {
+                property string helpTopic: "request.send"
+
                 objectName: "sendButton"
 
                 Layout.preferredHeight: methodCombo.height
@@ -156,6 +164,8 @@ Item {
 
         TabBar {
             id: tabs
+
+            property string helpTopic: "request.tabs"
 
             objectName: "tabs"
 
@@ -187,6 +197,8 @@ Item {
             currentIndex: tabs.currentIndex
 
             Base.BsKeyValueTable {
+                property string helpTopic: "request.params"
+
                 objectName: "paramsTable"
 
                 model: cppRequestEditor.paramsModel
@@ -195,6 +207,8 @@ Item {
             }
 
             Base.BsKeyValueTable {
+                property string helpTopic: "request.headers"
+
                 objectName: "headersTable"
 
                 model: cppRequestEditor.headersModel
@@ -209,6 +223,8 @@ Item {
                     spacing: 6
 
                     ComboBox {
+                        property string helpTopic: "request.bodyMode"
+
                         Layout.preferredWidth: 180
                         model: [qsTr("No body"), qsTr("Raw"), qsTr("Form URL encoded")]
                         currentIndex: cppRequestEditor.bodyMode
@@ -216,6 +232,8 @@ Item {
                     }
 
                     ComboBox {
+                        property string helpTopic: "request.rawType"
+
                         Layout.preferredWidth: 120
                         visible: cppRequestEditor.bodyMode === 1 // BodyMode::Raw
                         model: ["JSON", qsTr("Text"), "XML"]
@@ -234,6 +252,8 @@ Item {
                     // a request. The text is assigned here instead.
                     TextArea {
                         id: rawBodyArea
+
+                        property string helpTopic: "request.rawBody"
 
                         /*! The request's body as last shown or written. */
                         property string shownBody: ""
@@ -275,6 +295,8 @@ Item {
                 }
 
                 Base.BsKeyValueTable {
+                    property string helpTopic: "request.form"
+
                     objectName: "formTable"
 
                     Layout.fillWidth: true
@@ -296,6 +318,8 @@ Item {
                 spacing: 6
 
                 ComboBox {
+                    property string helpTopic: "request.authType"
+
                     Layout.preferredWidth: 180
                     model: [qsTr("No authentication"), qsTr("Basic"), qsTr("Bearer token"), qsTr("API key")]
                     currentIndex: cppRequestEditor.authType
@@ -303,6 +327,8 @@ Item {
                 }
 
                 TextField {
+                    property string helpTopic: "request.authUser"
+
                     Layout.fillWidth: true
                     visible: cppRequestEditor.authType === 1 // AuthType::Basic
                     placeholderText: qsTr("User name")
@@ -312,6 +338,8 @@ Item {
                 }
 
                 TextField {
+                    property string helpTopic: "request.authPassword"
+
                     objectName: "passwordField"
 
                     Layout.fillWidth: true
@@ -324,6 +352,8 @@ Item {
                 }
 
                 TextField {
+                    property string helpTopic: "request.token"
+
                     objectName: "tokenField"
 
                     Layout.fillWidth: true
@@ -336,6 +366,8 @@ Item {
                 }
 
                 TextField {
+                    property string helpTopic: "request.apiKeyName"
+
                     Layout.fillWidth: true
                     visible: cppRequestEditor.authType === 3 // AuthType::ApiKey
                     placeholderText: qsTr("Key name")
@@ -345,6 +377,8 @@ Item {
                 }
 
                 TextField {
+                    property string helpTopic: "request.apiKeyValue"
+
                     Layout.fillWidth: true
                     visible: cppRequestEditor.authType === 3 // AuthType::ApiKey
                     echoMode: TextInput.Password
@@ -355,6 +389,8 @@ Item {
                 }
 
                 ComboBox {
+                    property string helpTopic: "request.apiKeyPlace"
+
                     Layout.preferredWidth: 180
                     visible: cppRequestEditor.authType === 3 // AuthType::ApiKey
                     model: [qsTr("Send as header"), qsTr("Send as query parameter")]
@@ -372,6 +408,8 @@ Item {
                     }
 
                     SpinBox {
+                        property string helpTopic: "request.timeout"
+
                         objectName: "timeoutBox"
 
                         editable: true

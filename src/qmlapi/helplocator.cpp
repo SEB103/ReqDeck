@@ -14,10 +14,13 @@
 namespace {
 /*!
  * \internal
- * \brief Returns the topmost visible item at \a scenePoint below \a item, or null.
+ * \brief Returns the topmost visible item with a help topic at \a scenePoint below
+ * \a item, or null.
  *
  * Children are tried from the top of the stacking order down, and a child may
- * lie outside its parent, as popups in the overlay do. Disabled items count:
+ * lie outside its parent, as popups in the overlay do. An item without a topic
+ * does not end the search: the overlay for popups covers the whole window and
+ * has none, and neither has the dimmer of a modal dialog. Disabled items count:
  * a greyed-out button still deserves an explanation.
  */
 QQuickItem *itemAt(QQuickItem *item, const QPointF &scenePoint)
@@ -34,7 +37,9 @@ QQuickItem *itemAt(QQuickItem *item, const QPointF &scenePoint)
         if (QQuickItem *hit = itemAt(*it, scenePoint))
             return hit;
     }
-    return item->contains(item->mapFromScene(scenePoint)) ? item : nullptr;
+    if (!item->contains(item->mapFromScene(scenePoint)))
+        return nullptr;
+    return HelpLocator::topicOf(item).isEmpty() ? nullptr : item;
 }
 } // namespace
 
@@ -126,15 +131,25 @@ bool HelpLocator::eventFilter(QObject *watched, QEvent *event)
 }
 
 /*!
- * \internal
- * \brief Returns the topic of \a item or of its nearest ancestor that has one.
+ * \brief Returns the topic of \a object or of its nearest ancestor that has one.
+ *
+ * A popup is not an item, so the walk from its content goes from the popup's own
+ * item to the popup, and from there to the item it was declared in. That lets a
+ * dialog or a menu name one topic for all it holds.
+ * \param object Usually an item.
+ * \return The topic, or an empty string.
  */
-QString HelpLocator::topicOf(const QQuickItem *item)
+QString HelpLocator::topicOf(const QObject *object)
 {
-    for (; item; item = item->parentItem()) {
-        const QString topic = item->property("helpTopic").toString();
+    while (object) {
+        const QString topic = object->property("helpTopic").toString();
         if (!topic.isEmpty())
             return topic;
+        const auto *item = qobject_cast<const QQuickItem *>(object);
+        if (item && item->parentItem() && !item->inherits("QQuickPopupItem"))
+            object = item->parentItem();
+        else
+            object = object->parent();
     }
     return {};
 }

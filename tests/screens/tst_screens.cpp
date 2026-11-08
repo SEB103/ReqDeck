@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QDir>
+#include <QSet>
 #include <QQmlContext>
 #include <QQmlPropertyMap>
 #include <QQuickWindow>
@@ -197,6 +198,67 @@ public:
         response.errorString = error;
         for (int i = 0; i < count; ++i)
             m_history.record(request, response);
+    }
+
+    /*!
+     * Returns the controls of \a window a user can work with that have no help
+     * topic, or one unknown to the help in either language. Closed popups are
+     * searched too, through their content.
+     */
+    Q_INVOKABLE QStringList controlsWithoutHelp(QQuickWindow *window) const
+    {
+        if (!window)
+            return {QStringLiteral("no window")};
+        QQuickItem *content = window->contentItem();
+        QList<QQuickItem *> roots {content->parentItem() ? content->parentItem() : content};
+        const QList<QObject *> objects = window->findChildren<QObject *>();
+        for (QObject *object : objects) {
+            if (!object->inherits("QQuickPopup"))
+                continue;
+            for (const char *part : {"contentItem", "header", "footer", "background"}) {
+                if (auto *item = object->property(part).value<QQuickItem *>())
+                    roots.append(item);
+            }
+        }
+
+        const HelpLibrary russian(QStringLiteral("ru"), QStringLiteral(REQDECK_HELP_DIR));
+        QStringList missing;
+        QList<QQuickItem *> pending = roots;
+        QSet<QQuickItem *> seen;
+        while (!pending.isEmpty()) {
+            QQuickItem *item = pending.takeLast();
+            if (!item || seen.contains(item))
+                continue;
+            seen.insert(item);
+            pending.append(item->childItems());
+
+            const bool usable = item->inherits("QQuickControl")
+                && (item->inherits("QQuickAbstractButton") || item->inherits("QQuickTextField")
+                    || item->inherits("QQuickTextArea") || item->inherits("QQuickComboBox")
+                    || item->inherits("QQuickSpinBox") || item->inherits("QQuickSwitch")
+                    || item->activeFocusOnTab())
+                && !item->inherits("QQuickScrollBar");
+            const bool view = item->inherits("QQuickListView") || item->inherits("QQuickTableView");
+            if (!usable && !view)
+                continue;
+
+            const QString topic = HelpLocator::topicOf(item);
+            if (topic.isEmpty() || !m_help.hasTopic(topic) || !russian.hasTopic(topic)) {
+                QStringList chain;
+                for (const QObject *object = item; object && chain.size() < 4;
+                     object = qobject_cast<const QQuickItem *>(object)
+                         ? static_cast<const QQuickItem *>(object)->parentItem() : object->parent()) {
+                    QString name = object->objectName();
+                    if (name.isEmpty())
+                        name = QString::fromLatin1(object->metaObject()->className()).section(u'_', 0, 0);
+                    chain.append(name);
+                }
+                missing.append((topic.isEmpty() ? QStringLiteral("none") : topic) + u' '
+                               + item->property("text").toString() + u' ' + chain.join(u'<'));
+            }
+        }
+        missing.removeDuplicates();
+        return missing;
     }
 
     /*! Returns the number of requests the mock server received. */

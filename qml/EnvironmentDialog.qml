@@ -22,6 +22,8 @@ import Base as Base
 Dialog {
     id: root
 
+    property string helpTopic: "environments.list"
+
     /*! Whether an environment is shown for editing. */
     readonly property bool hasEnvironment: cppEnvironments.editedRow >= 0
 
@@ -94,9 +96,6 @@ Dialog {
             ListView {
                 id: environmentList
 
-                /*! Topic of F1 help. */
-                property string helpTopic: "environments.list"
-
                 objectName: "environmentList"
 
                 Layout.fillWidth: true
@@ -163,6 +162,8 @@ Dialog {
                 spacing: 2
 
                 ToolButton {
+                    property string helpTopic: "environments.add"
+
                     objectName: "addEnvironment"
 
                     display: AbstractButton.IconOnly
@@ -180,6 +181,8 @@ Dialog {
                 }
 
                 ToolButton {
+                    property string helpTopic: "environments.duplicate"
+
                     objectName: "duplicateEnvironment"
 
                     enabled: root.hasEnvironment && !cppWorkspaceManager.secretsUnread
@@ -198,6 +201,8 @@ Dialog {
                 }
 
                 ToolButton {
+                    property string helpTopic: "environments.remove"
+
                     objectName: "removeEnvironment"
 
                     enabled: root.hasEnvironment
@@ -224,6 +229,8 @@ Dialog {
             TextField {
                 id: nameField
 
+                property string helpTopic: "environments.name"
+
                 objectName: "environmentName"
 
                 Layout.fillWidth: true
@@ -245,6 +252,8 @@ Dialog {
             // Stored secrets are matched by key and position, so editing rows
             // before they are read would lose them or give them to the wrong row.
             Base.BsKeyValueTable {
+                property string helpTopic: "environments.variables"
+
                 objectName: "variablesTable"
 
                 Layout.fillWidth: true
@@ -260,6 +269,8 @@ Dialog {
 
     Dialog {
         id: removeConfirmation
+
+        property string helpTopic: "environments.remove"
 
         objectName: "removeConfirmation"
 

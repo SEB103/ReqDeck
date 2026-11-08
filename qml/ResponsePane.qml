@@ -20,6 +20,8 @@ import Base as Base
 Item {
     id: root
 
+    property string helpTopic: "response.body"
+
     Binding {
         target: cppResponse
         property: "darkTheme"
@@ -60,6 +62,8 @@ Item {
         }
 
         Button {
+            property string helpTopic: "request.send"
+
             objectName: "cancelButton"
 
             Layout.alignment: Qt.AlignHCenter
@@ -82,6 +86,8 @@ Item {
             spacing: 10
 
             Base.BsStatusChip {
+                property string helpTopic: "response.status"
+
                 objectName: "statusChip"
 
                 width: Math.min(implicitWidth, details.width)
@@ -141,6 +147,8 @@ Item {
         TabBar {
             id: responseTabs
 
+            property string helpTopic: "response.tabs"
+
             objectName: "responseTabs"
 
             Layout.fillWidth: true
@@ -168,6 +176,8 @@ Item {
                     spacing: 8
 
                     Base.BsSegmentedControl {
+                        property string helpTopic: "response.pretty"
+
                         objectName: "prettySwitch"
 
                         visible: cppResponse.canPretty
@@ -223,6 +233,8 @@ Item {
                         TextArea {
                             id: bodyArea
 
+                            property string helpTopic: "response.body"
+
                             /*! Returns the wrap mode for the body that is shown now. */
                             function wrapModeForBody() {
                                 if (cppResponse.pretty && cppResponse.canPretty)
@@ -274,6 +286,8 @@ Item {
             }
 
             ListView {
+                property string helpTopic: "response.headers"
+
                 objectName: "headersList"
 
                 clip: true

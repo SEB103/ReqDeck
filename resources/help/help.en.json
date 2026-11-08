@@ -1,7 +1,13 @@
 {
     "schema": 1,
     "language": "en",
-    "labels": {"why": "Why", "example": "Example", "next": "What next", "more": "More in the guide", "close": "Close help"},
+    "labels": {
+        "why": "Why",
+        "example": "Example",
+        "next": "What next",
+        "more": "More in the guide",
+        "close": "Close help"
+    },
     "topics": {
         "start": {
             "title": "Getting started",
@@ -434,6 +440,22 @@
             "example": "Filter by level to see only warnings and errors.",
             "next": "View > Hide Log Panel closes it.",
             "chapter": "troubleshooting"
+        },
+        "help.panel": {
+            "title": "Help",
+            "what": "A short explanation of what you pointed at or were working in.",
+            "why": "So you can go on without searching a manual.",
+            "example": "Point at the URL field and press F1.",
+            "next": "Press F1 again or Escape to close it. More in the guide opens the PDF.",
+            "chapter": "first-request"
+        },
+        "notification": {
+            "title": "Message",
+            "what": "A message about something that just happened, such as a warning.",
+            "why": "Some results need your attention, for example a file that could not be saved.",
+            "example": "\"The workspace could not be saved.\"",
+            "next": "Close it with the cross; the log keeps all messages.",
+            "chapter": "troubleshooting"
         }
     },
     "chapters": [
@@ -441,97 +463,237 @@
             "id": "first-request",
             "title": "Your first request in five minutes",
             "blocks": [
-                {"type": "p", "text": "A request is a message your computer sends to a server. The server answers with a response. That is all an API is: a server that answers requests from programs instead of from people with a browser."},
-                {"type": "steps", "items": [
-                    "Start ReqDeck and choose Open Samples.",
-                    "In the Collection on the left, click \"List users\".",
-                    "Look at the address in the middle: this is where the request goes.",
-                    "Press Send, or Ctrl+Enter.",
-                    "On the right you see the answer: a green 200 OK and a list of users."
-                ]},
-                {"type": "shot", "file": "first-request.png", "caption": "A request in the middle, its answer on the right."},
-                {"type": "tip", "text": "Not sure what something is? Point at it and press F1."}
+                {
+                    "type": "p",
+                    "text": "A request is a message your computer sends to a server. The server answers with a response. That is all an API is: a server that answers requests from programs instead of from people with a browser."
+                },
+                {
+                    "type": "steps",
+                    "items": [
+                        "Start ReqDeck and choose Open Samples.",
+                        "In the Collection on the left, click \"List users\".",
+                        "Look at the address in the middle: this is where the request goes.",
+                        "Press Send, or Ctrl+Enter.",
+                        "On the right you see the answer: a green 200 OK and a list of users."
+                    ]
+                },
+                {
+                    "type": "shot",
+                    "file": "first-request.png",
+                    "caption": "A request in the middle, its answer on the right."
+                },
+                {
+                    "type": "tip",
+                    "text": "Not sure what something is? Point at it and press F1."
+                }
             ]
         },
         {
             "id": "requests",
             "title": "What a request is made of",
             "blocks": [
-                {"type": "p", "text": "Think of a request as a letter. The method is what you ask for, the address is where it goes, parameters and headers are notes on the envelope, and the body is the letter inside."},
-                {"type": "table", "rows": [
-                    ["GET", "Read something. No body."],
-                    ["POST", "Create something new. Usually with a body."],
-                    ["PUT / PATCH", "Change something that exists."],
-                    ["DELETE", "Remove something."]
-                ]},
-                {"type": "p", "text": "Parameters are added to the address after a question mark, for example ?page=2. Headers carry information about the request, such as the format you accept. The body carries data, most often as JSON."},
-                {"type": "shot", "file": "body.png", "caption": "A JSON body for a POST request."}
+                {
+                    "type": "p",
+                    "text": "Think of a request as a letter. The method is what you ask for, the address is where it goes, parameters and headers are notes on the envelope, and the body is the letter inside."
+                },
+                {
+                    "type": "table",
+                    "rows": [
+                        [
+                            "GET",
+                            "Read something. No body."
+                        ],
+                        [
+                            "POST",
+                            "Create something new. Usually with a body."
+                        ],
+                        [
+                            "PUT / PATCH",
+                            "Change something that exists."
+                        ],
+                        [
+                            "DELETE",
+                            "Remove something."
+                        ]
+                    ]
+                },
+                {
+                    "type": "p",
+                    "text": "Parameters are added to the address after a question mark, for example ?page=2. Headers carry information about the request, such as the format you accept. The body carries data, most often as JSON."
+                },
+                {
+                    "type": "shot",
+                    "file": "body.png",
+                    "caption": "A JSON body for a POST request."
+                }
             ]
         },
         {
             "id": "variables",
             "title": "Variables and environments",
             "blocks": [
-                {"type": "p", "text": "A variable is a name for a value you use in many requests. Write {{baseUrl}} instead of the full server address, and change the address in one place."},
-                {"type": "p", "text": "An environment is a set of variables. Make one for each server, for example Staging and Production, and switch between them at the top of the window."},
-                {"type": "shot", "file": "environments.png", "caption": "Environments and their variables."},
-                {"type": "tip", "text": "A {{name}} in red with an underline has no value in the active environment."},
-                {"type": "warn", "text": "Tick Secret for passwords and keys. Their values are then kept out of the workspace file."}
+                {
+                    "type": "p",
+                    "text": "A variable is a name for a value you use in many requests. Write {{baseUrl}} instead of the full server address, and change the address in one place."
+                },
+                {
+                    "type": "p",
+                    "text": "An environment is a set of variables. Make one for each server, for example Staging and Production, and switch between them at the top of the window."
+                },
+                {
+                    "type": "shot",
+                    "file": "environments.png",
+                    "caption": "Environments and their variables."
+                },
+                {
+                    "type": "tip",
+                    "text": "A {{name}} in red with an underline has no value in the active environment."
+                },
+                {
+                    "type": "warn",
+                    "text": "Tick Secret for passwords and keys. Their values are then kept out of the workspace file."
+                }
             ]
         },
         {
             "id": "auth",
             "title": "Logging in: authentication",
             "blocks": [
-                {"type": "p", "text": "Many APIs answer only to users they know. The Auth tab adds the proof to each request."},
-                {"type": "table", "rows": [
-                    ["Basic", "User name and password."],
-                    ["Bearer", "A token the service gave you."],
-                    ["API key", "A key, sent as a header or a parameter."]
-                ]},
-                {"type": "warn", "text": "Use variables such as {{token}} with Secret ticked, so the value is not saved in the workspace file."}
+                {
+                    "type": "p",
+                    "text": "Many APIs answer only to users they know. The Auth tab adds the proof to each request."
+                },
+                {
+                    "type": "table",
+                    "rows": [
+                        [
+                            "Basic",
+                            "User name and password."
+                        ],
+                        [
+                            "Bearer",
+                            "A token the service gave you."
+                        ],
+                        [
+                            "API key",
+                            "A key, sent as a header or a parameter."
+                        ]
+                    ]
+                },
+                {
+                    "type": "warn",
+                    "text": "Use variables such as {{token}} with Secret ticked, so the value is not saved in the workspace file."
+                }
             ]
         },
         {
             "id": "response",
             "title": "Reading the answer",
             "blocks": [
-                {"type": "p", "text": "The first number tells whether the request worked. Codes starting with 2 mean success, with 4 a problem with the request, with 5 a problem on the server."},
-                {"type": "table", "rows": [
-                    ["200 OK", "It worked."],
-                    ["201 Created", "Something new was created."],
-                    ["204 No Content", "It worked; there is nothing to show."],
-                    ["400 Bad Request", "The server did not understand the request. Check the body and parameters."],
-                    ["401 Unauthorized", "You are not logged in, or the token expired."],
-                    ["403 Forbidden", "You are logged in but not allowed."],
-                    ["404 Not Found", "Nothing at this address. Check the URL."],
-                    ["429 Too Many Requests", "Slow down and try later."],
-                    ["500 Internal Server Error", "The server failed. Not your fault, usually."]
-                ]},
-                {"type": "shot", "file": "response.png", "caption": "Status, time, size, and a pretty body with line numbers."}
+                {
+                    "type": "p",
+                    "text": "The first number tells whether the request worked. Codes starting with 2 mean success, with 4 a problem with the request, with 5 a problem on the server."
+                },
+                {
+                    "type": "table",
+                    "rows": [
+                        [
+                            "200 OK",
+                            "It worked."
+                        ],
+                        [
+                            "201 Created",
+                            "Something new was created."
+                        ],
+                        [
+                            "204 No Content",
+                            "It worked; there is nothing to show."
+                        ],
+                        [
+                            "400 Bad Request",
+                            "The server did not understand the request. Check the body and parameters."
+                        ],
+                        [
+                            "401 Unauthorized",
+                            "You are not logged in, or the token expired."
+                        ],
+                        [
+                            "403 Forbidden",
+                            "You are logged in but not allowed."
+                        ],
+                        [
+                            "404 Not Found",
+                            "Nothing at this address. Check the URL."
+                        ],
+                        [
+                            "429 Too Many Requests",
+                            "Slow down and try later."
+                        ],
+                        [
+                            "500 Internal Server Error",
+                            "The server failed. Not your fault, usually."
+                        ]
+                    ]
+                },
+                {
+                    "type": "shot",
+                    "file": "response.png",
+                    "caption": "Status, time, size, and a pretty body with line numbers."
+                }
             ]
         },
         {
             "id": "history",
             "title": "History and cURL",
             "blocks": [
-                {"type": "p", "text": "Every request you send lands in History, on the left. Double-click an entry to make a new request from it. Passwords and tokens written in a request are not kept there."},
-                {"type": "p", "text": "Documentation often shows requests as curl commands. Use File > Import cURL to turn one into a request, and Request > Copy as cURL to share yours."},
-                {"type": "shot", "file": "history.png", "caption": "History with the status of each request."}
+                {
+                    "type": "p",
+                    "text": "Every request you send lands in History, on the left. Double-click an entry to make a new request from it. Passwords and tokens written in a request are not kept there."
+                },
+                {
+                    "type": "p",
+                    "text": "Documentation often shows requests as curl commands. Use File > Import cURL to turn one into a request, and Request > Copy as cURL to share yours."
+                },
+                {
+                    "type": "shot",
+                    "file": "history.png",
+                    "caption": "History with the status of each request."
+                }
             ]
         },
         {
             "id": "troubleshooting",
             "title": "When something does not work",
             "blocks": [
-                {"type": "table", "rows": [
-                    ["Connection refused", "Nothing answers at this address. Is the server running? Is the port right?"],
-                    ["Host not found", "The server name is wrong or the network is down."],
-                    ["Timeout", "The server took too long. Raise the timeout or try later."],
-                    ["Unresolved variable", "A {{name}} has no value. Pick the right environment."],
-                    ["Certificate error", "The server's HTTPS certificate is not trusted, common on test servers."]
-                ]},
-                {"type": "tip", "text": "View > Show Log Panel shows what ReqDeck did and what went wrong."}
+                {
+                    "type": "table",
+                    "rows": [
+                        [
+                            "Connection refused",
+                            "Nothing answers at this address. Is the server running? Is the port right?"
+                        ],
+                        [
+                            "Host not found",
+                            "The server name is wrong or the network is down."
+                        ],
+                        [
+                            "Timeout",
+                            "The server took too long. Raise the timeout or try later."
+                        ],
+                        [
+                            "Unresolved variable",
+                            "A {{name}} has no value. Pick the right environment."
+                        ],
+                        [
+                            "Certificate error",
+                            "The server's HTTPS certificate is not trusted, common on test servers."
+                        ]
+                    ]
+                },
+                {
+                    "type": "tip",
+                    "text": "View > Show Log Panel shows what ReqDeck did and what went wrong."
+                }
             ]
         }
     ],

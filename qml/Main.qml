@@ -310,6 +310,8 @@ ApplicationWindow {
     Base.BsHelpPanel {
         id: helpPanel
 
+        property string helpTopic: "help.panel"
+
         /*! Id of the shown topic. */
         property string topicId: ""
 
@@ -469,6 +471,8 @@ ApplicationWindow {
     Dialog {
         id: newWorkspaceDialog
 
+        property string helpTopic: "dialog.workspace"
+
         /*! Local path of the destination folder for the new workspace. */
         property string workspaceFolder: ""
 
@@ -567,6 +571,8 @@ ApplicationWindow {
     Dialog {
         id: unsavedDialog
 
+        property string helpTopic: "dialog.confirm"
+
         x: Math.round((mainWindow.width - width) / 2)
         y: Math.round((mainWindow.height - height) / 2)
         width: Math.min(mainWindow.width - 80, 460)
@@ -604,6 +610,8 @@ ApplicationWindow {
     Dialog {
         id: workspaceErrorDialog
 
+        property string helpTopic: "dialog.confirm"
+
         x: Math.round((mainWindow.width - width) / 2)
         y: Math.round((mainWindow.height - height) / 2)
         width: Math.min(mainWindow.width - 80, 480)
@@ -625,6 +633,8 @@ ApplicationWindow {
 
     Dialog {
         id: settingsDialog
+
+        property string helpTopic: "dialog.settings"
 
         x: Math.round((mainWindow.width - width) / 2)
         y: Math.round((mainWindow.height - height) / 2)

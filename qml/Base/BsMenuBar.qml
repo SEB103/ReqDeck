@@ -23,6 +23,8 @@ import QtQuick.Controls.Material
 MenuBar {
     id: appMenuBar
 
+    property string helpTopic: "menu"
+
     /*! Whether the menu should describe the current theme as dark. */
     property bool darkTheme: false
 
@@ -144,6 +146,8 @@ MenuBar {
     }
 
     Menu {
+        property string helpTopic: "menu"
+
         title: qsTr("&File")
         // Menus do not grow with their items, and these name their shortcuts.
         width: 300
@@ -165,6 +169,8 @@ MenuBar {
 
         Menu {
             id: recentMenu
+
+            property string helpTopic: "menu"
 
             // A submenu entry copies the whole Menu.icon, so an unset size would
             // replace the style's 24 px item icon with the SVG's intrinsic size.
@@ -247,6 +253,8 @@ MenuBar {
     }
 
     Menu {
+        property string helpTopic: "menu"
+
         title: qsTr("&Request")
         width: 300
         delegate: BsMenuItem {}
@@ -301,6 +309,8 @@ MenuBar {
     }
 
     Menu {
+        property string helpTopic: "menu"
+
         title: qsTr("&View")
         delegate: BsMenuItem {}
 
@@ -322,6 +332,8 @@ MenuBar {
     }
 
     Menu {
+        property string helpTopic: "menu"
+
         title: qsTr("&Help")
         delegate: BsMenuItem {}
 

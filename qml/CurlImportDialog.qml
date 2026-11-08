@@ -20,6 +20,8 @@ import QtQuick.Layouts
 Dialog {
     id: root
 
+    property string helpTopic: "curl.input"
+
     /*! Folder of the new request, or an empty string for the top level. */
     property string parentId: ""
 
@@ -106,6 +108,8 @@ Dialog {
 
     footer: DialogButtonBox {
         Button {
+            property string helpTopic: "curl.import"
+
             objectName: "importButton"
 
             flat: true

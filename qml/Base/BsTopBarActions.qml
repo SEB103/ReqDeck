@@ -57,6 +57,8 @@ RowLayout {
     spacing: 2
 
     BsEnvironmentSelector {
+        property string helpTopic: "topbar.environment"
+
         objectName: "environmentSelector"
 
         Layout.alignment: Qt.AlignVCenter
@@ -69,6 +71,8 @@ RowLayout {
 
     // Open the environment editor.
     ToolButton {
+        property string helpTopic: "topbar.manageEnvironments"
+
         objectName: "manageEnvironmentsButton"
 
         Layout.alignment: Qt.AlignVCenter
@@ -85,6 +89,8 @@ RowLayout {
 
     // Save the open workspace.
     ToolButton {
+        property string helpTopic: "topbar.save"
+
         Layout.alignment: Qt.AlignVCenter
         display: AbstractButton.IconOnly
         icon.source: "qrc:/images/svg/save.svg"
@@ -100,6 +106,8 @@ RowLayout {
 
     // Open the application settings.
     ToolButton {
+        property string helpTopic: "topbar.settings"
+
         Layout.alignment: Qt.AlignVCenter
         display: AbstractButton.IconOnly
         icon.source: "qrc:/images/svg/settings.svg"

@@ -25,6 +25,8 @@ import Base as Base
 Dialog {
     id: root
 
+    property string helpTopic: "dialog.update"
+
     /*! Whether the surrounding window uses the dark Material theme. */
     property bool darkTheme: false
 

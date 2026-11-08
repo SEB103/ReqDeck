@@ -138,6 +138,8 @@ Pane {
         Base.BsNotificationBanner {
             id: notificationBanner
 
+            property string helpTopic: "notification"
+
             Layout.fillWidth: true
         }
 
@@ -179,6 +181,8 @@ Pane {
                     TabBar {
                         id: sidebarTabs
 
+                        property string helpTopic: "sidebar.tabs"
+
                         Layout.fillWidth: true
                         contentHeight: Base.BsTheme.compactBarHeight
 
@@ -198,10 +202,16 @@ Pane {
 
                         CollectionPane {
                             id: collectionPane
+
+                            property string helpTopic: "collection.tree"
+
                         }
 
                         HistoryPane {
                             id: historyPane
+
+                            property string helpTopic: "history.list"
+
                         }
                     }
                 }
@@ -232,6 +242,8 @@ Pane {
 
         Base.BsLogPanel {
             id: logPanel
+
+            property string helpTopic: "log.panel"
 
             Layout.fillWidth: true
             Layout.preferredHeight: main.logPanelHeight

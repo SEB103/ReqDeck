@@ -38,6 +38,12 @@ public:
     /** Returns the topic F1 refers to in \a window, "start" when nothing has one. */
     Q_INVOKABLE QString currentTopic(QQuickWindow *window) const;
 
+    /**
+     * Returns the topic of \a object or of its nearest ancestor that has one; a
+     * popup's content looks at the popup, and a popup at the item it belongs to.
+     */
+    static QString topicOf(const QObject *object);
+
 protected:
     /** Records whether the mouse or the keyboard was used last. */
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -49,9 +55,6 @@ private:
         Mouse,
         Keyboard
     };
-
-    /** Returns the topic of \a item or of its nearest ancestor that has one. */
-    static QString topicOf(const QQuickItem *item);
 
     /** Kind of the last input. */
     Input m_lastInput {Input::None};

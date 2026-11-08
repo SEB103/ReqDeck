@@ -19,6 +19,8 @@ import QtQuick.Layouts
 Rectangle {
     id: root
 
+    property string helpTopic: "log.panel"
+
     /*! Display name of the open workspace; empty when none is open. */
     property string workspaceName: ""
 

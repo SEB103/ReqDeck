@@ -1382,6 +1382,49 @@ Item {
             return findChild(window, "helpPanel");
         }
 
+        /*! Verifies that every control of the application explains itself in both languages. */
+        function test_everyControlHasHelp() {
+            const window = createMain();
+            for (const tabs of ["tabs", "responseTabs"]) {
+                const bar = findChild(window.contentItem, tabs);
+                for (let i = 0; i < bar.count; ++i) {
+                    bar.currentIndex = i;
+                    waitForRendering(window.contentItem);
+                }
+            }
+
+            const missing = cppTestHost.controlsWithoutHelp(window);
+
+            verify(missing.length === 0, missing.length + " without help:\n" + missing.join("\n"));
+        }
+
+        /*! Verifies that F1 explains the field being typed in. */
+        function test_f1ExplainsFocusedField() {
+            const window = createMain();
+            findChild(window.contentItem, "tree").parent.selectNode("r2");
+            findChild(findChild(window.contentItem, "urlField"), "editArea").forceActiveFocus();
+            cppTestHost.pressKey(window, Qt.Key_End, Qt.NoModifier);
+
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+
+            const panel = helpPanel(window);
+            tryCompare(panel, "opened", true);
+            compare(findChild(panel, "helpTitle").text, "Address (URL)");
+        }
+
+        /*! Verifies that F1 explains a button under the pointer. */
+        function test_f1ExplainsHoveredButton() {
+            const window = createMain();
+            const button = findChild(window.contentItem, "manageEnvironmentsButton");
+            mouseMove(button, button.width / 2, button.height / 2);
+
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+
+            const panel = helpPanel(window);
+            tryCompare(panel, "opened", true);
+            compare(findChild(panel, "helpTitle").text, "Manage environments");
+        }
+
         /*! Verifies that F1 shows a topic in the panel. */
         function test_panelShowsTopic() {
             const window = createMain();
@@ -1466,11 +1509,12 @@ Item {
             const panel = helpPanel(window);
             tryCompare(panel, "opened", true);
 
-            mouseMove(window.contentItem, 4, window.height - 30);
+            const add = findChild(dialog, "addEnvironment");
+            mouseMove(add, add.width / 2, add.height / 2);
             cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
 
             compare(panel.opened, true);
-            compare(findChild(panel, "helpTitle").text, "Getting started");
+            compare(findChild(panel, "helpTitle").text, "Add environment");
             dialog.close();
         }
 

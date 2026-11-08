@@ -170,6 +170,8 @@ Item {
         }
 
         Button {
+            property string helpTopic: "history.clear"
+
             objectName: "clearHistory"
 
             flat: true
@@ -181,6 +183,8 @@ Item {
 
     Dialog {
         id: clearConfirmation
+
+        property string helpTopic: "history.clear"
 
         objectName: "clearConfirmation"
 

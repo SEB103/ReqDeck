@@ -22,6 +22,8 @@ import Base as Base
 Pane {
     id: launcher
 
+    property string helpTopic: "start"
+
     /*! Whether child controls should follow the dark theme state. */
     property bool darkTheme: false
 
@@ -90,6 +92,9 @@ Pane {
 
                 Base.BsLanguageSelector {
                     id: launcherLanguageCombo
+
+                    property string helpTopic: "dialog.settings"
+
                 }
             }
 
@@ -167,6 +172,8 @@ Pane {
                 delegate: ItemDelegate {
                     id: recentRow
 
+                    property string helpTopic: "launcher.recent"
+
                     required property int index
                     required property var modelData
 
@@ -235,6 +242,8 @@ Pane {
                 Item { Layout.fillWidth: true }
 
                 Button {
+                    property string helpTopic: "launcher.samples"
+
                     objectName: "openSamplesButton"
 
                     flat: true
@@ -243,11 +252,15 @@ Pane {
                 }
 
                 Button {
+                    property string helpTopic: "launcher.open"
+
                     text: qsTr("Open Workspace…")
                     onClicked: launcher.openWorkspaceRequested()
                 }
 
                 Button {
+                    property string helpTopic: "launcher.create"
+
                     text: qsTr("Create New Workspace")
                     highlighted: true
                     onClicked: launcher.createWorkspaceRequested()
