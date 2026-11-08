@@ -94,6 +94,11 @@ private slots:
     /*! Verifies the warning about unknown variables. */
     void unresolvedVariablesBecomeWarning();
 
+    /*! Verifies that find ignores case and reports positions in the shown text. */
+    void findIsCaseInsensitive();
+    /*! Verifies that find stops at its limit. */
+    void findStopsAtLimit();
+
     /*! Verifies that saving writes the body as received, not the formatted text. */
     void saveBodyWritesBytes();
     /*! Verifies that saving a body on disk copies the whole file. */
@@ -364,6 +369,32 @@ void ResponseViewTest::unresolvedVariablesBecomeWarning()
 
     view.setResponse(makeResponse("{}", QStringLiteral("application/json")), {});
     QVERIFY(view.property("warningText").toString().isEmpty());
+}
+
+void ResponseViewTest::findIsCaseInsensitive()
+{
+    ResponseView view;
+    view.setResponse(makeResponse("Abc abc ABC", QStringLiteral("text/plain")), {});
+
+    QCOMPARE(view.findInBody(QStringLiteral("abc")), QVariantList({0, 4, 8}));
+    QCOMPARE(view.findInBody(QStringLiteral("BC A")), QVariantList({1, 5}));
+    QVERIFY(view.findInBody(QString()).isEmpty());
+    QVERIFY(view.findInBody(QStringLiteral("zzz")).isEmpty());
+
+    // Positions refer to the text shown, here the formatted one.
+    view.setResponse(makeResponse("{\"a\":1}", QStringLiteral("application/json")), {});
+    const QString shown = view.property("bodyText").toString();
+    const QVariantList matches = view.findInBody(QStringLiteral("\"a\""));
+    QCOMPARE(matches.size(), 1);
+    QCOMPARE(shown.mid(matches.first().toInt(), 3), QStringLiteral("\"a\""));
+}
+
+void ResponseViewTest::findStopsAtLimit()
+{
+    ResponseView view;
+    view.setResponse(makeResponse(QByteArray(ResponseView::kMaxFindMatches + 50, 'x'), QStringLiteral("text/plain")), {});
+
+    QCOMPARE(view.findInBody(QStringLiteral("x")).size(), ResponseView::kMaxFindMatches);
 }
 
 void ResponseViewTest::saveBodyWritesBytes()

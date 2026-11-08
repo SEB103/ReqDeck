@@ -1777,6 +1777,89 @@ Item {
             }
         }
 
+        /*! Sends \a path of the test server from the request r2 in \a window and waits for the answer. */
+        function sendForFind(window, path) {
+            findChild(window.contentItem, "tree").parent.selectNode("r2");
+            cppRequestEditor.url = cppTestHost.serverUrl(path);
+            cppRequestEditor.send();
+            tryCompare(cppResponse, "busy", false, 10000);
+        }
+
+        /*! Verifies that Ctrl+F finds text, counts it, and moves between matches. */
+        function test_findCountsAndMoves() {
+            const window = createMain();
+            sendForFind(window, "/json/30");
+            const body = findChild(window.contentItem, "bodyArea");
+            tryVerify(() => body.text.length > 0);
+
+            cppTestHost.pressKey(window, Qt.Key_F, Qt.ControlModifier);
+
+            const bar = findChild(window.contentItem, "findBar");
+            tryCompare(bar, "visible", true);
+            const field = findChild(bar, "findField");
+            tryCompare(field, "activeFocus", true);
+            field.text = "ROW";
+            const count = findChild(bar, "findCount");
+            tryCompare(count, "text", "1 of 30");
+            compare(body.selectedText, "row");
+            const first = body.selectionStart;
+
+            cppTestHost.pressKey(window, Qt.Key_Return, Qt.NoModifier);
+            compare(count.text, "2 of 30");
+            verify(body.selectionStart > first);
+
+            cppTestHost.pressKey(window, Qt.Key_Return, Qt.ShiftModifier);
+            compare(count.text, "1 of 30");
+            compare(body.selectionStart, first);
+
+            cppTestHost.pressKey(window, Qt.Key_F3, Qt.NoModifier);
+            compare(count.text, "2 of 30");
+
+            field.text = "nothing like this";
+            compare(count.text, "No matches");
+
+            cppTestHost.pressKey(window, Qt.Key_Escape, Qt.NoModifier);
+            compare(bar.visible, false);
+        }
+
+        /*! Verifies that a match far down the body is scrolled into view. */
+        function test_findScrollsToMatch() {
+            const window = createMain();
+            sendForFind(window, "/json/2000");
+            const body = findChild(window.contentItem, "bodyArea");
+            tryVerify(() => body.text.length > 0);
+            cppTestHost.pressKey(window, Qt.Key_F, Qt.ControlModifier);
+            const field = findChild(window.contentItem, "findField");
+            tryCompare(field, "activeFocus", true);
+
+            field.text = "\"id\": 1999";
+
+            const flickable = body.parent.parent;
+            tryVerify(() => flickable.contentY > 0);
+            const rect = body.positionToRectangle(body.selectionStart);
+            verify(rect.y >= flickable.contentY && rect.y + rect.height <= flickable.contentY + flickable.height,
+                   rect.y + " " + flickable.contentY);
+        }
+
+        /*! Verifies that find in a large body stays fast and says when only a part is searched. */
+        function test_findStaysFastAndSaysShownPart() {
+            const window = createMain();
+            sendForFind(window, "/long/1200000");
+            const body = findChild(window.contentItem, "bodyArea");
+            tryVerify(() => body.text.length > 0, 20000);
+            cppTestHost.pressKey(window, Qt.Key_F, Qt.ControlModifier);
+            const bar = findChild(window.contentItem, "findBar");
+            tryCompare(bar, "visible", true);
+            compare(findChild(window.contentItem, "findShownPart").visible, true);
+
+            const started = Date.now();
+            findChild(bar, "findField").text = "x";
+            const elapsed = Date.now() - started;
+
+            compare(findChild(bar, "findCount").text, "1 of 10000+");
+            verify(elapsed < 1500, "find took " + elapsed + " ms");
+        }
+
         /*! Verifies that Save writes the body and reports where. */
         function test_saveResponseWritesFile() {
             const window = createMain();

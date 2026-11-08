@@ -25,6 +25,73 @@ Item {
     /*! Topic of the F1 help. */
     property string helpTopic: "response.body"
 
+    /*! Whether the find bar is shown. */
+    property bool findOpen: false
+
+    /*! Start positions of the find text in the body. */
+    property var findMatches: []
+
+    /*! Index of the selected match in findMatches, or -1. */
+    property int findIndex: -1
+
+    /*! Shows the find bar and puts the cursor in it. */
+    function openFind() {
+        root.findOpen = true
+        findField.forceActiveFocus()
+        findField.selectAll()
+    }
+
+    /*! Hides the find bar and gives the focus back to the body. */
+    function closeFind() {
+        root.findOpen = false
+        bodyArea.deselect()
+        bodyArea.forceActiveFocus()
+    }
+
+    /*! Looks for the find text again, after it or the body changed, and selects the first match. */
+    function runFind() {
+        root.findMatches = root.findOpen ? cppResponse.findInBody(findField.text) : []
+        root.findIndex = root.findMatches.length > 0 ? 0 : -1
+        root.showMatch()
+    }
+
+    /*! Selects the match \a step places away, wrapping at both ends. */
+    function moveFind(step) {
+        const count = root.findMatches.length
+        if (count === 0)
+            return
+        root.findIndex = (root.findIndex + step + count) % count
+        root.showMatch()
+    }
+
+    /*! Selects the current match and scrolls it into view. */
+    function showMatch() {
+        if (root.findIndex < 0) {
+            bodyArea.deselect()
+            return
+        }
+        const start = root.findMatches[root.findIndex]
+        bodyArea.select(start, start + findField.text.length)
+        const flickable = bodyScroll.contentItem
+        const rect = bodyArea.positionToRectangle(start)
+        if (rect.y < flickable.contentY || rect.y + rect.height > flickable.contentY + flickable.height)
+            flickable.contentY = Math.max(0, Math.min(rect.y - flickable.height / 3,
+                                                      flickable.contentHeight - flickable.height))
+        if (rect.x < flickable.contentX || rect.x > flickable.contentX + flickable.width - 40)
+            flickable.contentX = Math.max(0, rect.x - flickable.width / 3)
+    }
+
+    /*! Returns the count shown in the find bar. */
+    function findCountText() {
+        const count = root.findMatches.length
+        if (findField.text.length === 0)
+            return ""
+        if (count === 0)
+            return qsTr("No matches")
+        const total = count >= 10000 ? qsTr("%1+").arg(count) : count
+        return qsTr("%1 of %2").arg(root.findIndex + 1).arg(total)
+    }
+
     /*! Saves the body to the local file \a fileUrl; the result is reported by cppResponse. */
     function saveTo(fileUrl) {
         cppResponse.saveBody(fileUrl)
@@ -275,6 +342,97 @@ Item {
                 }
 
                 RowLayout {
+                    /*! Topic of the F1 help. */
+                    property string helpTopic: "response.find"
+
+                    objectName: "findBar"
+
+                    Layout.fillWidth: true
+                    visible: root.findOpen
+                    spacing: 2
+
+                    TextField {
+                        id: findField
+
+                        /*! Topic of the F1 help. */
+                        property string helpTopic: "response.find"
+
+                        objectName: "findField"
+
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("Find in response")
+                        selectByMouse: true
+                        onTextChanged: root.runFind()
+                        Keys.onReturnPressed: (event) => root.moveFind(event.modifiers & Qt.ShiftModifier ? -1 : 1)
+                        Keys.onEnterPressed: (event) => root.moveFind(event.modifiers & Qt.ShiftModifier ? -1 : 1)
+                        Keys.onEscapePressed: root.closeFind()
+                    }
+
+                    Label {
+                        objectName: "findCount"
+
+                        opacity: 0.7
+                        text: root.findCountText()
+                    }
+
+                    ToolButton {
+                        /*! Topic of the F1 help. */
+                        property string helpTopic: "response.find"
+
+                        objectName: "findPrevious"
+
+                        enabled: root.findMatches.length > 0
+                        focusPolicy: Qt.NoFocus
+                        text: "\u2191"
+                        Accessible.name: qsTr("Previous match")
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Previous match (Shift+F3)")
+                        onClicked: root.moveFind(-1)
+                    }
+
+                    ToolButton {
+                        /*! Topic of the F1 help. */
+                        property string helpTopic: "response.find"
+
+                        objectName: "findNext"
+
+                        enabled: root.findMatches.length > 0
+                        focusPolicy: Qt.NoFocus
+                        text: "\u2193"
+                        Accessible.name: qsTr("Next match")
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Next match (F3)")
+                        onClicked: root.moveFind(1)
+                    }
+
+                    ToolButton {
+                        /*! Topic of the F1 help. */
+                        property string helpTopic: "response.find"
+
+                        objectName: "findClose"
+
+                        focusPolicy: Qt.NoFocus
+                        display: AbstractButton.IconOnly
+                        icon.source: "qrc:/images/svg/close.svg"
+                        icon.width: 16
+                        icon.height: 16
+                        Accessible.name: qsTr("Close find")
+                        onClicked: root.closeFind()
+                    }
+                }
+
+                Label {
+                    objectName: "findShownPart"
+
+                    Layout.fillWidth: true
+                    visible: root.findOpen && cppResponse.truncated
+                    wrapMode: Text.Wrap
+                    opacity: 0.6
+                    font.pixelSize: 11
+                    text: qsTr("Only the shown part of the response is searched.")
+                }
+
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     spacing: 0
@@ -335,6 +493,8 @@ Item {
 
                             readOnly: true
                             selectByMouse: true
+                            // The match of a search stays marked while the find field has the focus.
+                            persistentSelection: true
                             font.family: "Consolas"
                             onContentHeightChanged: Qt.callLater(bodyArea.measureLines)
                             Component.onCompleted: {
@@ -347,6 +507,7 @@ Item {
 
                                 function onResponseChanged() {
                                     bodyArea.showBody(false)
+                                    Qt.callLater(root.runFind)
                                 }
 
                                 function onDarkThemeChanged() {
@@ -399,6 +560,24 @@ Item {
                 }
             }
         }
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Find]
+        enabled: cppResponse.hasResponse
+        onActivated: root.openFind()
+    }
+
+    Shortcut {
+        sequence: "F3"
+        enabled: root.findOpen
+        onActivated: root.moveFind(1)
+    }
+
+    Shortcut {
+        sequence: "Shift+F3"
+        enabled: root.findOpen
+        onActivated: root.moveFind(-1)
     }
 
     FileDialog {

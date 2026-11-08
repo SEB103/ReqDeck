@@ -527,6 +527,14 @@
             "example": "users.json in your Downloads folder.",
             "next": "Choose where to save; a message says where the file went.",
             "chapter": "response"
+        },
+        "response.find": {
+            "title": "Find in the response",
+            "what": "Looks for text in the answer and marks each place it occurs. Capital and small letters count as the same.",
+            "why": "A long answer is easier to read when you jump to the part you need.",
+            "example": "Type \"email\" to see every email field in a list of users.",
+            "next": "Enter or F3 goes to the next match, Shift+Enter or Shift+F3 to the previous one, Esc closes.",
+            "chapter": "response"
         }
     },
     "chapters": [

@@ -5,6 +5,7 @@
 #define RESPONSEVIEW_H
 
 #include <QObject>
+#include <QVariantList>
 #include <QUrl>
 #include <QString>
 #include <QStringList>
@@ -166,6 +167,15 @@ public:
 
     /** Returns whether there is a body to save. */
     bool canSaveBody() const;
+
+    /** Most matches findInBody() reports; more would only slow the view. */
+    static constexpr int kMaxFindMatches = 10000;
+
+    /**
+     * Returns the start positions of \a query in bodyText(), ignoring case, at most
+     * kMaxFindMatches; empty for an empty query.
+     */
+    Q_INVOKABLE QVariantList findInBody(const QString &query) const;
 
     /** Returns a file name for the body, from the last part of the URL and the kind of body. */
     Q_INVOKABLE QString suggestedFileName() const;

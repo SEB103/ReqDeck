@@ -206,6 +206,29 @@ bool ResponseView::bodyOnDisk() const
     return m_response.bodyFile != nullptr;
 }
 
+/*!
+ * \brief Returns the start positions of \a query in bodyText(), ignoring case.
+ *
+ * The positions refer to the text shown, so the view can select them directly.
+ * The search stops at kMaxFindMatches: a single character in a megabyte matches
+ * too often for any count to help.
+ * \param query The text to look for.
+ * \return Start positions in order; empty for an empty query or no match.
+ */
+QVariantList ResponseView::findInBody(const QString &query) const
+{
+    QVariantList matches;
+    if (query.isEmpty())
+        return matches;
+    const QString text = bodyText();
+    for (qsizetype from = text.indexOf(query, 0, Qt::CaseInsensitive);
+         from >= 0 && matches.size() < kMaxFindMatches;
+         from = text.indexOf(query, from + 1, Qt::CaseInsensitive)) {
+        matches.append(int(from));
+    }
+    return matches;
+}
+
 bool ResponseView::canSaveBody() const
 {
     return m_hasResponse && m_response.sizeBytes > 0;
