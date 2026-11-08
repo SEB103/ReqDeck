@@ -188,6 +188,7 @@ ApplicationWindow {
         appName: cppAppInfo.appName
         hasWorkspace: cppWorkspaceManager.hasActiveWorkspace
         workspaceDirty: cppWorkspaceManager.dirty
+        hasPreviousCopy: cppWorkspaceManager.hasPreviousCopy
         recentWorkspaces: cppWorkspaceManager.recentWorkspaces
         environmentNames: cppEnvironments.names
         activeEnvironmentIndex: cppEnvironments.activeIndex
@@ -253,6 +254,10 @@ ApplicationWindow {
 
         function onCloseWorkspaceRequested() {
             mainWindow.runGuarded(() => cppWorkspaceManager.closeWorkspace())
+        }
+
+        function onRestorePreviousCopyRequested() {
+            restoreCopyDialog.open()
         }
 
         function onCopyCurlRequested() {
@@ -655,6 +660,35 @@ ApplicationWindow {
             textFormat: Text.PlainText
             text: qsTr("The workspace \"%1\" has unsaved changes. Save them before continuing?")
                       .arg(cppWorkspaceManager.activeWorkspaceName)
+        }
+    }
+
+    Dialog {
+        id: restoreCopyDialog
+
+        /*! Topic of the F1 help. */
+        property string helpTopic: "dialog.restoreCopy"
+
+        objectName: "restoreCopyDialog"
+        x: Math.round((mainWindow.width - width) / 2)
+        y: Math.round((mainWindow.height - height) / 2)
+        width: Math.min(mainWindow.width - 80, 480)
+        title: qsTr("Restore previous copy")
+        modal: true
+        Material.roundedScale: Material.SmallScale
+        focus: true
+        standardButtons: Dialog.Yes | Dialog.Cancel
+        closePolicy: Popup.CloseOnEscape
+
+        onAccepted: cppWorkspaceManager.restorePreviousCopy()
+
+        Label {
+            width: parent.width
+            wrapMode: Text.Wrap
+            textFormat: Text.PlainText
+            text: qsTr("Put back workspace \"%1\" and its secret values as they were on %2, before their file format changed? All changes since then, saved or not, are lost.")
+                      .arg(cppWorkspaceManager.activeWorkspaceName)
+                      .arg(cppWorkspaceManager.previousCopyDate)
         }
     }
 

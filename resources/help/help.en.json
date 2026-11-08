@@ -535,6 +535,14 @@
             "example": "Type \"email\" to see every email field in a list of users.",
             "next": "Enter or F3 goes to the next match, Shift+Enter or Shift+F3 to the previous one, Esc closes.",
             "chapter": "response"
+        },
+        "dialog.restoreCopy": {
+            "title": "Restore previous copy",
+            "what": "Puts the workspace file and its secret values back as they were before ReqDeck changed their file format.",
+            "why": "If something looks wrong after an update, you get your data back as it was.",
+            "example": "File > Restore Previous Copy… after secrets were moved to the encrypted format.",
+            "next": "Choose Yes to restore. Changes made since the copy, saved or not, are lost.",
+            "chapter": "troubleshooting"
         }
     },
     "chapters": [

@@ -56,6 +56,9 @@ Pane {
     /*! Whether the open workspace has unsaved changes. */
     property bool workspaceDirty: false
 
+    /*! Whether a copy of the workspace from before a format change exists. */
+    property bool hasPreviousCopy: false
+
     /*! Names of the environments forwarded to the top bar. */
     property var environmentNames: []
 
@@ -108,6 +111,7 @@ Pane {
                     appName: main.appName
                     hasWorkspace: main.hasWorkspace
                     workspaceDirty: main.workspaceDirty
+                    hasPreviousCopy: main.hasPreviousCopy
                     recentWorkspaces: main.recentWorkspaces
                     hasSelection: collectionPane.selectedId.length > 0
                     hasRequest: main.hasRequest

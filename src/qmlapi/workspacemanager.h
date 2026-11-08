@@ -51,6 +51,12 @@ class WorkspaceManager : public QObject
     /** Whether the secret values could not be read when the workspace was opened. */
     Q_PROPERTY(bool secretsUnread READ secretsUnread NOTIFY secretsUnreadChanged)
 
+    /** Whether a copy of the active workspace from before a format change exists. */
+    Q_PROPERTY(bool hasPreviousCopy READ hasPreviousCopy NOTIFY previousCopyChanged)
+
+    /** When that copy was made, as local date and time text; empty without one. */
+    Q_PROPERTY(QString previousCopyDate READ previousCopyDate NOTIFY previousCopyChanged)
+
     /** Recent-workspace entries, newest first, as QVariantMap rows for QML. */
     Q_PROPERTY(QVariantList recentWorkspaces READ recentWorkspaces NOTIFY recentWorkspacesChanged)
 
@@ -83,6 +89,18 @@ public:
     /** Reads secret values that could not be read before; returns whether none are left. */
     Q_INVOKABLE bool retrySecrets();
 
+    /** Returns whether a copy of the active workspace from before a format change exists. */
+    bool hasPreviousCopy() const;
+
+    /** Returns when that copy was made, or an empty string. */
+    QString previousCopyDate() const;
+
+    /**
+     * Puts back the copied workspace file and secrets and opens the workspace again;
+     * unsaved changes are lost. Returns false and emits workspaceError() without a copy.
+     */
+    Q_INVOKABLE bool restorePreviousCopy();
+
     /** Returns the recent-workspace rows exposed to QML, newest first. */
     QVariantList recentWorkspaces() const;
 
@@ -109,6 +127,9 @@ public:
 
     /** Returns the configured directory of the secret values, or AppPaths::secretsDir(). */
     QString secretsDir() const;
+
+    /** Returns the directory of the copies: "backups" beside the secrets directory. */
+    QString backupsDir() const;
 
     /** Returns the in-memory data of the active workspace (empty when none is active). */
     const WorkspaceData &workspaceData() const;
@@ -185,6 +206,9 @@ signals:
 
     /** Emitted when the secret values were read or could not be read. */
     void secretsUnreadChanged();
+
+    /** Emitted when a copy was made, restored, or another workspace became active. */
+    void previousCopyChanged();
 
     /** Emitted when the recent-workspaces list changes. */
     void recentWorkspacesChanged();
@@ -277,6 +301,9 @@ protected:
 
     /** Whether the active workspace has unsaved changes. */
     bool m_dirty {false};
+
+    /** Copies \a path and the secrets of \a workspaceId before a format change. */
+    bool keepPreviousCopy(const QString &path, const QString &workspaceId, QString *errorString);
 
     /** Whether stored secrets of the active workspace could not be read yet. */
     bool m_secretsUnread {false};

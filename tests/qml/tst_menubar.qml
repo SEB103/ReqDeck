@@ -656,6 +656,25 @@ Item {
             verify(save.enabled);
         }
 
+        /*! Verifies that Restore Previous Copy needs a workspace with a copy and asks through a signal. */
+        function test_restorePreviousCopyFollowsState() {
+            const menuBar = createTemporaryObject(menuBarComponent, root);
+            verify(menuBar !== null);
+            const restore = itemByText(menuBar.menuAt(0), "Restore Previous Copy…");
+            verify(restore !== null);
+            verify(!restore.enabled);
+
+            menuBar.hasWorkspace = true;
+            verify(!restore.enabled);
+            menuBar.hasPreviousCopy = true;
+            verify(restore.enabled);
+
+            let asked = 0;
+            menuBar.restorePreviousCopyRequested.connect(() => ++asked);
+            restore.triggered();
+            compare(asked, 1);
+        }
+
         /*! Verifies that recent workspaces populate the Open Recent submenu. */
         function test_recentWorkspacesFillSubmenu() {
             const menuBar = createTemporaryObject(menuBarComponent, root);

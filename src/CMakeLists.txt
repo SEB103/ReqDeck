@@ -56,6 +56,8 @@ target_sources(ReqDeckCore
         core/workspace/requestjson.h
         core/workspace/secretcipher.cpp
         core/workspace/secretcipher.h
+        core/workspace/workspacebackup.cpp
+        core/workspace/workspacebackup.h
         core/workspace/secretstore.cpp
         core/workspace/secretstore.h
         core/workspace/workspacedata.cpp

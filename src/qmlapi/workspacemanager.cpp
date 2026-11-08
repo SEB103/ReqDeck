@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QLocale>
 #include <QSettings>
 #include <QUrl>
 #include <QVariantMap>
@@ -14,7 +15,9 @@
 #include <optional>
 #include <utility>
 
+#include "core/workspace/jsonfile.h"
 #include "core/workspace/secretstore.h"
+#include "core/workspace/workspacebackup.h"
 #include "core/workspace/workspaceserializer.h"
 #include "framework/apppaths.h"
 
@@ -246,6 +249,18 @@ QString WorkspaceManager::secretsDir() const
 }
 
 /*!
+ * \brief Returns the directory of the copies made before a format change.
+ *
+ * It lies beside the secrets directory, so a test that moves the secrets also
+ * moves the copies, and the copies stay in the user's data, never next to a
+ * workspace file that may be shared.
+ */
+QString WorkspaceManager::backupsDir() const
+{
+    return QDir::cleanPath(QDir(secretsDir()).filePath(QStringLiteral("../backups")));
+}
+
+/*!
  * \brief Injects the INI settings store and loads the recent-workspaces list.
  * \param settings Non-owning settings store, or null to disable persistence.
  */
@@ -345,8 +360,12 @@ bool WorkspaceManager::openWorkspace(const QString &pathOrUrl)
     const SecretStore store(secretsDir());
     const SecretStore::ReadStatus secrets = store.applyTo(result.data);
     QString migrationError;
-    const bool migrationFailed = secrets == SecretStore::ReadStatus::Ok && store.isPlain(result.data.id)
-                                 && !store.save(result.data, &migrationError);
+    bool migrationFailed = false;
+    if (secrets == SecretStore::ReadStatus::Ok && store.isPlain(result.data.id)) {
+        // The copy holds the encrypted values, so no plain value stays behind.
+        migrationFailed = !store.save(result.data, &migrationError)
+                          || !keepPreviousCopy(path, result.data.id, &migrationError);
+    }
 
     setActiveWorkspace(path, result.data);
     emit workspaceReplaced();
@@ -432,6 +451,8 @@ bool WorkspaceManager::saveWorkspaceAs(const QString &pathOrUrl)
  * file, and a failure of the latter puts the previous secrets back: both files
  * change together or not at all. Unchanged secret values of the same workspace
  * are not written again, because encryption gives a different file each time.
+ * A file of an older format is copied first (see keepPreviousCopy()); without
+ * the copy it is not rewritten.
  */
 bool WorkspaceManager::writeActiveWorkspaceTo(const QString &path, const QString &displayName)
 {
@@ -448,6 +469,14 @@ bool WorkspaceManager::writeActiveWorkspaceTo(const QString &path, const QString
     }
 
     const bool sameFile = canonicalKey(path) == canonicalKey(m_activePath);
+    if (sameFile && data.schemaVersion < kWorkspaceSchemaVersion) {
+        QString copyError;
+        if (!keepPreviousCopy(m_activePath, data.id, &copyError)) {
+            emit workspaceError(copyError);
+            return false;
+        }
+    }
+    data.schemaVersion = kWorkspaceSchemaVersion;
     if (!sameFile)
         data.id = newItemId();
     const bool writeSecrets = !sameFile || SecretStore::valuesOf(data) != m_storedSecrets;
@@ -613,6 +642,7 @@ void WorkspaceManager::setActiveWorkspace(const QString &path, const WorkspaceDa
     m_storedSecrets = SecretStore::valuesOf(data);
     setDirty(false);
     emit activeWorkspaceChanged();
+    emit previousCopyChanged();
 }
 
 /*!
@@ -630,7 +660,88 @@ void WorkspaceManager::clearActiveWorkspace()
     m_storedSecrets = {};
     setDirty(false);
     emit activeWorkspaceChanged();
+    emit previousCopyChanged();
     emit workspaceReplaced();
+}
+
+/*!
+ * \internal
+ * \brief Copies the workspace file at \a path and the secrets of \a workspaceId.
+ *
+ * Called before a file format changes. A copy that exists is replaced, so the
+ * copy always shows the files as they were before the latest change.
+ * \param path The workspace file.
+ * \param workspaceId The UUID of the workspace.
+ * \param errorString Receives the reason on failure.
+ * \return True when the copy was written.
+ */
+bool WorkspaceManager::keepPreviousCopy(const QString &path, const QString &workspaceId, QString *errorString)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        *errorString = tr("A copy of the workspace could not be made, so it was not changed.");
+        return false;
+    }
+    WorkspaceBackup::Copy copy;
+    copy.workspace = file.readAll();
+    copy.secrets = SecretStore(secretsDir()).snapshot(workspaceId);
+    if (!WorkspaceBackup(backupsDir()).save(workspaceId, copy)) {
+        *errorString = tr("A copy of the workspace could not be made, so it was not changed.");
+        return false;
+    }
+    emit previousCopyChanged();
+    return true;
+}
+
+bool WorkspaceManager::hasPreviousCopy() const
+{
+    return hasActiveWorkspace() && WorkspaceBackup(backupsDir()).exists(m_data.id);
+}
+
+QString WorkspaceManager::previousCopyDate() const
+{
+    if (!hasActiveWorkspace())
+        return {};
+    const std::optional<WorkspaceBackup::Copy> copy = WorkspaceBackup(backupsDir()).load(m_data.id);
+    return copy ? QLocale().toString(copy->created, QLocale::ShortFormat) : QString();
+}
+
+/*!
+ * \brief Puts back the copy made before the last format change.
+ *
+ * The secrets go first and the workspace file second; when the second write
+ * fails, the secrets are put back as they were. The workspace then opens from
+ * the restored files, so unsaved changes are lost; the caller asks first. The
+ * copy stays, so the restore can be repeated.
+ * \return True when the files were restored and the workspace opened again.
+ */
+bool WorkspaceManager::restorePreviousCopy()
+{
+    const std::optional<WorkspaceBackup::Copy> copy =
+        hasActiveWorkspace() ? WorkspaceBackup(backupsDir()).load(m_data.id) : std::nullopt;
+    if (!copy) {
+        emit workspaceError(tr("There is no previous copy of this workspace."));
+        return false;
+    }
+
+    const QString path = m_activePath;
+    const SecretStore store(secretsDir());
+    const std::optional<QByteArray> currentSecrets = store.snapshot(m_data.id);
+    if (!store.restore(m_data.id, copy->secrets)) {
+        emit workspaceError(tr("The previous copy could not be restored."));
+        return false;
+    }
+    if (!writeFileAtomically(path, copy->workspace)) {
+        store.restore(m_data.id, currentSecrets);
+        emit workspaceError(tr("The previous copy could not be restored."));
+        return false;
+    }
+    if (!openWorkspace(path))
+        return false;
+    notify(Diagnostics::Info, [=, this] {
+        return tr("Restored the previous copy of workspace %1.").arg(m_data.displayName);
+    });
+    return true;
 }
 
 /*!

@@ -38,6 +38,9 @@ MenuBar {
     /*! Whether the open workspace has unsaved changes; enables Save. */
     property bool workspaceDirty: false
 
+    /*! Whether a copy from before a format change exists; enables Restore Previous Copy. */
+    property bool hasPreviousCopy: false
+
     /*!
         Recent-workspace rows, newest first, as provided by
         \c WorkspaceManager::recentWorkspaces (maps with \c displayName,
@@ -77,6 +80,9 @@ MenuBar {
 
     /*! Emitted when the user selects Close Workspace. */
     signal closeWorkspaceRequested()
+
+    /*! Emitted when the user selects Restore Previous Copy. */
+    signal restorePreviousCopyRequested()
 
     /*! Emitted when the user opens the application settings. */
     signal settingsRequested()
@@ -235,6 +241,13 @@ MenuBar {
             icon.source: "qrc:/images/svg/close.svg"
             enabled: appMenuBar.hasWorkspace
             onTriggered: appMenuBar.closeWorkspaceRequested()
+        }
+
+        BsMenuItem {
+            text: qsTr("Restore &Previous Copy…")
+            icon.source: "qrc:/images/svg/history.svg"
+            enabled: appMenuBar.hasWorkspace && appMenuBar.hasPreviousCopy
+            onTriggered: appMenuBar.restorePreviousCopyRequested()
         }
 
         MenuSeparator {}
