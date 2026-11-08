@@ -114,6 +114,9 @@ private slots:
     /*! Verifies that a secret value present in a file is kept in memory. */
     void secretValueInFileIsKept();
 
+    /*! Verifies that an absent name or variable key reads as an empty string, not as an error. */
+    void absentNameAndKeyReadAsEmpty();
+
     /*! Verifies that only a UUID is accepted as workspace id. */
     void rejectsNonUuidWorkspaceId_data();
     /*! Runs one invalid workspace id case. */
@@ -418,6 +421,26 @@ void WorkspaceSerializerTest::secretValueInFileIsKept()
 
     const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
     QVERIFY2(result.ok, qPrintable(result.errorString));
+    QCOMPARE(result.data.environments.at(0).variables.at(0).value, QStringLiteral("v"));
+}
+
+void WorkspaceSerializerTest::absentNameAndKeyReadAsEmpty()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("absent.reqdeck"));
+    const QByteArray content =
+        "{\"schema\": 1, \"collection\": [{\"kind\": \"request\", \"id\": \"r1\", \"request\": "
+        "{\"method\": \"GET\", \"url\": \"http://x\"}}], \"environments\": [{\"id\": \"e1\", "
+        "\"variables\": [{\"value\": \"v\"}]}]}";
+    QVERIFY(writeFile(path, content));
+
+    const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
+
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QVERIFY(result.data.collection.at(0).name.isEmpty());
+    QVERIFY(result.data.environments.at(0).name.isEmpty());
+    QVERIFY(result.data.environments.at(0).variables.at(0).key.isEmpty());
     QCOMPARE(result.data.environments.at(0).variables.at(0).value, QStringLiteral("v"));
 }
 

@@ -139,6 +139,21 @@ private slots:
 
     /*! Verifies that clear() empties the history and removes the file. */
     void clearRemovesFile();
+
+    /*! Verifies that two stores on one file both keep their entries. */
+    void twoStoresKeepBothEntries();
+
+    /*! Verifies that a clear in one store is not undone by the other. */
+    void clearAfterOtherStoreAdded();
+
+    /*! Verifies that prepareAdd() tells a plain prepend from a merge. */
+    void prepareAddReportsMerge();
+
+    /*! Verifies that every stored text is capped, not only the raw body. */
+    void longValuesAreCapped();
+
+    /*! Verifies that clear() also removes a set-aside corrupt file. */
+    void clearRemovesCorruptFile();
 };
 
 void HistoryStoreTest::addPrependsNewestFirst()
@@ -660,6 +675,112 @@ void HistoryStoreTest::clearRemovesFile()
     QVERIFY(store.clear());
     QVERIFY(store.entries().isEmpty());
     QVERIFY(!QFile::exists(path));
+}
+
+void HistoryStoreTest::twoStoresKeepBothEntries()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("history.json"));
+    HistoryStore first(path);
+    HistoryStore second(path);
+    QVERIFY(first.load());
+    QVERIFY(second.load());
+
+    QVERIFY(first.add(makeEntry(QStringLiteral("http://first"))));
+    QVERIFY(second.add(makeEntry(QStringLiteral("http://second"))));
+
+    QCOMPARE(second.entries().size(), 2);
+    HistoryStore reloaded(path);
+    QVERIFY(reloaded.load());
+    QCOMPARE(reloaded.entries().size(), 2);
+    QCOMPARE(reloaded.entries().at(0).request.url, QStringLiteral("http://second"));
+    QCOMPARE(reloaded.entries().at(1).request.url, QStringLiteral("http://first"));
+}
+
+void HistoryStoreTest::clearAfterOtherStoreAdded()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("history.json"));
+    HistoryStore first(path);
+    HistoryStore second(path);
+    QVERIFY(first.add(makeEntry(QStringLiteral("http://a"))));
+    QVERIFY(second.add(makeEntry(QStringLiteral("http://b"))));
+
+    QVERIFY(first.clear());
+    QVERIFY(second.add(makeEntry(QStringLiteral("http://c"))));
+
+    HistoryStore reloaded(path);
+    QVERIFY(reloaded.load());
+    QCOMPARE(reloaded.entries().size(), 1);
+    QCOMPARE(reloaded.entries().at(0).request.url, QStringLiteral("http://c"));
+    QCOMPARE(second.entries().size(), 1);
+}
+
+void HistoryStoreTest::prepareAddReportsMerge()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("history.json"));
+    HistoryStore first(path);
+    QVERIFY(first.add(makeEntry(QStringLiteral("http://a"))));
+
+    HistoryStore::Update alone = first.prepareAdd(makeEntry(QStringLiteral("http://b")));
+    QVERIFY(alone.ok);
+    QVERIFY(alone.prependsOne);
+    first.apply(std::move(alone));
+
+    QVERIFY(HistoryStore(path).add(makeEntry(QStringLiteral("http://elsewhere"))));
+    HistoryStore::Update merged = first.prepareAdd(makeEntry(QStringLiteral("http://c")));
+    QVERIFY(merged.ok);
+    QVERIFY(!merged.prependsOne);
+    first.apply(std::move(merged));
+    QCOMPARE(first.entries().size(), 4);
+    QCOMPARE(first.entries().at(0).request.url, QStringLiteral("http://c"));
+}
+
+void HistoryStoreTest::longValuesAreCapped()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("history.json"));
+    const QString huge(3 * HistoryStore::kMaxStoredValueChars, u'x');
+    HistoryEntry entry = makeEntry(QStringLiteral("http://a/") + huge);
+    entry.request.headers = {{QStringLiteral("X-Long"), huge, true}};
+    entry.request.queryParams = {{huge, QStringLiteral("v"), true}};
+    entry.request.body.form = {{QStringLiteral("f"), huge, true}};
+    entry.errorString = huge;
+
+    HistoryStore store(path);
+    QVERIFY(store.add(entry));
+
+    HistoryStore reloaded(path);
+    QVERIFY(reloaded.load());
+    const HistoryEntry &stored = reloaded.entries().at(0);
+    QCOMPARE(stored.request.url.size(), HistoryStore::kMaxStoredValueChars);
+    QVERIFY(stored.request.url.startsWith(QStringLiteral("http://a/x")));
+    QCOMPARE(stored.request.headers.at(0).value.size(), HistoryStore::kMaxStoredValueChars);
+    QCOMPARE(stored.request.queryParams.at(0).key.size(), HistoryStore::kMaxStoredValueChars);
+    QCOMPARE(stored.request.body.form.at(0).value.size(), HistoryStore::kMaxStoredValueChars);
+    QCOMPARE(stored.errorString.size(), HistoryStore::kMaxStoredValueChars);
+    QVERIFY(readFile(path).size() < 8 * HistoryStore::kMaxStoredValueChars);
+}
+
+void HistoryStoreTest::clearRemovesCorruptFile()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("history.json"));
+    QVERIFY(writeFile(path, "{oops"));
+    HistoryStore store(path);
+    QVERIFY(!store.load());
+    QVERIFY(QFile::exists(path + QStringLiteral(".corrupt")));
+
+    QVERIFY(store.clear());
+
+    QVERIFY(!QFile::exists(path));
+    QVERIFY(!QFile::exists(path + QStringLiteral(".corrupt")));
 }
 
 QTEST_GUILESS_MAIN(HistoryStoreTest)

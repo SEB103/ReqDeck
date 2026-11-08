@@ -108,21 +108,24 @@ void HistoryModel::record(const RequestSpec &request, const ResponseData &respon
     entry.elapsedMs = response.elapsedMs;
     entry.errorString = response.errorString;
 
-    QString errorString;
-    bool ok = false;
-    if (m_store.hasUnreadFile()) {
-        beginResetModel();
-        ok = m_store.add(std::move(entry), &errorString);
-        endResetModel();
-    } else {
+    // Another running instance may have changed the file; then the merged list
+    // replaces the rows instead of one inserted row.
+    HistoryStore::Update update = m_store.prepareAdd(std::move(entry));
+    const bool ok = update.ok;
+    const QString errorString = update.errorString;
+    if (update.prependsOne) {
         if (rowCount() >= HistoryStore::kMaxEntries) {
             beginRemoveRows({}, rowCount() - 1, rowCount() - 1);
             m_store.dropOldest();
             endRemoveRows();
         }
         beginInsertRows({}, 0, 0);
-        ok = m_store.add(std::move(entry), &errorString);
+        m_store.apply(std::move(update));
         endInsertRows();
+    } else {
+        beginResetModel();
+        m_store.apply(std::move(update));
+        endResetModel();
     }
     reportResult(ok, errorString);
 }

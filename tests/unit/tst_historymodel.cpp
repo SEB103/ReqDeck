@@ -89,6 +89,9 @@ private slots:
 
     /*! Verifies the name of a request made from an entry. */
     void displayNameNamesTheRequest();
+
+    /*! Verifies that entries another window added appear with the next record. */
+    void recordShowsEntriesOfOtherWindow();
 };
 
 void HistoryModelTest::loadsExistingEntries()
@@ -108,6 +111,26 @@ void HistoryModelTest::loadsExistingEntries()
     QCOMPARE(model.data(model.index(0), HistoryModel::UrlRole).toString(),
              QStringLiteral("http://earlier"));
     QCOMPARE(failed.count(), 0);
+}
+
+void HistoryModelTest::recordShowsEntriesOfOtherWindow()
+{
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("history.json"));
+    HistoryModel model(path);
+    QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+    model.load();
+    model.record(makeRequest(QStringLiteral("http://mine")), makeResponse(200));
+    HistoryEntry other;
+    other.request = makeRequest(QStringLiteral("http://other"));
+    QVERIFY(HistoryStore(path).add(other));
+
+    model.record(makeRequest(QStringLiteral("http://mine-again")), makeResponse(200));
+
+    QCOMPARE(model.rowCount(), 3);
+    QCOMPARE(model.data(model.index(0), HistoryModel::UrlRole).toString(), QStringLiteral("http://mine-again"));
+    QCOMPARE(model.data(model.index(1), HistoryModel::UrlRole).toString(), QStringLiteral("http://other"));
+    QCOMPARE(model.data(model.index(2), HistoryModel::UrlRole).toString(), QStringLiteral("http://mine"));
 }
 
 void HistoryModelTest::recordPrependsRow()

@@ -3,10 +3,14 @@
 
 #include "core/history/historystore.h"
 
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLockFile>
+#include <QSet>
 
 #include <algorithm>
 #include <array>
@@ -24,6 +28,37 @@ namespace {
  * \brief Schema version of the history file.
  */
 constexpr int kHistorySchemaVersion = 1;
+
+/*!
+ * \internal
+ * \brief How long an add or clear waits for another instance to finish writing.
+ */
+constexpr int kLockTimeoutMs = 3000;
+
+/*!
+ * \internal
+ * \brief Cuts \a text to HistoryStore::kMaxStoredValueChars, without splitting a surrogate pair.
+ */
+void capText(QString &text)
+{
+    if (text.size() <= HistoryStore::kMaxStoredValueChars)
+        return;
+    text.truncate(HistoryStore::kMaxStoredValueChars);
+    if (text.back().isHighSurrogate())
+        text.chop(1);
+}
+
+/*!
+ * \internal
+ * \brief Cuts the keys and values of \a rows.
+ */
+void capRows(QList<KeyValue> &rows)
+{
+    for (KeyValue &row : rows) {
+        capText(row.key);
+        capText(row.value);
+    }
+}
 
 /*!
  * \internal
@@ -331,52 +366,54 @@ HistoryStore::HistoryStore(QString filePath)
  */
 bool HistoryStore::load(QString *errorString)
 {
-    return readFile(errorString);
+    m_entries.clear();
+    const FileState state = readEntries(m_entries);
+    m_unread = state == FileState::Unreadable;
+    if (state == FileState::Unreadable)
+        return fail(errorString, QStringLiteral("The history file could not be read."));
+    if (state == FileState::SetAside)
+        return fail(errorString, QStringLiteral("The history file is not valid."));
+    return true;
 }
 
 /*!
  * \internal
- * \brief Replaces the entries with the content of the file.
+ * \brief Reads the entries of the file into \a entries.
  *
  * A single invalid entry is skipped, so one damaged row does not cost the whole
  * history. A file that cannot be understood at all, including one written by a
- * newer schema, is renamed to "<file>.corrupt". As long as a file can neither be
- * read nor moved, m_unread stays set and add() does not overwrite it.
- * \param errorString Receives the reason on failure when it is not null.
- * \return False when the file is unreadable or unusable.
+ * newer schema, is renamed to "<file>.corrupt" and reads as empty. A file that
+ * can neither be read nor moved is Unreadable, and nothing may overwrite it.
+ * \param entries Receives the entries, newest first; unchanged unless Read.
+ * \return The outcome.
  */
-bool HistoryStore::readFile(QString *errorString)
+HistoryStore::FileState HistoryStore::readEntries(QList<HistoryEntry> &entries) const
 {
-    m_entries.clear();
-    m_unread = true;
-
     QFile file(m_filePath);
-    if (!file.exists()) {
-        m_unread = false;
-        return true;
-    }
+    if (!file.exists())
+        return FileState::Read;
     if (!file.open(QIODevice::ReadOnly))
-        return fail(errorString, QStringLiteral("The history file could not be read."));
+        return FileState::Unreadable;
 
     const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
     file.close();
 
     const QJsonObject root = document.object();
-    const QJsonValue entries = root.value(QLatin1StringView("entries"));
+    const QJsonValue values = root.value(QLatin1StringView("entries"));
     if (!document.isObject() || root.value(QLatin1StringView("schema")).toInt() != kHistorySchemaVersion
-        || !entries.isArray()) {
-        m_unread = !setAsideCorruptFile(m_filePath);
-        return fail(errorString, QStringLiteral("The history file is not valid."));
+        || !values.isArray()) {
+        return setAsideCorruptFile(m_filePath) ? FileState::SetAside : FileState::Unreadable;
     }
 
-    for (const QJsonValue &value : entries.toArray()) {
+    QList<HistoryEntry> read;
+    for (const QJsonValue &value : values.toArray()) {
         if (std::optional<HistoryEntry> entry = entryFromJson(value))
-            m_entries.append(std::move(*entry));
-        if (m_entries.size() == kMaxEntries)
+            read.append(std::move(*entry));
+        if (read.size() == kMaxEntries)
             break;
     }
-    m_unread = false;
-    return true;
+    entries = std::move(read);
+    return FileState::Read;
 }
 
 /*!
@@ -388,19 +425,22 @@ const QList<HistoryEntry> &HistoryStore::entries() const
 }
 
 /*!
- * \brief Adds \a entry as the newest one and writes the file.
+ * \brief Writes \a entry as the newest one, in front of what the file holds now.
  *
  * A raw body above kMaxStoredBodyChars is left out and flagged with
- * HistoryEntry::bodyOmitted, because the whole file is rewritten on every call.
+ * HistoryEntry::bodyOmitted, and every other text is cut at
+ * kMaxStoredValueChars, because the whole file is rewritten on every call.
  *
- * The file is replaced as a whole, so entries it may still hold are read first,
- * also when load() was never called. If that stays impossible nothing is
- * written; the entries in memory are merged with the file by a later call.
+ * Two running instances share the file: the file is read again under a lock
+ * file, so entries the other one wrote since are kept, and an entry it cleared
+ * stays cleared. Entries of this store that could not be written before go in
+ * too. While the file cannot be locked or read, nothing is written; the entry
+ * waits for the next add.
  * \param entry The entry; an empty id and an invalid timestamp are filled in.
- * \param errorString Receives the reason on failure when it is not null.
- * \return False when the file could not be read or written; the entry stays in memory.
+ * \return The entries the list becomes; Update::prependsOne tells a model whether
+ *         one inserted row describes the change.
  */
-bool HistoryStore::add(HistoryEntry entry, QString *errorString)
+HistoryStore::Update HistoryStore::prepareAdd(HistoryEntry entry)
 {
     if (entry.id.isEmpty())
         entry.id = newItemId();
@@ -412,40 +452,109 @@ bool HistoryStore::add(HistoryEntry entry, QString *errorString)
         entry.bodyOmitted = true;
     }
     entry.request = redacted(entry.request);
-
-    if (m_unread) {
-        const QList<HistoryEntry> pending = m_entries;
-        readFile(nullptr);
-        m_entries = pending + m_entries;
+    RequestSpec &request = entry.request;
+    capText(request.url);
+    capRows(request.queryParams);
+    capRows(request.headers);
+    capRows(request.body.form);
+    for (QString *text : {&request.auth.username, &request.auth.password, &request.auth.token,
+                          &request.auth.apiKeyName, &request.auth.apiKeyValue, &entry.errorString}) {
+        capText(*text);
     }
 
-    m_entries.prepend(std::move(entry));
-    while (m_entries.size() > kMaxEntries)
-        m_entries.removeLast();
+    QList<HistoryEntry> expected = m_entries;
+    expected.prepend(entry);
+    while (expected.size() > kMaxEntries)
+        expected.removeLast();
 
-    if (m_unread)
-        return fail(errorString, QStringLiteral("The history file could not be read."));
+    Update update;
+    QDir().mkpath(QFileInfo(m_filePath).absolutePath());
+    QLockFile lock(m_filePath + QStringLiteral(".lock"));
+    const bool locked = lock.tryLock(kLockTimeoutMs);
+    QList<HistoryEntry> inFile;
+    if (!locked || readEntries(inFile) == FileState::Unreadable) {
+        m_pending.prepend(std::move(entry));
+        m_unread = true;
+        update.errorString = locked ? QStringLiteral("The history file could not be read.")
+                                    : QStringLiteral("The history file is in use.");
+        update.entries = std::move(expected);
+        return update;
+    }
 
-    QJsonArray entries;
-    for (const HistoryEntry &item : std::as_const(m_entries))
-        entries.append(entryToJson(item));
+    QList<HistoryEntry> merged;
+    QSet<QString> ids;
+    for (const QList<HistoryEntry> *part : {&m_pending, &inFile}) {
+        for (const HistoryEntry &item : *part) {
+            if (!ids.contains(item.id) && merged.size() < kMaxEntries - 1) {
+                ids.insert(item.id);
+                merged.append(item);
+            }
+        }
+    }
+    merged.prepend(entry);
 
+    QJsonArray values;
+    for (const HistoryEntry &item : std::as_const(merged))
+        values.append(entryToJson(item));
     QJsonObject root;
     root.insert(QLatin1StringView("schema"), kHistorySchemaVersion);
-    root.insert(QLatin1StringView("entries"), entries);
-    if (!writeJsonFile(m_filePath, root))
-        return fail(errorString, QStringLiteral("The history file could not be written."));
-    return true;
+    root.insert(QLatin1StringView("entries"), values);
+    update.ok = writeJsonFile(m_filePath, root);
+    if (update.ok) {
+        m_pending.clear();
+        m_unread = false;
+    } else {
+        m_pending.prepend(std::move(entry));
+        update.errorString = QStringLiteral("The history file could not be written.");
+    }
+    update.prependsOne = merged == expected;
+    update.entries = std::move(merged);
+    return update;
 }
 
 /*!
- * \brief Removes all entries and the file.
+ * \brief Makes the entries of \a update the list in memory.
+ * \param update The result of prepareAdd().
+ */
+void HistoryStore::apply(Update update)
+{
+    m_entries = std::move(update.entries);
+}
+
+/*!
+ * \brief Adds \a entry; see prepareAdd().
+ * \param entry The entry.
  * \param errorString Receives the reason on failure when it is not null.
- * \return False when the file could not be removed.
+ * \return False when the file could not be read or written; the entry stays in memory.
+ */
+bool HistoryStore::add(HistoryEntry entry, QString *errorString)
+{
+    Update update = prepareAdd(std::move(entry));
+    const bool ok = update.ok;
+    if (!ok && errorString)
+        *errorString = update.errorString;
+    apply(std::move(update));
+    return ok;
+}
+
+/*!
+ * \brief Removes all entries, the file, and a set-aside "<file>.corrupt".
+ *
+ * The lock keeps another instance from writing the old entries back in the
+ * middle of it; that instance shows the empty history with its next add.
+ * \param errorString Receives the reason on failure when it is not null.
+ * \return False when the file could not be locked or removed.
  */
 bool HistoryStore::clear(QString *errorString)
 {
     m_entries.clear();
+    m_pending.clear();
+    QLockFile lock(m_filePath + QStringLiteral(".lock"));
+    if (QFileInfo(m_filePath).absoluteDir().exists() && !lock.tryLock(kLockTimeoutMs))
+        return fail(errorString, QStringLiteral("The history file is in use."));
+    const QString corrupt = m_filePath + QStringLiteral(".corrupt");
+    if (QFile::exists(corrupt))
+        QFile::remove(corrupt);
     if (QFile::exists(m_filePath) && !QFile::remove(m_filePath))
         return fail(errorString, QStringLiteral("The history file could not be removed."));
     m_unread = false;

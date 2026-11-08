@@ -41,6 +41,22 @@ public:
     /** Longest raw request body kept, because the file is rewritten on every add. */
     static constexpr qsizetype kMaxStoredBodyChars = 65536;
 
+    /** Longest text kept in any other field of an entry; longer text is cut. */
+    static constexpr qsizetype kMaxStoredValueChars = 8192;
+
+    /** What an add wrote, for apply(). */
+    struct Update
+    {
+        /** Whether the file was read and written. */
+        bool ok {false};
+        /** Reason on failure; empty on success. */
+        QString errorString;
+        /** The entries after the add, newest first. */
+        QList<HistoryEntry> entries;
+        /** Whether entries are the previous ones with only the new one in front. */
+        bool prependsOne {true};
+    };
+
     /** Creates a store over \a filePath; add() reads existing entries if load() was not called. */
     explicit HistoryStore(QString filePath);
 
@@ -55,13 +71,20 @@ public:
     const QList<HistoryEntry> &entries() const;
 
     /**
-     * Redacts \a entry, prepends it, caps the list, and writes the file. While the
-     * file cannot be read the entry stays in memory, the file stays as it is, and
-     * false is returned; a later add() merges both.
+     * Redacts and caps \a entry and writes it in front of the entries the file holds
+     * now, which may include those of another running instance. The list in memory
+     * changes only with apply(). While the file cannot be read or locked, nothing is
+     * written and the entry is kept for the next add.
      */
+    Update prepareAdd(HistoryEntry entry);
+
+    /** Makes the entries of \a update the list in memory. */
+    void apply(Update update);
+
+    /** Runs prepareAdd() and apply(); returns whether the file was written. */
     bool add(HistoryEntry entry, QString *errorString = nullptr);
 
-    /** Removes all entries and the file. */
+    /** Removes all entries, the file, and a set-aside corrupt file. */
     bool clear(QString *errorString = nullptr);
 
     /** Returns whether the file may hold entries that add() will merge into the list. */
@@ -78,8 +101,18 @@ public:
     static RequestSpec redacted(const RequestSpec &spec);
 
 private:
-    /** Replaces the entries with the content of the file; see load(). */
-    bool readFile(QString *errorString);
+    /** Outcome of reading the file. */
+    enum class FileState {
+        /** The file was read, or there is none. */
+        Read,
+        /** The file was malformed and set aside; it reads as empty. */
+        SetAside,
+        /** The file could neither be read nor set aside. */
+        Unreadable
+    };
+
+    /** Reads the entries of the file into \a entries. */
+    FileState readEntries(QList<HistoryEntry> &entries) const;
 
     /** History file. */
     QString m_filePath;
@@ -89,6 +122,9 @@ private:
 
     /** Whether the file may hold entries that are not in memory yet. */
     bool m_unread {true};
+
+    /** Entries of this store not yet written, because the file could not be read. */
+    QList<HistoryEntry> m_pending;
 };
 
 #endif // HISTORYSTORE_H
