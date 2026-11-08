@@ -5,6 +5,7 @@
 
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QRegularExpression>
 
 #include "core/http/curlconverter.h"
 #include "core/http/httpexecutor.h"
@@ -159,6 +160,66 @@ void RequestEditor::setAuthType(int type)
 {
     if (type >= int(AuthType::None) && type <= int(AuthType::ApiKey))
         updateField(m_request.auth.type, AuthType(type));
+}
+
+/*!
+ * \brief Returns the auth field of the current type that holds typed text.
+ *
+ * A field counts when something remains after removing every {{name}}
+ * reference and surrounding spaces; the user name of Basic auth and the name of
+ * an API key are no secrets and never count.
+ * \return "password", "token", "apiKey", or an empty string.
+ */
+QString RequestEditor::literalCredential() const
+{
+    static const QRegularExpression reference(QStringLiteral("\\{\\{[^{}]*\\}\\}"));
+    const auto literal = [](QString text) { return !text.remove(reference).trimmed().isEmpty(); };
+    switch (m_request.auth.type) {
+    case AuthType::Basic:
+        return literal(m_request.auth.password) ? QStringLiteral("password") : QString();
+    case AuthType::Bearer:
+        return literal(m_request.auth.token) ? QStringLiteral("token") : QString();
+    case AuthType::ApiKey:
+        return literal(m_request.auth.apiKeyValue) ? QStringLiteral("apiKey") : QString();
+    case AuthType::None:
+        break;
+    }
+    return {};
+}
+
+/*!
+ * \brief Returns the text of the field literalCredential() names, or an empty string.
+ */
+QString RequestEditor::literalCredentialValue() const
+{
+    const QString field = literalCredential();
+    if (field == QLatin1StringView("password"))
+        return m_request.auth.password;
+    if (field == QLatin1StringView("token"))
+        return m_request.auth.token;
+    if (field == QLatin1StringView("apiKey"))
+        return m_request.auth.apiKeyValue;
+    return {};
+}
+
+/*!
+ * \brief Replaces the typed credential with a reference to the variable \a key.
+ *
+ * The caller has stored the value in that variable first.
+ * \param key The variable; an empty key changes nothing.
+ */
+void RequestEditor::useVariableForCredential(const QString &key)
+{
+    if (key.isEmpty())
+        return;
+    const QString reference = QStringLiteral("{{%1}}").arg(key);
+    const QString field = literalCredential();
+    if (field == QLatin1StringView("password"))
+        setAuthPassword(reference);
+    else if (field == QLatin1StringView("token"))
+        setAuthToken(reference);
+    else if (field == QLatin1StringView("apiKey"))
+        setApiKeyValue(reference);
 }
 
 QString RequestEditor::authUsername() const

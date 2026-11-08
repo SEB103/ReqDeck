@@ -2910,5 +2910,23 @@ Item {
             compare(findChild(pane, "tokenField").visible, true);
             compare(findChild(pane, "tokenField").echoMode, TextInput.Password);
         }
+
+        /*! Verifies that a typed token is offered to move into a secret, and moves there on a click. */
+        function test_typedTokenMovesToSecret() {
+            const pane = createRequest("r1");
+            findChild(pane, "tabs").currentIndex = 3;
+            cppRequestEditor.authType = 2; // AuthType::Bearer
+            cppRequestEditor.authToken = "abc123";
+            const hint = findChild(pane, "credentialHint");
+            tryCompare(hint, "visible", true);
+            const button = findChild(pane, "moveToSecretButton");
+            waitForRendering(pane);
+
+            mouseClick(button);
+
+            compare(cppRequestEditor.authToken, "{{token}}");
+            compare(hint.visible, false);
+            verify(cppEnvironments.activeIndex >= 0);
+        }
     }
 }

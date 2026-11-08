@@ -543,6 +543,14 @@
             "example": "File > Restore Previous Copy… after secrets were moved to the encrypted format.",
             "next": "Choose Yes to restore. Changes made since the copy, saved or not, are lost.",
             "chapter": "troubleshooting"
+        },
+        "request.moveToSecret": {
+            "title": "Move to a secret",
+            "what": "Moves the password, token, or key you typed into a secret variable of the active environment and puts {{name}} in the field.",
+            "why": "Text typed into a request is saved in the workspace file, which you may share. Secret values stay encrypted on this computer.",
+            "example": "A token abc123 becomes the secret variable token, and the field shows {{token}}.",
+            "next": "Save the workspace. Without an active environment, ReqDeck makes one named Default.",
+            "chapter": "auth"
         }
     },
     "chapters": [
@@ -676,6 +684,10 @@
                 {
                     "type": "warn",
                     "text": "Use variables such as {{token}} with Secret ticked, so the value is not saved in the workspace file."
+                },
+                {
+                    "type": "tip",
+                    "text": "A password, token, or key you type into a request is saved in the workspace file. ReqDeck then offers Move to a secret: the value goes into a secret variable, encrypted on this computer, and the field shows {{token}} instead."
                 }
             ]
         },

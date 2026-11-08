@@ -405,6 +405,36 @@ Item {
                     onTextEdited: cppRequestEditor.apiKeyValue = text
                 }
 
+                RowLayout {
+                    objectName: "credentialHint"
+
+                    Layout.fillWidth: true
+                    spacing: 8
+                    visible: cppRequestEditor.literalCredential.length > 0
+
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        textFormat: Text.PlainText
+                        color: Material.hintTextColor
+                        text: qsTr("This value is saved in the workspace file, which you may share.")
+                    }
+
+                    Button {
+                        /*! Topic of the F1 help. */
+                        property string helpTopic: "request.moveToSecret"
+
+                        objectName: "moveToSecretButton"
+                        text: qsTr("Move to a secret")
+                        flat: true
+                        onClicked: {
+                            const key = cppEnvironments.addSecretVariable(cppRequestEditor.literalCredential,
+                                                                          cppRequestEditor.literalCredentialValue())
+                            cppRequestEditor.useVariableForCredential(key)
+                        }
+                    }
+                }
+
                 ComboBox {
                     /*! Topic of the F1 help. */
                     property string helpTopic: "request.apiKeyPlace"

@@ -80,6 +80,12 @@ private slots:
     /*! Verifies that a folder or an unknown id leaves the editor empty. */
     void loadFolderClearsEditor();
 
+    /*! Verifies which auth field is reported as holding typed text. */
+    void literalCredentialFollowsAuthField();
+
+    /*! Verifies that the typed credential is replaced by a reference to a variable. */
+    void credentialBecomesVariableReference();
+
     /*! Verifies that each setter reaches the stored request and marks it dirty. */
     void settersWriteThroughAndMarkDirty_data();
     /*! Runs one setter case. */
@@ -288,6 +294,40 @@ void RequestEditorTest::cleanup()
     m_collection.reset();
     m_manager.reset();
     m_dir.reset();
+}
+
+void RequestEditorTest::literalCredentialFollowsAuthField()
+{
+    m_editor->load(QStringLiteral("full"));
+    QCOMPARE(m_editor->property("literalCredential").toString(), QStringLiteral("apiKey"));
+    QCOMPARE(m_editor->literalCredentialValue(), QStringLiteral("value"));
+
+    m_editor->setApiKeyValue(QStringLiteral("{{key}}"));
+    QCOMPARE(m_editor->property("literalCredential").toString(), QString());
+    m_editor->setApiKeyValue(QStringLiteral(" {{a}}{{b}} "));
+    QCOMPARE(m_editor->property("literalCredential").toString(), QString());
+    m_editor->setApiKeyValue(QStringLiteral("x{{key}}"));
+    QCOMPARE(m_editor->property("literalCredential").toString(), QStringLiteral("apiKey"));
+
+    m_editor->setAuthType(2);
+    QCOMPARE(m_editor->property("literalCredential").toString(), QStringLiteral("token"));
+    m_editor->setAuthType(1);
+    QCOMPARE(m_editor->property("literalCredential").toString(), QStringLiteral("password"));
+    m_editor->setAuthPassword(QString());
+    QCOMPARE(m_editor->property("literalCredential").toString(), QString());
+    m_editor->setAuthType(0);
+    QCOMPARE(m_editor->property("literalCredential").toString(), QString());
+}
+
+void RequestEditorTest::credentialBecomesVariableReference()
+{
+    m_editor->load(QStringLiteral("full"));
+
+    m_editor->useVariableForCredential(QStringLiteral("apiKey2"));
+
+    QCOMPARE(m_editor->property("apiKeyValue").toString(), QStringLiteral("{{apiKey2}}"));
+    QCOMPARE(m_editor->property("literalCredential").toString(), QString());
+    QVERIFY(m_manager->dirty());
 }
 
 void RequestEditorTest::loadExposesAllFields()

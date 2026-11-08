@@ -108,6 +108,14 @@ public:
     /** Removes \a row; an invalid row number is ignored. */
     Q_INVOKABLE void removeEnvironment(int row);
 
+    /**
+     * Adds an enabled secret variable with \a value to the active environment, named
+     * \a baseKey or \a baseKey with a number when taken, and returns the key. Without
+     * an active environment one named "Default" is made active. Returns an empty
+     * string without a workspace.
+     */
+    Q_INVOKABLE QString addSecretVariable(const QString &baseKey, const QString &value);
+
     /** Colors the URL held by \a document. */
     Q_INVOKABLE void attachUrlHighlighter(QQuickTextDocument *document);
 

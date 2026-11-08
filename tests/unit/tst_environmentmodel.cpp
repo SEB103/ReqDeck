@@ -129,6 +129,12 @@ private slots:
     /*! Verifies that nothing happens without a workspace. */
     void withoutWorkspaceDoesNothing();
 
+    /*! Verifies that a secret variable goes to the active environment under a free name. */
+    void addSecretVariableToActive();
+
+    /*! Verifies that without an active environment a Default one is made active for it. */
+    void addSecretVariableCreatesDefault();
+
 private:
     /*! Saves \a data and opens it in the manager. */
     bool openWith(const WorkspaceData &data, const QString &fileName);
@@ -178,6 +184,44 @@ void EnvironmentModelTest::cleanup()
     m_model.reset();
     m_manager.reset();
     m_dir.reset();
+}
+
+void EnvironmentModelTest::addSecretVariableToActive()
+{
+    m_model->setActiveIndex(1);
+    m_model->setEditedRow(1);
+
+    QCOMPARE(m_model->addSecretVariable(QStringLiteral("token"), QStringLiteral("abc")), QStringLiteral("token"));
+    QCOMPARE(m_model->addSecretVariable(QStringLiteral("token"), QStringLiteral("def")), QStringLiteral("token2"));
+
+    const QList<EnvironmentVariable> &variables = stored().at(1).variables;
+    QCOMPARE(variables.size(), 3);
+    QCOMPARE(variables.at(1).key, QStringLiteral("token"));
+    QCOMPARE(variables.at(1).value, QStringLiteral("abc"));
+    QVERIFY(variables.at(1).enabled);
+    QVERIFY(variables.at(1).secret);
+    QCOMPARE(variables.at(2).key, QStringLiteral("token2"));
+    QCOMPARE(m_model->variablesModel()->rowCount(), 3);
+    QCOMPARE(stored().at(0).variables.size(), 1);
+    QVERIFY(m_manager->dirty());
+}
+
+void EnvironmentModelTest::addSecretVariableCreatesDefault()
+{
+    QCOMPARE(m_model->activeIndex(), -1);
+
+    QCOMPARE(m_model->addSecretVariable(QStringLiteral("password"), QStringLiteral("p")), QStringLiteral("password"));
+
+    QCOMPARE(m_model->rowCount(), 3);
+    QCOMPARE(m_model->activeIndex(), 2);
+    QCOMPARE(stored().at(2).name, QStringLiteral("Default"));
+    QCOMPARE(stored().at(2).variables.size(), 1);
+    QVERIFY(stored().at(2).variables.at(0).secret);
+
+    // A second credential goes to the same environment, now active.
+    QCOMPARE(m_model->addSecretVariable(QStringLiteral("token"), QStringLiteral("t")), QStringLiteral("token"));
+    QCOMPARE(m_model->rowCount(), 3);
+    QCOMPARE(stored().at(2).variables.size(), 2);
 }
 
 void EnvironmentModelTest::listsEnvironments()

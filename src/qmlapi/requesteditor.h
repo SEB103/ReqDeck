@@ -74,6 +74,13 @@ class RequestEditor : public QObject
     /** Bearer token. */
     Q_PROPERTY(QString authToken READ authToken WRITE setAuthToken NOTIFY requestChanged)
 
+    /**
+     * Auth field of the current type that holds typed text, not only {{variable}}
+     * references: "password", "token", "apiKey", or empty. Such text is saved in the
+     * workspace file.
+     */
+    Q_PROPERTY(QString literalCredential READ literalCredential NOTIFY requestChanged)
+
     /** API key header or parameter name. */
     Q_PROPERTY(QString apiKeyName READ apiKeyName WRITE setApiKeyName NOTIFY requestChanged)
 
@@ -156,6 +163,15 @@ public:
 
     /** Sets the authentication type; an unknown value is ignored. */
     void setAuthType(int type);
+
+    /** Returns the auth field that holds typed text, or an empty string. */
+    QString literalCredential() const;
+
+    /** Returns the text of the field named by literalCredential(). */
+    Q_INVOKABLE QString literalCredentialValue() const;
+
+    /** Replaces the field named by literalCredential() with a reference to \a key. */
+    Q_INVOKABLE void useVariableForCredential(const QString &key);
 
     /** Returns the Basic auth user name. */
     QString authUsername() const;

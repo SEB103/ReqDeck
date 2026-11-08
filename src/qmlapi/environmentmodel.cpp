@@ -286,6 +286,60 @@ void EnvironmentModel::removeEnvironment(int row)
 }
 
 /*!
+ * \brief Adds a secret variable to the active environment.
+ *
+ * This is how a password or token typed into a request moves out of the
+ * workspace file. Without an active environment, an existing one named
+ * "Default" or else a new one is made active, so the reference resolves at
+ * once. Nothing is saved by itself.
+ * \param baseKey The preferred key; "2", "3", ... is appended when it is taken.
+ * \param value The secret value.
+ * \return The key used, or an empty string without a workspace.
+ */
+QString EnvironmentModel::addSecretVariable(const QString &baseKey, const QString &value)
+{
+    if (!m_manager->hasActiveWorkspace() || baseKey.isEmpty())
+        return {};
+
+    int row = activeIndex();
+    if (row < 0) {
+        const QString name = QStringLiteral("Default");
+        const QList<Environment> &rows = environments();
+        const auto existing = std::find_if(rows.cbegin(), rows.cend(),
+                                           [&name](const Environment &environment) { return environment.name == name; });
+        if (existing != rows.cend()) {
+            row = int(existing - rows.cbegin());
+        } else {
+            Environment environment;
+            environment.id = newItemId();
+            environment.name = name;
+            const int previousEdited = m_editedRow;
+            row = appendEnvironment(environment);
+            // Adding a variable must not move the editor of the environment dialog.
+            showInEditor(previousEdited);
+        }
+        setActiveIndex(row);
+    }
+
+    WorkspaceData data = m_manager->workspaceData();
+    QList<EnvironmentVariable> &variables = data.environments[row].variables;
+    const auto taken = [&variables](const QString &key) {
+        return std::any_of(variables.cbegin(), variables.cend(),
+                           [&key](const EnvironmentVariable &variable) { return variable.key == key; });
+    };
+    QString key = baseKey;
+    for (int number = 2; taken(key); ++number)
+        key = baseKey + QString::number(number);
+    variables.append({key, value, true, true});
+    m_manager->updateWorkspaceData(data);
+
+    if (row == m_editedRow)
+        showInEditor(row);
+    refreshHighlighter();
+    return key;
+}
+
+/*!
  * \brief Colors the URL held by \a document.
  *
  * The highlighter serves one field. A later call moves it to the new document.
