@@ -135,6 +135,11 @@ private slots:
     /*! Verifies that the exception ends with its request. */
     void tlsExceptionIsOneRequest();
 
+    /*! Verifies that requests ask the system for a proxy, as browsers on Windows do. */
+    void usesSystemProxy();
+    /*! Verifies that the computer itself is always reached directly. */
+    void loopbackNeverUsesProxy();
+
     /*! Provides statuses whose server sends no reason phrase. */
     void reasonPhraseFilledWhenMissing_data();
     /*! Verifies that a status without reason phrase gets the standard one, as HTTP/2 needs. */
@@ -395,6 +400,35 @@ void HttpExecutorTest::tlsExceptionIsOneRequest()
     QVERIFY(second);
     QCOMPARE(second->error, ResponseError::Tls);
     QVERIFY(!second->tlsErrorsIgnored);
+}
+
+void HttpExecutorTest::usesSystemProxy()
+{
+    const HttpExecutor executor;
+    const QUrl url(QStringLiteral("https://example.com/items"));
+
+    const QList<QNetworkProxy> proxies = executor.proxiesFor(url);
+    const QList<QNetworkProxy> system = QNetworkProxyFactory::systemProxyForQuery(QNetworkProxyQuery(url));
+
+    QVERIFY(!proxies.isEmpty());
+    QCOMPARE(proxies.size(), system.size());
+    for (qsizetype i = 0; i < proxies.size(); ++i) {
+        QCOMPARE(proxies.at(i).type(), system.at(i).type());
+        QCOMPARE(proxies.at(i).hostName(), system.at(i).hostName());
+        QCOMPARE(proxies.at(i).port(), system.at(i).port());
+    }
+}
+
+void HttpExecutorTest::loopbackNeverUsesProxy()
+{
+    const HttpExecutor executor;
+    for (const QString &address : {QStringLiteral("http://127.0.0.1:8080/"), QStringLiteral("http://localhost/"),
+                                   QStringLiteral("https://LOCALHOST:8443/x"), QStringLiteral("http://[::1]:3000/"),
+                                   QStringLiteral("http://127.12.0.5/")}) {
+        const QList<QNetworkProxy> proxies = executor.proxiesFor(QUrl(address));
+        QVERIFY2(proxies.size() == 1, qPrintable(address));
+        QVERIFY2(proxies.first().type() == QNetworkProxy::NoProxy, qPrintable(address));
+    }
 }
 
 void HttpExecutorTest::reasonPhraseFilledWhenMissing_data()

@@ -3,8 +3,10 @@
 
 #include "core/http/httpexecutor.h"
 
+#include <QHostAddress>
 #include <QHttpHeaders>
 #include <QNetworkAccessManager>
+#include <QNetworkProxyFactory>
 #if QT_CONFIG(ssl)
 #include <QSslError>
 #endif
@@ -95,6 +97,28 @@ QString standardReasonPhrase(int status)
 
 /*!
  * \internal
+ * \brief Asks the system for the proxy of each request, except for this computer.
+ *
+ * Windows keeps the proxy of browsers and of most applications in one place;
+ * a company network often needs it. A local server, such as one under
+ * development, must never go through it, whatever the bypass list says. The
+ * factory holds no state, so it is safe on the threads Qt asks it from.
+ */
+class SystemProxyFactory final : public QNetworkProxyFactory
+{
+public:
+    QList<QNetworkProxy> queryProxy(const QNetworkProxyQuery &query) override
+    {
+        const QString host = query.peerHostName();
+        const QHostAddress address(host);
+        if (host.compare(QLatin1StringView("localhost"), Qt::CaseInsensitive) == 0 || address.isLoopback())
+            return {QNetworkProxy(QNetworkProxy::NoProxy)};
+        return QNetworkProxyFactory::systemProxyForQuery(query);
+    }
+};
+
+/*!
+ * \internal
  * \brief Returns whether \a lhs and \a rhs share scheme, host, and effective port.
  */
 bool isSameOrigin(const QUrl &lhs, const QUrl &rhs)
@@ -115,6 +139,7 @@ bool isSameOrigin(const QUrl &lhs, const QUrl &rhs)
  *
  * The manager gets no cookie jar: Qt would otherwise store Set-Cookie values
  * and send them with later requests, replacing Cookie headers the user typed.
+ * It asks the system for a proxy (see SystemProxyFactory).
  * \param parent The QObject parent.
  */
 HttpExecutor::HttpExecutor(QObject *parent)
@@ -122,6 +147,16 @@ HttpExecutor::HttpExecutor(QObject *parent)
     , m_network(new QNetworkAccessManager(this))
 {
     m_network->setCookieJar(nullptr);
+    m_network->setProxyFactory(new SystemProxyFactory);
+}
+
+/*!
+ * \brief Returns the proxies a request to \a url would try.
+ * \param url The address of a request.
+ */
+QList<QNetworkProxy> HttpExecutor::proxiesFor(const QUrl &url) const
+{
+    return m_network->proxyFactory()->queryProxy(QNetworkProxyQuery(url));
 }
 
 /*!

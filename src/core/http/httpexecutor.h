@@ -5,6 +5,7 @@
 #define HTTPEXECUTOR_H
 
 #include <QElapsedTimer>
+#include <QNetworkProxy>
 #include <QNetworkReply>
 #include <QObject>
 #include <QStringList>
@@ -24,7 +25,7 @@ QT_END_NAMESPACE
  * after abort() or a timeout; destroying a busy executor cancels the request
  * without emitting anything. Redirects are followed here rather than by Qt,
  * so credentials can be dropped when a redirect leaves the origin. Cookies are
- * never stored.
+ * never stored. Requests use the proxy of the system, except to this computer.
  */
 class HttpExecutor : public QObject
 {
@@ -52,6 +53,9 @@ public:
 
     /** Cancels the running request, which finishes with ResponseError::Aborted; no-op when idle. */
     void abort();
+
+    /** Returns the proxies a request to \a url would try, in order; NoProxy means direct. */
+    QList<QNetworkProxy> proxiesFor(const QUrl &url) const;
 
     /** Maps a Qt network \a error to a ResponseError; \a abortRequested marks a user cancel. */
     static ResponseError classifyError(QNetworkReply::NetworkError error, bool abortRequested);
