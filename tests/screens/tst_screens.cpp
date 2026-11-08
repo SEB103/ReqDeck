@@ -386,6 +386,21 @@ public:
         return guide.write("%PDF-1.7\n") > 0;
     }
 
+    /*! Closes the workspace, so the launcher shows, and points Open Samples at a fresh copy. */
+    Q_INVOKABLE bool prepareLauncherSamples()
+    {
+        m_editor.clear();
+        m_manager.closeWorkspace();
+        const QString path = m_dir.filePath(QStringLiteral("SamplesCopy.reqdeck"));
+        QFile::remove(path);
+        if (!QFile::copy(QStringLiteral(REQDECK_SAMPLES_FILE), path)
+            || !QFile::setPermissions(path, QFile::ReadOwner | QFile::WriteOwner)) {
+            return false;
+        }
+        m_manager.setSamplesPath(path);
+        return true;
+    }
+
     /*! Opens a fresh copy of the bundled samples workspace. */
     Q_INVOKABLE bool openSamples()
     {

@@ -6,6 +6,7 @@
 
 #include "core/http/requestbuilder.h"
 #include "core/http/variableresolver.h"
+#include "core/workspace/collectiontree.h"
 #include "core/workspace/workspaceserializer.h"
 
 /*!
@@ -48,6 +49,9 @@ private slots:
 
     /*! Verifies that the file has no secrets, which would be lost when seeded. */
     void hasNoSecretVariables();
+
+    /*! Verifies that the request opened first exists and needs no other request. */
+    void startRequestExists();
 
 private:
     /*! The loaded workspace. */
@@ -137,5 +141,14 @@ void SamplesTest::hasNoSecretVariables()
 }
 
 QTEST_GUILESS_MAIN(SamplesTest)
+
+void SamplesTest::startRequestExists()
+{
+    const QString id = m_data.settings.value(QLatin1StringView("startRequest")).toString();
+    QCOMPARE(id, QStringLiteral("placeholder-post"));
+    const CollectionNode *node = findNode(m_data.collection, id);
+    QVERIFY(node);
+    QCOMPARE(node->kind, CollectionNode::Kind::Request);
+}
 
 #include "tst_samples.moc"

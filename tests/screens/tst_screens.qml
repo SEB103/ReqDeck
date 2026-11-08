@@ -1486,6 +1486,21 @@ Item {
             verify(cppTestHost.openedUrls()[0].endsWith("/help/ReqDeck-Guide.en.pdf"));
         }
 
+        /*! Verifies that Open Samples on the launcher opens the request the guide starts with. */
+        function test_openSamplesShowsFirstRequest() {
+            verify(cppTestHost.prepareLauncherSamples());
+            const window = createMain();
+            const button = findChild(window.contentItem, "openSamplesButton");
+            tryCompare(button, "visible", true);
+            waitForRendering(window.contentItem);
+
+            mouseClick(button);
+
+            tryCompare(cppWorkspaceManager, "hasActiveWorkspace", true);
+            compare(cppRequestEditor.requestId, "placeholder-post");
+            compare(findChild(window.contentItem, "tree").parent.selectedId, "placeholder-post");
+        }
+
         /*!
             Saves the screenshots of the beginner guide into the folder named by
             REQDECK_GUIDE_SHOTS, and is skipped without it. It sends the sample

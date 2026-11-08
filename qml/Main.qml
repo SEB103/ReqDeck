@@ -219,6 +219,14 @@ ApplicationWindow {
 
         onOpenWorkspaceRequested: openWorkspaceDialog.open()
         onCreateWorkspaceRequested: newWorkspaceDialog.open()
+        // The samples open at the request the guide starts with, ready to send.
+        onSamplesOpened: {
+            const id = cppCollection.startRequestId()
+            if (id.length > 0) {
+                mainScreen.collectionPane.selectNode(id)
+                mainScreen.collectionPane.revealNode(id)
+            }
+        }
     }
 
     Connections {

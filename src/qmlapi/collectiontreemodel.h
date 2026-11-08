@@ -86,6 +86,12 @@ public:
     /** Returns whether \a id is a folder. */
     Q_INVOKABLE bool isFolder(const QString &id) const;
 
+    /**
+     * Returns the request to open first: the one the workspace setting "startRequest"
+     * names, or else the first request in tree order; empty without requests.
+     */
+    Q_INVOKABLE QString startRequestId() const;
+
     /** Returns the folder a new item belongs to when the node \a id is selected. */
     Q_INVOKABLE QString parentForNewItem(const QString &id) const;
 

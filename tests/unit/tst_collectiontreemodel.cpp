@@ -52,6 +52,9 @@ class CollectionTreeModelTest : public QObject
     Q_OBJECT
 
 private slots:
+    /*! Verifies the request opened first: the one the workspace names, or else the first one. */
+    void startRequestIdFollowsSettings();
+
     /*! Opens a workspace with a known collection for each test. */
     void init();
 
@@ -353,6 +356,18 @@ void CollectionTreeModelTest::saveDoesNotResetModel()
     QVERIFY(m_manager->saveWorkspace());
     QVERIFY(m_manager->saveWorkspaceAs(m_dir->filePath(QStringLiteral("Copy.reqdeck"))));
     QCOMPARE(spy.count(), 0);
+}
+
+void CollectionTreeModelTest::startRequestIdFollowsSettings()
+{
+    WorkspaceData data = m_manager->workspaceData();
+    const QString first = m_model->startRequestId();
+    QVERIFY(!first.isEmpty());
+    QVERIFY(!m_model->isFolder(first));
+
+    data.settings.insert(QStringLiteral("startRequest"), QStringLiteral("does-not-exist"));
+    m_manager->updateWorkspaceData(data);
+    QCOMPARE(m_model->startRequestId(), first);
 }
 
 QTEST_MAIN(CollectionTreeModelTest)

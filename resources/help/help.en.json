@@ -421,7 +421,7 @@
             "what": "Opens ready requests against free test services.",
             "why": "The fastest way to see how ReqDeck works.",
             "example": "Pick a request and press Send.",
-            "next": "Change the samples freely; they are your own copy.",
+            "next": "The samples open at Get a post, ready to send: press Send.",
             "chapter": "first-request"
         },
         "launcher.recent": {

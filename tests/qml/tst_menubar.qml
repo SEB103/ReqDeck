@@ -345,6 +345,25 @@ Item {
             compare(rowChild(table, 1, "enabledBox").checked, false);
         }
 
+        /*! Verifies that a long key or value shows its start while the field is not being edited. */
+        function test_longValueShowsStart() {
+            resetKeyValueModel();
+            const long = "start-" + "x".repeat(300);
+            keyValueModel.set(0, {key: long, value: long, enabled: true});
+            const table = createTemporaryObject(keyValueTableComponent, root);
+            verify(table !== null);
+            waitForRendering(table);
+            const value = rowChild(table, 0, "valueField");
+
+            compare(rowChild(table, 0, "keyField").cursorPosition, 0);
+            compare(value.cursorPosition, 0);
+
+            value.forceActiveFocus();
+            value.cursorPosition = value.length;
+            rowChild(table, 1, "keyField").forceActiveFocus();
+            compare(value.cursorPosition, 0);
+        }
+
         /*! Verifies that typing and toggling reach the model. */
         function test_tableHidesSecretColumnByDefault() {
             resetKeyValueModel();

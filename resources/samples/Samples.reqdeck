@@ -3,7 +3,9 @@
     "id": "9a1f3c52-6d0e-4b7a-8c21-5e7f0a4d2b16",
     "displayName": "Samples",
     "activeEnvironmentId": "public-test-apis",
-    "settings": {},
+    "settings": {
+        "startRequest": "placeholder-post"
+    },
     "environments": [
         {
             "id": "public-test-apis",

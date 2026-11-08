@@ -147,6 +147,9 @@ ColumnLayout {
                 Accessible.name: root.keyTitle + " " + (row.index + 1)
                 text: row.model.key
                 onTextEdited: row.model.key = text
+                // Out of editing, a long text shows its start, not its end.
+                onTextChanged: if (!activeFocus) cursorPosition = 0
+                onActiveFocusChanged: if (!activeFocus) cursorPosition = 0
             }
 
             TextField {
@@ -162,6 +165,8 @@ ColumnLayout {
                 echoMode: root.showSecret && row.model.secret ? TextInput.Password : TextInput.Normal
                 text: row.model.value
                 onTextEdited: row.model.value = text
+                onTextChanged: if (!activeFocus) cursorPosition = 0
+                onActiveFocusChanged: if (!activeFocus) cursorPosition = 0
             }
 
             CheckBox {

@@ -43,6 +43,13 @@ Pane {
     signal createWorkspaceRequested()
 
     /*!
+        \qmlsignal LauncherScreen::samplesOpened()
+
+        Emitted after the samples workspace was opened from the launcher.
+    */
+    signal samplesOpened()
+
+    /*!
         Formats an ISO 8601 \a iso timestamp as a compact local date-time, or
         returns it unchanged when it cannot be parsed.
     */
@@ -251,7 +258,10 @@ Pane {
 
                     flat: true
                     text: qsTr("Open Samples")
-                    onClicked: cppWorkspaceManager.openSamples()
+                    onClicked: {
+                        if (cppWorkspaceManager.openSamples())
+                            launcher.samplesOpened()
+                    }
                 }
 
                 Button {

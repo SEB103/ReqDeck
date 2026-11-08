@@ -4,6 +4,7 @@
 #include "qmlapi/collectiontreemodel.h"
 
 #include <algorithm>
+#include <functional>
 #include <utility>
 #include <vector>
 
@@ -302,6 +303,33 @@ QString CollectionTreeModel::nodeName(const QString &id) const
 {
     const Item *item = m_items.value(id);
     return item ? item->name : QString();
+}
+
+/*!
+ * \brief Returns the request to open first.
+ *
+ * A workspace such as the bundled samples names it in its settings, so that
+ * the guide and the application start at the same request. An unknown id or a
+ * folder falls back to the first request in tree order.
+ */
+QString CollectionTreeModel::startRequestId() const
+{
+    const WorkspaceData &data = m_manager->workspaceData();
+    const QString named = data.settings.value(QLatin1StringView("startRequest")).toString();
+    const CollectionNode *node = named.isEmpty() ? nullptr : findNode(data.collection, named);
+    if (node && node->kind == CollectionNode::Kind::Request)
+        return named;
+
+    const std::function<QString(const QList<CollectionNode> &)> first = [&first](const QList<CollectionNode> &nodes) {
+        for (const CollectionNode &candidate : nodes) {
+            if (candidate.kind == CollectionNode::Kind::Request)
+                return candidate.id;
+            if (const QString inside = first(candidate.children); !inside.isEmpty())
+                return inside;
+        }
+        return QString();
+    };
+    return first(data.collection);
 }
 
 /*!
