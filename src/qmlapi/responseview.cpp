@@ -212,6 +212,9 @@ bool ResponseView::bodyOnDisk() const
  * The positions refer to the text shown, so the view can select them directly.
  * The search stops at kMaxFindMatches: a single character in a megabyte matches
  * too often for any count to help.
+ *
+ * The text view turns CRLF into one line separator, so the search runs on a copy
+ * in which CRLF is one character as well; a lone CR is one separator in both.
  * \param query The text to look for.
  * \return Start positions in order; empty for an empty query or no match.
  */
@@ -220,7 +223,8 @@ QVariantList ResponseView::findInBody(const QString &query) const
     QVariantList matches;
     if (query.isEmpty())
         return matches;
-    const QString text = bodyText();
+    QString text = bodyText();
+    text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
     for (qsizetype from = text.indexOf(query, 0, Qt::CaseInsensitive);
          from >= 0 && matches.size() < kMaxFindMatches;
          from = text.indexOf(query, from + 1, Qt::CaseInsensitive)) {
@@ -231,7 +235,7 @@ QVariantList ResponseView::findInBody(const QString &query) const
 
 bool ResponseView::canSaveBody() const
 {
-    return m_hasResponse && m_response.sizeBytes > 0;
+    return m_hasResponse && (m_response.bodyFile || !m_rawBody.isEmpty());
 }
 
 /*!
@@ -239,7 +243,8 @@ bool ResponseView::canSaveBody() const
  *
  * The last part of the URL path names the file, with characters Windows does
  * not allow replaced; "response" stands in for a URL without a path. A name
- * without an extension gets one from the kind of body.
+ * without an extension gets one from the kind of body. A name Windows reserves
+ * for a device, such as CON or COM1, also with an extension, gets an underscore.
  */
 QString ResponseView::suggestedFileName() const
 {
@@ -249,6 +254,11 @@ QString ResponseView::suggestedFileName() const
     name = name.trimmed();
     if (name.isEmpty() || name == u'.' || name == QLatin1StringView(".."))
         name = QStringLiteral("response");
+    static const QRegularExpression reserved(QStringLiteral("^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?=\\.|$)"),
+                                             QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpressionMatch device = reserved.match(name);
+    if (device.hasMatch())
+        name.insert(device.capturedEnd(), u'_');
     if (name.contains(u'.'))
         return name;
 
@@ -273,12 +283,18 @@ QString ResponseView::suggestedFileName() const
  * A body on disk is copied in pieces, so saving it needs no memory either. The
  * target is replaced only once everything was written, so a failed save leaves
  * an existing file as it was.
- * \param fileUrl A local file, usually chosen in a file dialog.
+ * \param fileUrl A local file, usually chosen in a file dialog; any other URL
+ * fails.
  * \return Whether the file was written.
  */
 bool ResponseView::saveBody(const QUrl &fileUrl)
 {
-    const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
+    if (!fileUrl.isLocalFile()) {
+        emit bodySaveFailed(tr("The response could not be saved to %1: it is not a file on this computer.")
+                                .arg(fileUrl.toDisplayString()));
+        return false;
+    }
+    const QString path = fileUrl.toLocalFile();
     QSaveFile out(path);
     QString error;
     if (!out.open(QIODevice::WriteOnly)) {
@@ -289,7 +305,10 @@ bool ResponseView::saveBody(const QUrl &fileUrl)
             error = in.errorString();
         while (error.isEmpty() && !in.atEnd()) {
             const QByteArray chunk = in.read(1024 * 1024);
-            if (out.write(chunk) != chunk.size())
+            // An empty read before the end is a read error; looping on it would hang.
+            if (chunk.isEmpty())
+                error = in.errorString();
+            else if (out.write(chunk) != chunk.size())
                 error = out.errorString();
         }
     } else if (out.write(m_rawBody) != m_rawBody.size()) {
@@ -322,16 +341,30 @@ bool ResponseView::wrapAnywhere() const
  */
 bool ResponseView::canTrustCertificate() const
 {
-    return m_hasResponse && m_response.error == ResponseError::Tls && !m_response.tlsErrors.isEmpty()
-           && !m_response.tlsErrorsIgnored && !m_response.finalUrl.host().isEmpty();
+    // After a server that was already not checked, a resend would need two
+    // exceptions; one is the most a click grants.
+    return m_hasResponse && m_response.error == ResponseError::Tls && !m_response.tlsChecks.isEmpty()
+           && !m_response.tlsErrorsIgnored() && !m_response.tlsChecks.last().isEmpty()
+           && !m_response.tlsChecks.last().messages.isEmpty();
 }
 
 /*!
- * \brief Returns the host whose certificate failed or was not checked.
+ * \brief Returns the host of the server whose certificate failed last.
  */
 QString ResponseView::certificateHost() const
 {
-    return m_response.finalUrl.host();
+    return m_response.tlsChecks.isEmpty() ? QString() : m_response.tlsChecks.last().host;
+}
+
+/*!
+ * \brief Returns the failed check that sendTrustingCertificate() may accept.
+ *
+ * It names the server and holds its errors with their certificate, so that the
+ * resend accepts exactly what the user saw fail and nothing else.
+ */
+TlsCheck ResponseView::certificateFailure() const
+{
+    return canTrustCertificate() ? m_response.tlsChecks.last() : TlsCheck();
 }
 
 bool ResponseView::pretty() const
@@ -412,9 +445,11 @@ void ResponseView::setResponse(const ResponseData &response, const QStringList &
         m_rawBody = response.body;
     m_response.body.clear();
     QStringList warnings;
-    if (response.tlsErrorsIgnored) {
-        warnings.append(tr("The certificate of %1 was not checked: %2")
-                            .arg(response.finalUrl.host(), response.tlsErrors.join(QStringLiteral("; "))));
+    for (const TlsCheck &check : response.tlsChecks) {
+        if (check.ignored) {
+            warnings.append(tr("The certificate of %1 was not checked: %2")
+                                .arg(check.server(), check.messages.join(QStringLiteral("; "))));
+        }
     }
     if (!unresolvedVariables.isEmpty())
         warnings.append(unresolvedWarning(unresolvedVariables));
@@ -422,7 +457,14 @@ void ResponseView::setResponse(const ResponseData &response, const QStringList &
 
     if (response.error != ResponseError::None) {
         QStringList lines {response.errorString};
-        lines += response.tlsErrors;
+        // With several servers, each message says which one it concerns.
+        const bool several = response.tlsChecks.size() > 1;
+        for (const TlsCheck &check : response.tlsChecks) {
+            if (check.ignored)
+                continue;
+            for (const QString &message : check.messages)
+                lines.append(several ? check.host + QStringLiteral(": ") + message : message);
+        }
         m_errorText = lines.join(u'\n');
     }
 

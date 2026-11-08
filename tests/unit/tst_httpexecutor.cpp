@@ -134,6 +134,10 @@ private slots:
     void tlsExceptionCoversOnlyItsHost();
     /*! Verifies that the exception ends with its request. */
     void tlsExceptionIsOneRequest();
+    /*! Verifies that the exception does not cover another port of the host. */
+    void tlsExceptionCoversOnlyItsPort();
+    /*! Verifies that the exception does not cover errors other than those it was made for. */
+    void tlsExceptionCoversOnlyItsErrors();
 
     /*! Verifies that a body past the memory limit goes whole to a file, and its start stays in memory. */
     void largeBodySpillsToFile();
@@ -143,11 +147,17 @@ private slots:
     void spillFileGoesWithResponse();
     /*! Verifies the default memory limit. */
     void defaultBodyMemoryLimit();
+    /*! Verifies that a body that cannot go to disk is an error that keeps no size or data. */
+    void failedSpillKeepsNothing();
 
     /*! Verifies that requests ask the system for a proxy, as browsers on Windows do. */
     void usesSystemProxy();
     /*! Verifies that the computer itself is always reached directly. */
     void loopbackNeverUsesProxy();
+    /*! Provides host names with whether they name this computer. */
+    void isThisComputer_data();
+    /*! Verifies which host names name this computer. */
+    void isThisComputer();
 
     /*! Provides statuses whose server sends no reason phrase. */
     void reasonPhraseFilledWhenMissing_data();
@@ -343,6 +353,19 @@ static std::unique_ptr<MockHttpServer> startTlsServer()
     return server;
 }
 
+/*!
+ * \internal
+ * \brief Sends a request to \a server, which fails its certificate check, and
+ * returns that check, as the offer to continue gets it.
+ */
+static TlsCheck failedCheck(HttpExecutor &executor, MockHttpServer &server)
+{
+    const auto response = sendAndWait(executor, buildRequest(specFor(server.url(QStringLiteral("/echo")))));
+    if (!response || response->tlsChecks.isEmpty())
+        return {};
+    return response->tlsChecks.last();
+}
+
 void HttpExecutorTest::tlsErrorKeepsMessages()
 {
     const auto server = startTlsServer();
@@ -353,8 +376,14 @@ void HttpExecutorTest::tlsErrorKeepsMessages()
 
     QVERIFY(response);
     QCOMPARE(response->error, ResponseError::Tls);
-    QVERIFY(!response->tlsErrors.isEmpty());
-    QVERIFY(!response->tlsErrorsIgnored);
+    QCOMPARE(response->tlsChecks.size(), 1);
+    const TlsCheck &check = response->tlsChecks.first();
+    QCOMPARE(check.host, QStringLiteral("127.0.0.1"));
+    QCOMPARE(check.port, server->url(QStringLiteral("/")).port());
+    QVERIFY(!check.messages.isEmpty());
+    QVERIFY(!check.errors.isEmpty());
+    QVERIFY(!check.ignored);
+    QVERIFY(!response->tlsErrorsIgnored());
     QCOMPARE(server->requestCount(), 0);
 }
 
@@ -364,15 +393,18 @@ void HttpExecutorTest::tlsExceptionCoversItsHost()
     QVERIFY(server);
     HttpExecutor executor;
     BuiltRequest request = buildRequest(specFor(server->url(QStringLiteral("/echo"))));
-    request.tlsExceptionHost = QStringLiteral("127.0.0.1");
+    request.tlsException = failedCheck(executor, *server);
+    QVERIFY(!request.tlsException.isEmpty());
 
     const auto response = sendAndWait(executor, request);
 
     QVERIFY(response);
     QCOMPARE(response->error, ResponseError::None);
     QCOMPARE(response->statusCode, 200);
-    QVERIFY(response->tlsErrorsIgnored);
-    QVERIFY(!response->tlsErrors.isEmpty());
+    QVERIFY(response->tlsErrorsIgnored());
+    QCOMPARE(response->tlsChecks.size(), 1);
+    QVERIFY(response->tlsChecks.first().ignored);
+    QVERIFY(!response->tlsChecks.first().messages.isEmpty());
 }
 
 void HttpExecutorTest::tlsExceptionCoversOnlyItsHost()
@@ -384,13 +416,20 @@ void HttpExecutorTest::tlsExceptionCoversOnlyItsHost()
     const QString redirect = QStringLiteral("/redirect-to?url=")
                              + QString::fromLatin1(QUrl::toPercentEncoding(elsewhere.toString()));
     BuiltRequest request = buildRequest(specFor(server->url(redirect)));
-    request.tlsExceptionHost = QStringLiteral("127.0.0.1");
+    request.tlsException = failedCheck(executor, *server);
+    QVERIFY(!request.tlsException.isEmpty());
 
     const auto response = sendAndWait(executor, request);
 
     QVERIFY(response);
     QCOMPARE(response->error, ResponseError::Tls);
     QCOMPARE(server->requestCount(), 1);
+    // Each server keeps its own outcome: the first was not checked, the second failed.
+    QCOMPARE(response->tlsChecks.size(), 2);
+    QCOMPARE(response->tlsChecks.at(0).host, QStringLiteral("127.0.0.1"));
+    QVERIFY(response->tlsChecks.at(0).ignored);
+    QCOMPARE(response->tlsChecks.at(1).host, QStringLiteral("localhost"));
+    QVERIFY(!response->tlsChecks.at(1).ignored);
 }
 
 void HttpExecutorTest::tlsExceptionIsOneRequest()
@@ -399,7 +438,7 @@ void HttpExecutorTest::tlsExceptionIsOneRequest()
     QVERIFY(server);
     HttpExecutor executor;
     BuiltRequest trusted = buildRequest(specFor(server->url(QStringLiteral("/echo"))));
-    trusted.tlsExceptionHost = QStringLiteral("127.0.0.1");
+    trusted.tlsException = failedCheck(executor, *server);
     const auto first = sendAndWait(executor, trusted);
     QVERIFY(first);
     QCOMPARE(first->statusCode, 200);
@@ -408,7 +447,43 @@ void HttpExecutorTest::tlsExceptionIsOneRequest()
 
     QVERIFY(second);
     QCOMPARE(second->error, ResponseError::Tls);
-    QVERIFY(!second->tlsErrorsIgnored);
+    QVERIFY(!second->tlsErrorsIgnored());
+}
+
+void HttpExecutorTest::tlsExceptionCoversOnlyItsPort()
+{
+    const auto server = startTlsServer();
+    const auto other = startTlsServer();
+    QVERIFY(server);
+    QVERIFY(other);
+    HttpExecutor executor;
+    BuiltRequest request = buildRequest(specFor(other->url(QStringLiteral("/echo"))));
+    request.tlsException = failedCheck(executor, *server);
+    QVERIFY(!request.tlsException.isEmpty());
+
+    const auto response = sendAndWait(executor, request);
+
+    QVERIFY(response);
+    QCOMPARE(response->error, ResponseError::Tls);
+    QCOMPARE(other->requestCount(), 0);
+}
+
+void HttpExecutorTest::tlsExceptionCoversOnlyItsErrors()
+{
+    const auto server = startTlsServer();
+    QVERIFY(server);
+    HttpExecutor executor;
+    BuiltRequest request = buildRequest(specFor(server->url(QStringLiteral("/echo"))));
+    request.tlsException = failedCheck(executor, *server);
+    QVERIFY(!request.tlsException.isEmpty());
+    // The same kind of error for no certificate at all: another certificate must not pass.
+    request.tlsException.errors = {QSslError(QSslError::SelfSignedCertificate)};
+
+    const auto response = sendAndWait(executor, request);
+
+    QVERIFY(response);
+    QCOMPARE(response->error, ResponseError::Tls);
+    QCOMPARE(server->requestCount(), 0);
 }
 
 void HttpExecutorTest::largeBodySpillsToFile()
@@ -472,6 +547,34 @@ void HttpExecutorTest::defaultBodyMemoryLimit()
     QCOMPARE(executor.bodyMemoryLimit(), qint64(32 * 1024 * 1024));
 }
 
+void HttpExecutorTest::failedSpillKeepsNothing()
+{
+    // Windows takes the temporary folder from TMP, then TEMP; a missing folder
+    // makes the spill file fail to open, as a full or locked disk would.
+    QTemporaryDir parent;
+    const QString missing = parent.filePath(QStringLiteral("missing"));
+    const QByteArray oldTmp = qgetenv("TMP");
+    const QByteArray oldTemp = qgetenv("TEMP");
+    const auto restore = qScopeGuard([&] {
+        qputenv("TMP", oldTmp);
+        qputenv("TEMP", oldTemp);
+    });
+    qputenv("TMP", QFile::encodeName(missing));
+    qputenv("TEMP", QFile::encodeName(missing));
+    HttpExecutor executor;
+    executor.setBodyMemoryLimit(64 * 1024);
+
+    const auto response = sendAndWait(
+        executor, buildRequest(specFor(m_server.url(QStringLiteral("/bytes/300000")))), 20000);
+
+    QVERIFY(response);
+    QCOMPARE(response->error, ResponseError::Network);
+    QVERIFY2(response->errorString.contains(QStringLiteral("stored on disk")), qPrintable(response->errorString));
+    QCOMPARE(response->sizeBytes, 0);
+    QVERIFY(response->body.isEmpty());
+    QVERIFY(!response->bodyFile);
+}
+
 void HttpExecutorTest::usesSystemProxy()
 {
     const HttpExecutor executor;
@@ -489,12 +592,42 @@ void HttpExecutorTest::usesSystemProxy()
     }
 }
 
+void HttpExecutorTest::isThisComputer_data()
+{
+    QTest::addColumn<QString>("host");
+    QTest::addColumn<bool>("local");
+
+    QTest::newRow("localhost") << "localhost" << true;
+    QTest::newRow("upper case") << "LocalHost" << true;
+    QTest::newRow("trailing dot") << "localhost." << true;
+    QTest::newRow("subdomain") << "api.localhost" << true;
+    QTest::newRow("subdomain trailing dot") << "App.Localhost." << true;
+    QTest::newRow("ipv4 loopback") << "127.0.0.1" << true;
+    QTest::newRow("ipv4 loopback range") << "127.12.0.5" << true;
+    QTest::newRow("ipv6 loopback") << "::1" << true;
+    QTest::newRow("domain of localhost") << "localhost.example.com" << false;
+    QTest::newRow("name ending in localhost") << "mylocalhost" << false;
+    QTest::newRow("other") << "example.com" << false;
+    QTest::newRow("private address") << "192.168.1.10" << false;
+    QTest::newRow("empty") << "" << false;
+}
+
+void HttpExecutorTest::isThisComputer()
+{
+    QFETCH(QString, host);
+    QFETCH(bool, local);
+
+    QCOMPARE(HttpExecutor::isThisComputer(host), local);
+}
+
 void HttpExecutorTest::loopbackNeverUsesProxy()
 {
     const HttpExecutor executor;
     for (const QString &address : {QStringLiteral("http://127.0.0.1:8080/"), QStringLiteral("http://localhost/"),
                                    QStringLiteral("https://LOCALHOST:8443/x"), QStringLiteral("http://[::1]:3000/"),
-                                   QStringLiteral("http://127.12.0.5/")}) {
+                                   QStringLiteral("http://127.12.0.5/"), QStringLiteral("http://localhost./"),
+                                   QStringLiteral("http://api.localhost:5000/"),
+                                   QStringLiteral("http://App.Localhost./")}) {
         const QList<QNetworkProxy> proxies = executor.proxiesFor(QUrl(address));
         QVERIFY2(proxies.size() == 1, qPrintable(address));
         QVERIFY2(proxies.first().type() == QNetworkProxy::NoProxy, qPrintable(address));

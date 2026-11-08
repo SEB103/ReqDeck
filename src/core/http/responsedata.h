@@ -10,7 +10,12 @@
 #include <QString>
 #include <QStringList>
 #include <QUrl>
+#include <QtNetwork/qtnetworkglobal.h>
+#if QT_CONFIG(ssl)
+#include <QSslError>
+#endif
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -30,6 +35,49 @@ enum class ResponseError {
     Tls,
     /** Any other network failure. */
     Network
+};
+
+/** Certificate errors of one server a request reached, and whether they were ignored. */
+struct TlsCheck
+{
+    /** Host name as in the URL; empty for no check. */
+    QString host;
+    /** Port of the connection. */
+    int port {-1};
+    /** Messages of the errors, without repeats. */
+    QStringList messages;
+#if QT_CONFIG(ssl)
+    /** The errors, each with the certificate it concerns. */
+    QList<QSslError> errors;
+#endif
+    /** Whether the errors were ignored, so that this server was not authenticated. */
+    bool ignored {false};
+
+    /** Returns whether this is no check at all. */
+    bool isEmpty() const { return host.isEmpty(); }
+
+    /** Returns the host, followed by the port unless it is the HTTPS default. */
+    QString server() const
+    {
+        return port < 0 || port == 443 ? host : host + u':' + QString::number(port);
+    }
+
+    /**
+     * Returns whether \a other is this server with only errors this check also had,
+     * each for the same certificate, so that accepting this check accepts \a other.
+     */
+    bool covers(const TlsCheck &other) const
+    {
+        if (host.isEmpty() || host.compare(other.host, Qt::CaseInsensitive) != 0 || port != other.port)
+            return false;
+#if QT_CONFIG(ssl)
+        return !other.errors.isEmpty()
+               && std::all_of(other.errors.cbegin(), other.errors.cend(),
+                              [this](const QSslError &error) { return errors.contains(error); });
+#else
+        return false;
+#endif
+    }
 };
 
 /** Result of one executed request. */
@@ -57,13 +105,17 @@ struct ResponseData
     ResponseError error {ResponseError::None};
     /** Human-readable failure text; empty without an error. */
     QString errorString;
-    /** TLS validation messages reported for the connection, also when they were ignored. */
-    QStringList tlsErrors;
-    /** Whether certificate errors were ignored, so the server was not authenticated. */
-    bool tlsErrorsIgnored {false};
+    /** Servers whose certificate had errors, in the order the request reached them. */
+    QList<TlsCheck> tlsChecks;
 
     /** Returns whether an HTTP response with a status code was received. */
     bool hasStatus() const { return statusCode > 0; }
+
+    /** Returns whether certificate errors of a server were ignored, so it was not authenticated. */
+    bool tlsErrorsIgnored() const
+    {
+        return std::any_of(tlsChecks.cbegin(), tlsChecks.cend(), [](const TlsCheck &check) { return check.ignored; });
+    }
 };
 
 #endif // RESPONSEDATA_H

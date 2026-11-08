@@ -39,6 +39,8 @@ Item {
         root.findOpen = true
         findField.forceActiveFocus()
         findField.selectAll()
+        // The body may have changed while the bar was hidden.
+        root.runFind()
     }
 
     /*! Hides the find bar and gives the focus back to the body. */
@@ -203,8 +205,9 @@ Item {
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Save response to a file")
                 onClicked: {
+                    // The folder is a URL, so a name with # or % must be encoded to stay one file name.
                     saveDialog.selectedFile = StandardPaths.writableLocation(StandardPaths.DownloadLocation)
-                                              + "/" + cppResponse.suggestedFileName()
+                                              + "/" + encodeURIComponent(cppResponse.suggestedFileName())
                     saveDialog.open()
                 }
             }

@@ -1822,6 +1822,46 @@ Item {
             compare(bar.visible, false);
         }
 
+        /*! Verifies that matches in a body with CRLF line ends select the found text. */
+        function test_findInCrlfBody() {
+            const window = createMain();
+            sendForFind(window, "/crlf");
+            const body = findChild(window.contentItem, "bodyArea");
+            tryVerify(() => body.text.length > 0);
+            cppTestHost.pressKey(window, Qt.Key_F, Qt.ControlModifier);
+            const field = findChild(window.contentItem, "findField");
+            tryCompare(field, "activeFocus", true);
+
+            field.text = "needle";
+            const count = findChild(window.contentItem, "findCount");
+            tryCompare(count, "text", "1 of 2");
+            compare(body.selectedText, "needle");
+            cppTestHost.pressKey(window, Qt.Key_Return, Qt.NoModifier);
+            compare(count.text, "2 of 2");
+            compare(body.selectedText, "needle");
+        }
+
+        /*! Verifies that the find bar counts again when it opens on a new response. */
+        function test_findReopensOnNewResponse() {
+            const window = createMain();
+            sendForFind(window, "/json/30");
+            cppTestHost.pressKey(window, Qt.Key_F, Qt.ControlModifier);
+            const field = findChild(window.contentItem, "findField");
+            tryCompare(field, "activeFocus", true);
+            field.text = "row";
+            const count = findChild(window.contentItem, "findCount");
+            tryCompare(count, "text", "1 of 30");
+            cppTestHost.pressKey(window, Qt.Key_Escape, Qt.NoModifier);
+
+            sendForFind(window, "/json/5");
+            const body = findChild(window.contentItem, "bodyArea");
+            tryVerify(() => body.text.indexOf("\"id\": 4") >= 0);
+            cppTestHost.pressKey(window, Qt.Key_F, Qt.ControlModifier);
+            tryCompare(field, "activeFocus", true);
+            tryCompare(count, "text", "1 of 5");
+            compare(body.selectedText, "row");
+        }
+
         /*! Verifies that a match far down the body is scrolled into view. */
         function test_findScrollsToMatch() {
             const window = createMain();

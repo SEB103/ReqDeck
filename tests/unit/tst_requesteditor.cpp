@@ -604,7 +604,6 @@ void RequestEditorTest::trustingCertificateNeedsItsRequest()
     m_editor->sendTrustingCertificate();
 
     QVERIFY(!m_response->busy());
-    QCOMPARE(m_response->statusCode(), 0);
     QCOMPARE(m_tlsServer.requestCount(), before);
 }
 

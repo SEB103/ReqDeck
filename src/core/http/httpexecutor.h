@@ -72,6 +72,9 @@ public:
     /** Returns the proxies a request to \a url would try, in order; NoProxy means direct. */
     QList<QNetworkProxy> proxiesFor(const QUrl &url) const;
 
+    /** Returns whether \a host is this computer: a loopback address, localhost, or a name under it. */
+    static bool isThisComputer(const QString &host);
+
     /** Maps a Qt network \a error to a ResponseError; \a abortRequested marks a user cancel. */
     static ResponseError classifyError(QNetworkReply::NetworkError error, bool abortRequested);
 
@@ -110,14 +113,12 @@ private:
     /** Measures the duration of the running request. */
     QElapsedTimer m_timer;
 
-    /** TLS messages reported for the running request. */
-    QStringList m_tlsErrors;
+    /** Certificate checks with errors of the running request, one per server. */
+    QList<TlsCheck> m_tlsChecks;
 
     /** Whether abort() was called for the running request. */
     bool m_abortRequested {false};
 
-    /** Whether certificate errors were ignored for the running request. */
-    bool m_tlsErrorsIgnored {false};
 
     /** Memory limit of a body. */
     qint64 m_bodyMemoryLimit {kDefaultBodyMemoryLimit};

@@ -372,6 +372,13 @@ void MockHttpServer::route(QTcpSocket *socket, const Request &request)
         return;
     }
 
+    if (path == "/crlf") {
+        // Windows line ends: the text view keeps one separator for each.
+        writeResponse(socket, 200, {{"Content-Type", "text/plain"}},
+                      "first\r\nneedle one\r\nneedle two\r\n", head);
+        return;
+    }
+
     if (path.startsWith("/lines/")) {
         QByteArray body = "[0";
         const int rows = path.mid(7).toInt();

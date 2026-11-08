@@ -105,6 +105,12 @@ private slots:
     void saveSpilledBodyCopiesFile();
     /*! Verifies that a failed save says where and why, and keeps no partial file. */
     void saveFailsWithMessage();
+    /*! Verifies that each server is named with its own certificate outcome. */
+    void certificateOutcomesNameTheirServer();
+    /*! Verifies that saving needs body data, not only a size. */
+    void saveNeedsHeldData();
+    /*! Verifies that only local files are written. */
+    void saveRejectsNonLocalUrl();
     /*! Provides URLs and kinds of body with the file name they suggest. */
     void suggestedFileNameFollowsUrlAndKind_data();
     /*! Verifies the suggested file name. */
@@ -322,12 +328,27 @@ void ResponseViewTest::binaryBodyShowsNoticeOnly()
     QVERIFY(!view.property("canPretty").toBool());
 }
 
+/*!
+ * \internal
+ * \brief Returns the certificate outcome of \a host at \a port with \a messages.
+ */
+static TlsCheck tlsCheck(const QString &host, int port, const QStringList &messages, bool ignored)
+{
+    TlsCheck check;
+    check.host = host;
+    check.port = port;
+    check.messages = messages;
+    check.ignored = ignored;
+    return check;
+}
+
 void ResponseViewTest::transportErrorShowsMessageAndTlsDetails()
 {
     ResponseData response;
     response.error = ResponseError::Tls;
     response.errorString = QStringLiteral("Handshake failed");
-    response.tlsErrors = {QStringLiteral("Expired"), QStringLiteral("Wrong host")};
+    response.tlsChecks = {tlsCheck(QStringLiteral("dev.local"), 443,
+                                   {QStringLiteral("Expired"), QStringLiteral("Wrong host")}, false)};
 
     ResponseView view;
     view.setResponse(response, {});
@@ -387,6 +408,10 @@ void ResponseViewTest::findIsCaseInsensitive()
     const QVariantList matches = view.findInBody(QStringLiteral("\"a\""));
     QCOMPARE(matches.size(), 1);
     QCOMPARE(shown.mid(matches.first().toInt(), 3), QStringLiteral("\"a\""));
+
+    // The text view keeps one separator for CRLF, so positions count it once.
+    view.setResponse(makeResponse("a\r\nb\r\nb", QStringLiteral("text/plain")), {});
+    QCOMPARE(view.findInBody(QStringLiteral("b")), QVariantList({2, 4}));
 }
 
 void ResponseViewTest::findStopsAtLimit()
@@ -453,6 +478,47 @@ void ResponseViewTest::saveFailsWithMessage()
     QVERIFY(!QFile::exists(path));
 }
 
+void ResponseViewTest::certificateOutcomesNameTheirServer()
+{
+    // A trusted first server redirected to a second one whose certificate failed.
+    ResponseData response;
+    response.error = ResponseError::Tls;
+    response.errorString = QStringLiteral("Handshake failed");
+    response.tlsChecks = {tlsCheck(QStringLiteral("dev.local"), 8443, {QStringLiteral("Self-signed")}, true),
+                          tlsCheck(QStringLiteral("other.local"), 443, {QStringLiteral("Expired")}, false)};
+    response.finalUrl = QUrl(QStringLiteral("https://other.local/items"));
+    ResponseView view;
+
+    view.setResponse(response, {});
+
+    QCOMPARE(view.property("warningText").toString(),
+             QStringLiteral("The certificate of dev.local:8443 was not checked: Self-signed"));
+    QCOMPARE(view.property("errorText").toString(), QStringLiteral("Handshake failed\nother.local: Expired"));
+    QCOMPARE(view.property("canTrustCertificate").toBool(), false);
+}
+
+void ResponseViewTest::saveNeedsHeldData()
+{
+    ResponseData response = makeResponse(QByteArray(), QStringLiteral("text/plain"));
+    response.sizeBytes = 1000;
+    ResponseView view;
+    view.setResponse(response, {});
+
+    QCOMPARE(view.property("canSaveBody").toBool(), false);
+}
+
+void ResponseViewTest::saveRejectsNonLocalUrl()
+{
+    ResponseView view;
+    view.setResponse(makeResponse("{}", QStringLiteral("application/json")), {});
+    QSignalSpy failed(&view, &ResponseView::bodySaveFailed);
+
+    QVERIFY(!view.saveBody(QUrl(QStringLiteral("https://example.com/r.json"))));
+    QVERIFY(!view.saveBody(QUrl(QStringLiteral("r.json"))));
+
+    QCOMPARE(failed.count(), 2);
+}
+
 void ResponseViewTest::suggestedFileNameFollowsUrlAndKind_data()
 {
     QTest::addColumn<QString>("url");
@@ -472,6 +538,11 @@ void ResponseViewTest::suggestedFileNameFollowsUrlAndKind_data()
     QTest::newRow("binary") << "https://x/blob" << QByteArray("\0\1\2", 3) << "application/octet-stream"
                             << "blob.bin";
     QTest::newRow("unsafe") << "https://x/a%3Fb%3Ac" << QByteArray("hi") << "text/plain" << "a_b_c.txt";
+    QTest::newRow("reserved") << "https://x/con" << QByteArray("hi") << "text/plain" << "con_.txt";
+    QTest::newRow("reserved with extension") << "https://x/NUL.json" << QByteArray("{}") << "application/json"
+                                             << "NUL_.json";
+    QTest::newRow("reserved port") << "https://x/com1.txt" << QByteArray("hi") << "text/plain" << "com1_.txt";
+    QTest::newRow("not reserved") << "https://x/console" << QByteArray("hi") << "text/plain" << "console.txt";
 }
 
 void ResponseViewTest::suggestedFileNameFollowsUrlAndKind()
@@ -514,7 +585,8 @@ void ResponseViewTest::certificateCanBeTrustedAfterTlsFailure()
     ResponseData failed;
     failed.error = ResponseError::Tls;
     failed.errorString = QStringLiteral("SSL handshake failed");
-    failed.tlsErrors = {QStringLiteral("The certificate is self-signed, and untrusted")};
+    failed.tlsChecks = {tlsCheck(QStringLiteral("dev.local"), 8443,
+                                 {QStringLiteral("The certificate is self-signed, and untrusted")}, false)};
     failed.finalUrl = QUrl(QStringLiteral("https://dev.local:8443/items"));
     ResponseView view;
 
@@ -528,7 +600,7 @@ void ResponseViewTest::certificateCanBeTrustedAfterTlsFailure()
     QCOMPARE(view.property("canTrustCertificate").toBool(), false);
 
     ResponseData noMessages = failed;
-    noMessages.tlsErrors.clear();
+    noMessages.tlsChecks.clear();
     view.setResponse(noMessages, {});
     QCOMPARE(view.property("canTrustCertificate").toBool(), false);
 
@@ -539,8 +611,8 @@ void ResponseViewTest::certificateCanBeTrustedAfterTlsFailure()
 void ResponseViewTest::ignoredCertificateBecomesWarning()
 {
     ResponseData response = makeResponse("{}", QStringLiteral("application/json"));
-    response.tlsErrorsIgnored = true;
-    response.tlsErrors = {QStringLiteral("The certificate is self-signed, and untrusted")};
+    response.tlsChecks = {tlsCheck(QStringLiteral("dev.local"), 443,
+                                   {QStringLiteral("The certificate is self-signed, and untrusted")}, true)};
     response.finalUrl = QUrl(QStringLiteral("https://dev.local/items"));
     ResponseView view;
 

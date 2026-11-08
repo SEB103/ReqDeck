@@ -522,7 +522,7 @@
         },
         "response.save": {
             "title": "Save the response",
-            "what": "Writes the answer to a file, exactly as the server sent it.",
+            "what": "Writes the answer to a file as it was received, without the Pretty formatting. A compressed answer is saved unpacked.",
             "why": "To keep a download, open the answer in another program, or get all of a very large one.",
             "example": "users.json in your Downloads folder.",
             "next": "Choose where to save; a message says where the file went.",

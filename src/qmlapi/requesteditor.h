@@ -268,8 +268,8 @@ private:
     /** Shows the working copy in the table models and notifies QML. */
     void showRequest();
 
-    /** Builds and sends the open request; \a tlsExceptionHost skips the certificate check there. */
-    void sendBuilt(const QString &tlsExceptionHost);
+    /** Builds and sends the open request; \a tlsException is a failed check it accepts. */
+    void sendBuilt(const TlsCheck &tlsException);
 
     /** Passes the result of the running request to the response view. */
     void showResponse(const ResponseData &response);

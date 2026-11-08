@@ -110,9 +110,7 @@ class SystemProxyFactory final : public QNetworkProxyFactory
 public:
     QList<QNetworkProxy> queryProxy(const QNetworkProxyQuery &query) override
     {
-        const QString host = query.peerHostName();
-        const QHostAddress address(host);
-        if (host.compare(QLatin1StringView("localhost"), Qt::CaseInsensitive) == 0 || address.isLoopback())
+        if (HttpExecutor::isThisComputer(query.peerHostName()))
             return {QNetworkProxy(QNetworkProxy::NoProxy)};
         return QNetworkProxyFactory::systemProxyForQuery(query);
     }
@@ -175,6 +173,25 @@ QList<QNetworkProxy> HttpExecutor::proxiesFor(const QUrl &url) const
 }
 
 /*!
+ * \brief Returns whether \a host is this computer.
+ *
+ * Besides loopback addresses, localhost and every name under it count, with or
+ * without the final dot of a fully qualified name: RFC 6761 reserves them for
+ * this computer, and browsers resolve them so.
+ * \param host A host name or address, as in a URL.
+ */
+bool HttpExecutor::isThisComputer(const QString &host)
+{
+    if (QHostAddress(host).isLoopback())
+        return true;
+    QStringView name(host);
+    if (name.endsWith(u'.'))
+        name.chop(1);
+    return name.compare(QLatin1StringView("localhost"), Qt::CaseInsensitive) == 0
+           || name.endsWith(QLatin1StringView(".localhost"), Qt::CaseInsensitive);
+}
+
+/*!
  * \brief Cancels a running request without emitting finished() or busyChanged().
  *
  * The reply is disconnected before it is aborted, because QNetworkReply::abort()
@@ -223,8 +240,9 @@ void HttpExecutor::setIgnoreTlsErrors(bool ignore)
  *
  * Redirects are followed by the executor according to
  * BuiltRequest::followRedirects (see handleFinished()). Certificate errors
- * are ignored only for the host in BuiltRequest::tlsExceptionHost, so a
- * redirect to another host with a bad certificate still fails. Do not delete the
+ * are ignored only where BuiltRequest::tlsException covers them: the same host
+ * and port, and no error it did not have, so a redirect to another server or a
+ * changed certificate still fails. Do not delete the
  * executor from a slot connected to busyChanged() or finished(); use
  * deleteLater() instead.
  * \param request A request produced by RequestBuilder.
@@ -239,8 +257,7 @@ bool HttpExecutor::send(const BuiltRequest &request)
     m_current = request;
     m_redirectCount = 0;
     m_abortRequested = false;
-    m_tlsErrors.clear();
-    m_tlsErrorsIgnored = false;
+    m_tlsChecks.clear();
     m_timer.start();
     startReply();
 
@@ -313,19 +330,20 @@ void HttpExecutor::startReply()
 #if QT_CONFIG(ssl)
     QNetworkReply *reply = m_reply;
     connect(reply, &QNetworkReply::sslErrors, this, [this, reply](const QList<QSslError> &errors) {
-        // The messages are kept also when they are ignored: the response must
-        // say that the server was not authenticated, and why.
+        // The check is kept also when it is ignored: the response must say
+        // which server was not authenticated, and why.
+        TlsCheck check;
+        check.host = reply->url().host();
+        check.port = reply->url().port(443);
+        check.errors = errors;
         for (const QSslError &error : errors) {
-            if (!m_tlsErrors.contains(error.errorString()))
-                m_tlsErrors.append(error.errorString());
+            if (!check.messages.contains(error.errorString()))
+                check.messages.append(error.errorString());
         }
-        const QString &exception = m_current.tlsExceptionHost;
-        const bool excepted = !exception.isEmpty()
-                              && reply->url().host().compare(exception, Qt::CaseInsensitive) == 0;
-        if (m_ignoreTlsErrors || excepted) {
-            m_tlsErrorsIgnored = true;
+        check.ignored = m_ignoreTlsErrors || m_current.tlsException.covers(check);
+        if (check.ignored)
             reply->ignoreSslErrors();
-        }
+        m_tlsChecks.append(std::move(check));
     });
 #endif
 }
@@ -452,8 +470,10 @@ void HttpExecutor::handleFinished()
     if (!m_bodyError.isEmpty()) {
         response.error = ResponseError::Network;
         response.errorString = QStringLiteral("The response could not be stored on disk: %1").arg(m_bodyError);
+        // Nothing of the body is held, so nothing of it may look saveable.
         response.body.clear();
         response.bodyFile.reset();
+        response.sizeBytes = 0;
     }
 
     if (response.error == ResponseError::None && m_current.followRedirects
@@ -481,11 +501,10 @@ void HttpExecutor::handleFinished()
 
     if (response.error != ResponseError::None && response.errorString.isEmpty())
         response.errorString = reply->errorString();
-    response.tlsErrors = std::exchange(m_tlsErrors, {});
-    response.tlsErrorsIgnored = std::exchange(m_tlsErrorsIgnored, false);
+    response.tlsChecks = std::exchange(m_tlsChecks, {});
     // An accepted certificate must not outlive its request: a connection kept
     // alive would let the next request through without any check.
-    if (response.tlsErrorsIgnored)
+    if (response.tlsErrorsIgnored())
         m_network->clearConnectionCache();
 
     emit busyChanged(false);

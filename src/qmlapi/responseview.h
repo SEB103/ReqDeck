@@ -95,7 +95,7 @@ class ResponseView : public QObject
     /** Whether the request failed only because the server's certificate is not trusted. */
     Q_PROPERTY(bool canTrustCertificate READ canTrustCertificate NOTIFY responseChanged)
 
-    /** Host whose certificate failed or was not checked; empty without a TLS outcome. */
+    /** Host of the server whose certificate failed last; empty without one. */
     Q_PROPERTY(QString certificateHost READ certificateHost NOTIFY responseChanged)
 
     /** Whether formatted text is preferred; stays set across responses. */
@@ -192,8 +192,11 @@ public:
     /** Returns whether the request failed only because the certificate is not trusted. */
     bool canTrustCertificate() const;
 
-    /** Returns the host of the certificate. */
+    /** Returns the host of the certificate that failed last. */
     QString certificateHost() const;
+
+    /** Returns the failed check a resend may accept, or an empty one when there is no such offer. */
+    TlsCheck certificateFailure() const;
 
     /** Returns whether formatted text is preferred. */
     bool pretty() const;

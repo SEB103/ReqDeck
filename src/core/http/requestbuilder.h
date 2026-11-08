@@ -10,6 +10,7 @@
 #include <QStringList>
 
 #include "core/http/requestspec.h"
+#include "core/http/responsedata.h"
 #include "core/http/variableresolver.h"
 
 /** Network request produced from a RequestSpec, ready for HttpExecutor. */
@@ -31,8 +32,8 @@ struct BuiltRequest
     bool followRedirects {true};
     /** Headers carrying credentials; removed when a redirect leaves the origin. */
     QList<QByteArray> credentialHeaders;
-    /** Host whose certificate errors this request ignores; empty for none. Never stored. */
-    QString tlsExceptionHost;
+    /** A failed check whose server and errors this request accepts; empty for none. Never stored. */
+    TlsCheck tlsException;
 };
 
 /** Turns a RequestSpec plus environment variables into a BuiltRequest. */
