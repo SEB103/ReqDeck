@@ -1023,6 +1023,12 @@ Item {
             compare(cppWorkspaceManager.dirty, false);
         }
 
+        /*! Verifies that a long duration is shown in whole milliseconds, not in scientific notation. */
+        function test_longDurationIsPlainNumber() {
+            const pane = createHistory();
+            compare(pane.resultText(200, 1234567, ""), "200 · 1234567 ms");
+        }
+
         /*! Verifies that clearing waits for a confirmation. */
         function test_clearAsksFirst() {
             cppTestHost.addHistory("http://x", 2);
