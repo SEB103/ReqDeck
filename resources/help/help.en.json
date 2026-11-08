@@ -567,6 +567,14 @@
             "example": "post orders finds POST requests to an address with orders.",
             "next": "Press the Down arrow to move into the list, then Enter to make a request of the entry.",
             "chapter": "history"
+        },
+        "dialog.missingValues": {
+            "title": "Values needed",
+            "what": "Before sending, ReqDeck asks for variables the request uses but the active environment does not have.",
+            "why": "So no request leaves with a literal {{name}} in it.",
+            "example": "{{token}} has no value: type it once and press OK.",
+            "next": "Tick Keep to save the values in the active environment; otherwise they count for this send only.",
+            "chapter": "variables"
         }
     },
     "chapters": [

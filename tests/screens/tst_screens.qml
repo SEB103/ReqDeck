@@ -985,14 +985,14 @@ Item {
             cppEnvironments.activeIndex = 0;
             cppRequestEditor.url = "{{baseUrl}}";
             cppRequestEditor.authType = 1; // AuthType::Basic
-            cppRequestEditor.authUsername = "{{user}}";
+            cppRequestEditor.authUsername = "{{baseUrl}}";
             cppRequestEditor.authPassword = "literal";
             sendAndWait(host);
 
             openHistoryRow(createHistory(), 0);
 
             compare(cppRequestEditor.url, "{{baseUrl}}");
-            compare(cppRequestEditor.authUsername, "{{user}}");
+            compare(cppRequestEditor.authUsername, "{{baseUrl}}");
             compare(cppRequestEditor.authPassword, "");
         }
 
@@ -2700,11 +2700,12 @@ Item {
 
         /*! Verifies that a request that cannot be built appears in the pane. */
         function test_buildErrorShowsInPane() {
-            const host = createSender("{{nope}}/x");
+            // An unknown variable is asked for before sending, so an invalid address shows the error.
+            const host = createSender("http://[::1/x");
 
             sendAndWait(host);
 
-            verify(findChild(host.response, "errorLabel").text.indexOf("{{nope}}") >= 0);
+            verify(findChild(host.response, "errorLabel").text.indexOf("Invalid URL") >= 0);
         }
 
         /*! Verifies the switch between formatted and original text. */
@@ -2933,6 +2934,44 @@ Item {
             compare(password.visible, false);
             compare(findChild(pane, "tokenField").visible, true);
             compare(findChild(pane, "tokenField").echoMode, TextInput.Password);
+        }
+
+        /*! Verifies that Send with an unknown variable asks for it and uses it for this send only. */
+        function test_missingValueOnlyForThisSend() {
+            const pane = createRequest("r1");
+            cppRequestEditor.url = "{{target}}";
+            const dialog = findChild(pane, "missingValuesDialog");
+            const before = cppEnvironments.activeVariableNames;
+
+            pane.trySend();
+
+            tryCompare(dialog, "opened", true);
+            compare(dialog.names, ["target"]);
+            const field = findChild(dialog.contentItem, "missingValueField");
+            field.text = cppTestHost.serverUrl("/status/201");
+            dialog.accept();
+
+            tryCompare(cppResponse, "statusCode", 201, 10000);
+            compare(cppEnvironments.activeVariableNames, before);
+            compare(cppRequestEditor.url, "{{target}}");
+        }
+
+        /*! Verifies that Keep stores the value in the active environment. */
+        function test_keepStoresInActiveEnvironment() {
+            const pane = createRequest("r1");
+            cppEnvironments.activeIndex = 0;
+            cppRequestEditor.url = "{{target}}";
+            const dialog = findChild(pane, "missingValuesDialog");
+
+            pane.trySend();
+
+            tryCompare(dialog, "opened", true);
+            findChild(dialog.contentItem, "missingValueField").text = cppTestHost.serverUrl("/status/202");
+            findChild(dialog.contentItem, "keepValuesBox").checked = true;
+            dialog.accept();
+
+            tryCompare(cppResponse, "statusCode", 202, 10000);
+            verify(cppEnvironments.activeVariableNames.indexOf("target") >= 0);
         }
 
         /*! Verifies that the history search narrows the list and an entry still opens. */

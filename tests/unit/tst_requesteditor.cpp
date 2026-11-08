@@ -184,6 +184,12 @@ private slots:
     /*! Verifies that an unknown variable elsewhere sends and warns. */
     void unresolvedHeaderVariableSendsAndWarns();
 
+    /*! Verifies the names a send would leave unresolved, each once, in order. */
+    void missingVariablesListsUnresolved();
+
+    /*! Verifies that one-time values resolve the request and are not stored. */
+    void sendWithValuesUsesThemOnce();
+
     /*! Verifies that nothing is sent without a request. */
     void sendWithoutRequestDoesNothing();
 
@@ -845,6 +851,34 @@ void RequestEditorTest::unresolvedHeaderVariableSendsAndWarns()
     QVERIFY(waitForResponse(*m_response));
     QCOMPARE(m_response->statusCode(), 200);
     QCOMPARE(m_response->warningText(), QStringLiteral("Unresolved variables: {{missing}}"));
+}
+
+void RequestEditorTest::missingVariablesListsUnresolved()
+{
+    openRequestAt(QStringLiteral("/status/200"));
+    QCOMPARE(m_editor->missingVariables(), QStringList());
+    m_editor->setProperty("url", QStringLiteral("{{host}}/x/{{host}}"));
+    m_editor->headersModel()->addRow();
+    KeyValueModel *headers = m_editor->headersModel();
+    headers->setData(headers->index(0), QStringLiteral("X-A"), KeyValueModel::KeyRole);
+    headers->setData(headers->index(0), QStringLiteral("{{token}}"), KeyValueModel::ValueRole);
+
+    QCOMPARE(m_editor->missingVariables(), QStringList({QStringLiteral("host"), QStringLiteral("token")}));
+}
+
+void RequestEditorTest::sendWithValuesUsesThemOnce()
+{
+    openRequestAt(QStringLiteral("/status/200"));
+    m_editor->setProperty("url", QStringLiteral("{{base}}/status/203"));
+    const WorkspaceData before = m_manager->workspaceData();
+
+    m_editor->sendWithValues({{QStringLiteral("base"), m_server.url(QString()).toString()}});
+
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_response->statusCode(), 203);
+    QVERIFY(m_response->warningText().isEmpty());
+    QCOMPARE(m_manager->workspaceData().environments, before.environments);
+    QCOMPARE(m_editor->missingVariables(), QStringList({QStringLiteral("base")}));
 }
 
 void RequestEditorTest::sendWithoutRequestDoesNothing()

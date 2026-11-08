@@ -32,9 +32,21 @@ Item {
     function sendNow() {
         const focused = root.Window.activeFocusItem
         root.forceActiveFocus(Qt.ShortcutFocusReason)
-        cppRequestEditor.send()
+        root.trySend()
         if (focused)
             focused.forceActiveFocus(Qt.ShortcutFocusReason)
+    }
+
+    /*!
+        Sends the open request, or first asks for the values of variables that do
+        not resolve, so nothing leaves with a literal {{name}}.
+    */
+    function trySend() {
+        const missing = cppRequestEditor.missingVariables()
+        if (missing.length > 0)
+            missingValuesDialog.ask(missing)
+        else
+            cppRequestEditor.send()
     }
 
     Binding {
@@ -179,7 +191,7 @@ Item {
                     if (cppRequestEditor.busy)
                         cppRequestEditor.cancel()
                     else
-                        cppRequestEditor.send()
+                        root.trySend()
                 }
             }
         }
@@ -581,6 +593,78 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                 }
+            }
+        }
+    }
+
+    Dialog {
+        id: missingValuesDialog
+
+        /*! Topic of the F1 help. */
+        property string helpTopic: "dialog.missingValues"
+
+        /*! Names of the variables to ask for. */
+        property var names: []
+
+        /*! Opens the dialog for \a list of variable names. */
+        function ask(list) {
+            missingValuesDialog.names = list
+            keepBox.checked = false
+            missingValuesDialog.open()
+        }
+
+        objectName: "missingValuesDialog"
+        anchors.centerIn: Overlay.overlay
+        width: 460
+        modal: true
+        Material.roundedScale: Material.SmallScale
+        title: qsTr("Values needed")
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        onAccepted: {
+            const values = {}
+            for (let i = 0; i < valueFields.count; ++i)
+                values[missingValuesDialog.names[i]] = valueFields.itemAt(i).text
+            if (keepBox.checked) {
+                for (const name of missingValuesDialog.names)
+                    cppEnvironments.setVariable(name, values[name])
+                cppRequestEditor.send()
+            } else {
+                cppRequestEditor.sendWithValues(values)
+            }
+        }
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 8
+
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: qsTr("These variables have no value in the active environment. The values are used for this send.")
+            }
+
+            Repeater {
+                id: valueFields
+
+                model: missingValuesDialog.names
+
+                delegate: TextField {
+                    required property string modelData
+
+                    objectName: "missingValueField"
+                    Layout.fillWidth: true
+                    placeholderText: "{{" + modelData + "}}"
+                    selectByMouse: true
+                    Accessible.name: modelData
+                }
+            }
+
+            CheckBox {
+                id: keepBox
+
+                objectName: "keepValuesBox"
+                text: qsTr("Keep them in the active environment")
             }
         }
     }

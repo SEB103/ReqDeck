@@ -298,9 +298,75 @@ void EnvironmentModel::removeEnvironment(int row)
  */
 QString EnvironmentModel::addSecretVariable(const QString &baseKey, const QString &value)
 {
-    if (!m_manager->hasActiveWorkspace() || baseKey.isEmpty())
+    if (baseKey.isEmpty())
+        return {};
+    const int row = activeRowForNewVariable();
+    if (row < 0)
         return {};
 
+    WorkspaceData data = m_manager->workspaceData();
+    QList<EnvironmentVariable> &variables = data.environments[row].variables;
+    const auto taken = [&variables](const QString &key) {
+        return std::any_of(variables.cbegin(), variables.cend(),
+                           [&key](const EnvironmentVariable &variable) { return variable.key == key; });
+    };
+    QString key = baseKey;
+    for (int number = 2; taken(key); ++number)
+        key = baseKey + QString::number(number);
+    variables.append({key, value, true, true});
+    m_manager->updateWorkspaceData(data);
+
+    if (row == m_editedRow)
+        showInEditor(row);
+    refreshHighlighter();
+    return key;
+}
+
+/*!
+ * \brief Sets the plain variable \a key of the active environment to \a value.
+ *
+ * Used to keep a value the user entered for a missing variable. The first row
+ * with the key changes; without one, an enabled plain variable is added.
+ * \param key The variable.
+ * \param value Its value.
+ */
+void EnvironmentModel::setVariable(const QString &key, const QString &value)
+{
+    if (key.isEmpty())
+        return;
+    const int row = activeRowForNewVariable();
+    if (row < 0)
+        return;
+
+    WorkspaceData data = m_manager->workspaceData();
+    QList<EnvironmentVariable> &variables = data.environments[row].variables;
+    const auto existing = std::find_if(variables.begin(), variables.end(),
+                                       [&key](const EnvironmentVariable &variable) { return variable.key == key; });
+    if (existing != variables.end()) {
+        existing->value = value;
+        existing->enabled = true;
+    } else {
+        variables.append({key, value, true, false});
+    }
+    m_manager->updateWorkspaceData(data);
+
+    if (row == m_editedRow)
+        showInEditor(row);
+    refreshHighlighter();
+}
+
+/*!
+ * \internal
+ * \brief Returns the row of the active environment for a new variable.
+ *
+ * Without an active environment, an existing one named "Default" or else a new
+ * one is made active, so a reference to the variable resolves at once.
+ * \return The row, or -1 without a workspace.
+ */
+int EnvironmentModel::activeRowForNewVariable()
+{
+    if (!m_manager->hasActiveWorkspace())
+        return -1;
     int row = activeIndex();
     if (row < 0) {
         const QString name = QStringLiteral("Default");
@@ -320,23 +386,7 @@ QString EnvironmentModel::addSecretVariable(const QString &baseKey, const QStrin
         }
         setActiveIndex(row);
     }
-
-    WorkspaceData data = m_manager->workspaceData();
-    QList<EnvironmentVariable> &variables = data.environments[row].variables;
-    const auto taken = [&variables](const QString &key) {
-        return std::any_of(variables.cbegin(), variables.cend(),
-                           [&key](const EnvironmentVariable &variable) { return variable.key == key; });
-    };
-    QString key = baseKey;
-    for (int number = 2; taken(key); ++number)
-        key = baseKey + QString::number(number);
-    variables.append({key, value, true, true});
-    m_manager->updateWorkspaceData(data);
-
-    if (row == m_editedRow)
-        showInEditor(row);
-    refreshHighlighter();
-    return key;
+    return row;
 }
 
 /*!

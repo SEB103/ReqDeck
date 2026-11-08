@@ -132,6 +132,9 @@ private slots:
     /*! Verifies the names that resolve in the active environment, and their signal. */
     void activeVariableNamesFollowActive();
 
+    /*! Verifies that setVariable() replaces a value or adds a plain variable. */
+    void setVariableAddsOrReplaces();
+
     /*! Verifies that a secret variable goes to the active environment under a free name. */
     void addSecretVariableToActive();
 
@@ -198,6 +201,21 @@ void EnvironmentModelTest::activeVariableNamesFollowActive()
 
     QCOMPARE(m_model->property("activeVariableNames").toStringList(), QStringList({QStringLiteral("baseUrl")}));
     QVERIFY(changed.count() > 0);
+}
+
+void EnvironmentModelTest::setVariableAddsOrReplaces()
+{
+    m_model->setActiveIndex(0);
+
+    m_model->setVariable(QStringLiteral("baseUrl"), QStringLiteral("http://other"));
+    m_model->setVariable(QStringLiteral("page"), QStringLiteral("2"));
+
+    const QList<EnvironmentVariable> &variables = stored().at(0).variables;
+    QCOMPARE(variables.size(), 2);
+    QCOMPARE(variables.at(0).value, QStringLiteral("http://other"));
+    QCOMPARE(variables.at(1).key, QStringLiteral("page"));
+    QVERIFY(!variables.at(1).secret);
+    QVERIFY(variables.at(1).enabled);
 }
 
 void EnvironmentModelTest::addSecretVariableToActive()

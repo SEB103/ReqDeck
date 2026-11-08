@@ -354,6 +354,47 @@ void RequestEditor::send()
 }
 
 /*!
+ * \brief Returns the variables the open request references that do not resolve.
+ *
+ * The application asks for them before sending, so a request never leaves with
+ * a literal {{name}} the user did not see.
+ * \return The names in the order the builder meets them, each once.
+ */
+QStringList RequestEditor::missingVariables() const
+{
+    if (!hasRequest())
+        return {};
+    const VariableResolver variables =
+        VariableResolver::fromKeyValues(activeEnvironmentVariables(m_manager->workspaceData()));
+    const BuiltRequest built = RequestBuilder::build(m_request, variables, m_builderOptions);
+    QStringList names = built.unresolvedVariables;
+    if (!built.ok) {
+        // The builder stops at a URL it cannot use; the other fields are checked
+        // with a stand-in address, so all names are asked for at once.
+        RequestSpec rest = m_request;
+        rest.url = QStringLiteral("http://placeholder.invalid/");
+        names += RequestBuilder::build(rest, variables, m_builderOptions).unresolvedVariables;
+    }
+    names.removeDuplicates();
+    return names;
+}
+
+/*!
+ * \brief Sends the open request with \a values for variables it lacks.
+ *
+ * The values count for this send only; nothing is stored, and the response
+ * shows no warning for them.
+ * \param values Variable names mapped to their values.
+ */
+void RequestEditor::sendWithValues(const QVariantMap &values)
+{
+    QList<KeyValue> extra;
+    for (auto it = values.cbegin(); it != values.cend(); ++it)
+        extra.append({it.key(), it.value().toString(), true});
+    sendBuilt({}, extra);
+}
+
+/*!
  * \brief Sends the open request again, trusting the certificate that failed.
  *
  * Offered after a response failed only its certificate check. The exception
@@ -373,13 +414,13 @@ void RequestEditor::sendTrustingCertificate()
  * \brief Builds the open request and sends it.
  * \param tlsException A failed certificate check the request accepts; empty for none.
  */
-void RequestEditor::sendBuilt(const TlsCheck &tlsException)
+void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue> &extraVariables)
 {
     if (!canSend())
         return;
 
-    const VariableResolver variables =
-        VariableResolver::fromKeyValues(activeEnvironmentVariables(m_manager->workspaceData()));
+    const VariableResolver variables = VariableResolver::fromKeyValues(
+        activeEnvironmentVariables(m_manager->workspaceData()) + extraVariables);
     BuiltRequest built = RequestBuilder::build(m_request, variables, m_builderOptions);
     built.tlsException = tlsException;
 

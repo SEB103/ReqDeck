@@ -329,7 +329,7 @@ ApplicationWindow {
         function onSendRequested() {
             // A field being edited commits when it loses the focus.
             mainWindow.contentItem.forceActiveFocus()
-            cppRequestEditor.send()
+            mainScreen.requestPane.trySend()
         }
 
         function onCancelRequested() {

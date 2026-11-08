@@ -38,6 +38,9 @@ Pane {
     /*! Exposes the history pane so Main can show requests made from it. */
     property alias historyPane: historyPane
 
+    /*! The request editor pane. */
+    property alias requestPane: requestPane
+
     /*! Whether child controls should follow the dark theme state. */
     property bool darkTheme: false
 
@@ -234,6 +237,8 @@ Pane {
                 title: qsTr("Request")
 
                 RequestPane {
+                    id: requestPane
+
                     objectName: "requestPane"
 
                     anchors.fill: parent

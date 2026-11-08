@@ -233,6 +233,12 @@ public:
     /** Sends the open request; does nothing without one or while one is running. */
     Q_INVOKABLE void send();
 
+    /** Returns the variables the open request references that do not resolve, each once. */
+    Q_INVOKABLE QStringList missingVariables() const;
+
+    /** Sends the open request with \a values added to the active variables for this send only. */
+    Q_INVOKABLE void sendWithValues(const QVariantMap &values);
+
     /**
      * Sends the open request again without checking the certificate of the host
      * whose check failed for its last response; does nothing otherwise.
@@ -285,7 +291,7 @@ private:
     void showRequest();
 
     /** Builds and sends the open request; \a tlsException is a failed check it accepts. */
-    void sendBuilt(const TlsCheck &tlsException);
+    void sendBuilt(const TlsCheck &tlsException, const QList<KeyValue> &extraVariables = {});
 
     /** Passes the result of the running request to the response view. */
     void showResponse(const ResponseData &response);
