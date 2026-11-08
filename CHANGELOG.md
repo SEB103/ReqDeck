@@ -80,6 +80,18 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
   and the errors it showed, with a warning in the response and an entry in the
   log.
 - Requests use the proxy configured in Windows, except to this computer.
+- Secret values are encrypted for the Windows user; older plain files are
+  encrypted when the workspace opens. On another computer the values are asked
+  for again, and saving still works.
+- A password, token, or key typed into a request can be moved into a secret
+  variable with one click.
+- Before a file format changes, ReqDeck keeps a copy of the workspace and its
+  secrets; File > Restore Previous Copy puts it back.
+- Copy as cURL adds -L and -m to match ReqDeck's redirect and timeout settings.
 
 ### Fixed
 - Responses over HTTP/2 show the name of their status, for example 200 OK.
+- Two ReqDeck windows no longer overwrite each other's history; every stored
+  history value is limited in length.
+- Saving a workspace without changes leaves its files untouched.
+- "Invalid URL" shows the URL as typed, without variable values.

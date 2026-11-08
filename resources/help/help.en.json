@@ -542,7 +542,7 @@
             "why": "If something looks wrong after an update, you get your data back as it was.",
             "example": "File > Restore Previous Copy… after secrets were moved to the encrypted format.",
             "next": "Choose Yes to restore. Changes made since the copy, saved or not, are lost.",
-            "chapter": "troubleshooting"
+            "chapter": "data"
         },
         "request.moveToSecret": {
             "title": "Move to a secret",
@@ -767,6 +767,28 @@
                     "type": "shot",
                     "file": "history.png",
                     "caption": "History with the status of each request."
+                }
+            ]
+        },
+        {
+            "id": "data",
+            "title": "Your data",
+            "blocks": [
+                {
+                    "type": "p",
+                    "text": "Your requests live in the workspace file you chose, a .reqdeck file you may copy or share. Secret values of environments are not in it: ReqDeck keeps them encrypted for your Windows user on this computer."
+                },
+                {
+                    "type": "p",
+                    "text": "On another computer, or under another Windows user, the secret values are empty. ReqDeck says so when the workspace opens. Enter them again and save."
+                },
+                {
+                    "type": "p",
+                    "text": "Before a new version changes the format of these files, ReqDeck keeps a copy of the workspace file and its secret values. File > Restore Previous Copy puts them back; changes made since then are lost."
+                },
+                {
+                    "type": "tip",
+                    "text": "Two ReqDeck windows can run at once: both add to the same history."
                 }
             ]
         },
