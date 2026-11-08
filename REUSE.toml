@@ -34,6 +34,7 @@ path = [
     "resources/qtquickcontrols2.conf",
     "resources/images/app/**",
     "resources/samples/**",
+    "resources/help/**",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Copyright (C) 2026 ReqDeck Project"

@@ -364,6 +364,7 @@ qt_add_executable(tst_helplibrary
 
 target_compile_definitions(tst_helplibrary
     PRIVATE REQDECK_HELP_DIR="${CMAKE_SOURCE_DIR}/resources/help"
+    PRIVATE REQDECK_GUIDE_SHOTS_DIR="${CMAKE_SOURCE_DIR}/packaging/help/shots"
 )
 
 target_link_libraries(tst_helplibrary
@@ -418,7 +419,20 @@ target_sources(tst_screens
 
 target_compile_definitions(tst_screens
     PRIVATE REQDECK_HELP_DIR="${CMAKE_SOURCE_DIR}/resources/help"
+    PRIVATE REQDECK_SAMPLES_FILE="${CMAKE_SOURCE_DIR}/resources/samples/Samples.reqdeck"
     PRIVATE QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/screens"
+)
+
+# The icons and the logo make the screens complete, as the screenshots of the
+# beginner guide need them.
+file(GLOB screens_icons CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/resources/images/svg/*.svg")
+qt_add_resources(tst_screens "screens_images"
+    PREFIX "/"
+    BASE "${CMAKE_SOURCE_DIR}/resources"
+
+    FILES
+        ${screens_icons}
+        "${CMAKE_SOURCE_DIR}/resources/images/app/ReqDeckLogo.png"
 )
 
 target_include_directories(tst_screens

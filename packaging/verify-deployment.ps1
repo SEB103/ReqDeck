@@ -164,6 +164,8 @@ foreach ($qmlModule in 'QtQuick/Controls/Material', 'QtQuick/Layouts', 'QtQuick/
 Test-Item 'LICENSE'                 'Project license'
 Test-Item 'NOTICE'                  'Notice file'
 Test-Item 'THIRD_PARTY_NOTICES.md'  'Third-party notices'
+Test-Item 'help\ReqDeck-Guide.en.pdf' 'Beginner guide (English)'
+Test-Item 'help\ReqDeck-Guide.ru.pdf' 'Beginner guide (Russian)'
 $licensesDir = Join-Path $DeploymentDir 'licenses'
 if ((Test-Path $licensesDir) -and (Get-ChildItem $licensesDir -File)) {
     $checks.Add('OK   : bundled license texts (licenses/)')

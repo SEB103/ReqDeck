@@ -6,7 +6,46 @@
         "example": "Example",
         "next": "What next",
         "more": "More in the guide",
-        "close": "Close help"
+        "close": "Close help",
+        "chapter": "Guide chapter"
+    },
+    "guide": {
+        "title": "Your first API requests",
+        "subtitle": "A friendly guide to ReqDeck for people who have never sent a request.",
+        "contents": "What is inside",
+        "chapter": "Chapter",
+        "tip": "Tip",
+        "warn": "Careful",
+        "keys": "Keys worth knowing",
+        "links": "Places to practice",
+        "practice": "A free public API that answers whatever you send. Safe to experiment on.",
+        "statusCodes": "Every HTTP status code explained.",
+        "shortcuts": [
+            [
+                "F1",
+                "Explain what is under the pointer or in the field you type in."
+            ],
+            [
+                "Ctrl+Enter",
+                "Send the request."
+            ],
+            [
+                "Ctrl+S",
+                "Save the workspace."
+            ],
+            [
+                "Ctrl+N",
+                "Add a new request."
+            ],
+            [
+                "Ctrl+O",
+                "Open a workspace."
+            ],
+            [
+                "Esc",
+                "Close the help or a dialog."
+            ]
+        ]
     },
     "topics": {
         "start": {
@@ -471,10 +510,10 @@
                     "type": "steps",
                     "items": [
                         "Start ReqDeck and choose Open Samples.",
-                        "In the Collection on the left, click \"List users\".",
+                        "In the Collection on the left, open the folder JSONPlaceholder and click \"Get a post\".",
                         "Look at the address in the middle: this is where the request goes.",
                         "Press Send, or Ctrl+Enter.",
-                        "On the right you see the answer: a green 200 OK and a list of users."
+                        "On the right you see the answer: a green 200 OK and the post as JSON."
                     ]
                 },
                 {
@@ -485,6 +524,12 @@
                 {
                     "type": "tip",
                     "text": "Not sure what something is? Point at it and press F1."
+                },
+                {
+                    "type": "shot",
+                    "file": "help.png",
+                    "caption": "Press F1 and ReqDeck explains what is under the pointer.",
+                    "size": "small"
                 }
             ]
         },
@@ -638,7 +683,7 @@
                 {
                     "type": "shot",
                     "file": "response.png",
-                    "caption": "Status, time, size, and a pretty body with line numbers."
+                    "caption": "Status, time, size, and the body of the answer."
                 }
             ]
         },

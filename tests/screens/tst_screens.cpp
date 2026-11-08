@@ -1,8 +1,12 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <QDesktopServices>
 #include <QDir>
+#include <QFile>
+#include <QImage>
 #include <QSet>
+#include <QUrl>
 #include <QQmlContext>
 #include <QQmlPropertyMap>
 #include <QQuickWindow>
@@ -90,6 +94,27 @@ class ScreensHost : public QObject
     Q_OBJECT
 
 public:
+    /*! Takes over opening addresses and points the guide into the test directory. */
+    ScreensHost()
+    {
+        for (const QString &scheme : schemes())
+            QDesktopServices::setUrlHandler(scheme, this, "recordUrl");
+        m_help.setGuideDirectory(m_dir.filePath(QStringLiteral("help")));
+    }
+
+    /*! Gives opening addresses back to the system. */
+    ~ScreensHost() override
+    {
+        for (const QString &scheme : schemes())
+            QDesktopServices::unsetUrlHandler(scheme);
+    }
+
+    /*! Returns the schemes recordUrl() takes over. */
+    static QStringList schemes()
+    {
+        return {QStringLiteral("file"), QStringLiteral("http"), QStringLiteral("https")};
+    }
+
     /*! Creates the facades and publishes them to QML. */
     void publish(QQmlContext *context)
     {
@@ -284,9 +309,67 @@ public:
     /*! Removes the block of reopenWithLockedSecrets(). */
     Q_INVOKABLE bool unlockSecrets() { return QDir().rmdir(secretsFile()); }
 
+    /*! Returns the addresses the application asked the system to open, oldest first. */
+    Q_INVOKABLE QStringList openedUrls() const { return m_openedUrls; }
+
+    /*! Puts a stand-in for the English guide where the application looks for it, or removes it. */
+    Q_INVOKABLE bool setGuidePresent(bool present)
+    {
+        QFile guide(m_dir.filePath(QStringLiteral("help/ReqDeck-Guide.en.pdf")));
+        if (!present)
+            return !guide.exists() || guide.remove();
+        if (!QDir().mkpath(m_dir.filePath(QStringLiteral("help"))) || !guide.open(QIODevice::WriteOnly))
+            return false;
+        return guide.write("%PDF-1.7\n") > 0;
+    }
+
+    /*! Opens a fresh copy of the bundled samples workspace. */
+    Q_INVOKABLE bool openSamples()
+    {
+        m_editor.clear();
+        m_manager.closeWorkspace();
+        const QString path = m_dir.filePath(QStringLiteral("Samples.reqdeck"));
+        QFile::remove(path);
+        return QFile::copy(QStringLiteral(REQDECK_SAMPLES_FILE), path)
+            && QFile::setPermissions(path, QFile::ReadOwner | QFile::WriteOwner)
+            && m_manager.openWorkspace(path);
+    }
+
+    /*!
+     * Saves the part of the window that  item covers to  path, popups above it
+     * included, which grabImage() leaves out or misplaces.
+     */
+    Q_INVOKABLE bool saveGrab(QQuickItem *item, const QString &path) const
+    {
+        if (!item || !item->window())
+            return false;
+        return saveGrabArea(item->window(), item->mapRectToScene(QRectF(0, 0, item->width(), item->height())),
+                            path);
+    }
+
+    /*! Saves the area  scene of  window, in scene coordinates, to  path. */
+    Q_INVOKABLE bool saveGrabArea(QQuickWindow *window, const QRectF &scene, const QString &path) const
+    {
+        if (!window)
+            return false;
+        const QImage image = window->grabWindow();
+        const qreal ratio = image.devicePixelRatio();
+        return image.copy(QRectF(scene.topLeft() * ratio, scene.size() * ratio).toAlignedRect()).save(path);
+    }
+
+    /*! Returns the folder screenshots for the guide go to, empty unless REQDECK_GUIDE_SHOTS names one. */
+    Q_INVOKABLE QString guideShotsDir() const { return qEnvironmentVariable("REQDECK_GUIDE_SHOTS"); }
+
+public slots:
+    /*! Records \a url instead of opening it, so tests never start a browser or a viewer. */
+    void recordUrl(const QUrl &url) { m_openedUrls.append(url.toString()); }
+
+public:
     /*! Opens a fresh copy of the test workspace, clean and with nothing selected. */
     Q_INVOKABLE bool reset()
     {
+        m_openedUrls.clear();
+        setGuidePresent(false);
         m_editor.clear();
         m_manager.closeWorkspace();
         m_history.clear();
@@ -306,6 +389,9 @@ public:
 private:
     /*! Directory of the test workspace. */
     QTemporaryDir m_dir;
+
+    /*! Addresses recorded by recordUrl(). */
+    QStringList m_openedUrls;
 
     /*! Local server the requests of the tests go to. */
     MockHttpServer m_server;

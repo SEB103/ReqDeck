@@ -62,9 +62,25 @@ ApplicationWindow {
         helpPanel.open()
     }
 
-    /*! Opens the beginner guide; \a chapter is kept for a viewer that can jump to it. */
+    /*!
+        Opens the beginner guide in the system PDF viewer, or says where it was
+        looked for when it is missing. A viewer opened by the system starts at the
+        first page, so \a chapter only names the chapter the help panel shows.
+    */
     function openGuide(chapter) {
-        Qt.openUrlExternally("file:///" + cppHelp.guidePath())
+        if (!cppHelp.hasGuide()) {
+            mainWindow.showNotification(2, // Diagnostics::Warning
+                                        qsTr("The guide was not found: %1").arg(cppHelp.guidePath()))
+            return
+        }
+        Qt.openUrlExternally(cppHelp.guideUrl())
+    }
+
+    /*! Opens the web address \a key of the help links in the browser. */
+    function openHelpLink(key) {
+        const url = cppHelp.links()[key]
+        if (url)
+            Qt.openUrlExternally(url)
     }
 
     /*! Saves the workspace with everything the user has typed so far. */
@@ -263,6 +279,18 @@ ApplicationWindow {
         function onCheckForUpdatesRequested() {
             cppUpdate.checkNow()
             updateDialog.open()
+        }
+
+        function onGuideRequested() {
+            mainWindow.openGuide("")
+        }
+
+        function onPracticeApiRequested() {
+            mainWindow.openHelpLink("practice")
+        }
+
+        function onStatusCodesRequested() {
+            mainWindow.openHelpLink("statusCodes")
         }
 
         function onAboutRequested() {

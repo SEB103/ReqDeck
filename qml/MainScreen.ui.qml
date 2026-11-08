@@ -183,6 +183,8 @@ Pane {
 
                         property string helpTopic: "sidebar.tabs"
 
+                        objectName: "sidebarTabs"
+
                         Layout.fillWidth: true
                         contentHeight: Base.BsTheme.compactBarHeight
 
@@ -224,6 +226,8 @@ Pane {
                 title: qsTr("Request")
 
                 RequestPane {
+                    objectName: "requestPane"
+
                     anchors.fill: parent
                 }
             }
@@ -235,6 +239,8 @@ Pane {
                 title: qsTr("Response")
 
                 ResponsePane {
+                    objectName: "responsePane"
+
                     anchors.fill: parent
                 }
             }

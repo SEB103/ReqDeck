@@ -154,3 +154,17 @@ install(
     DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/LICENSES/"
     DESTINATION "${CMAKE_INSTALL_BINDIR}/licenses"
 )
+
+# The beginner guide is opened by the system PDF viewer, so it ships as files in
+# help/ next to the executable. Development builds get a copy after each link;
+# packaging/help/build_guide.py makes the PDF files from resources/help.
+set(REQDECK_GUIDE_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/help/ReqDeck-Guide.en.pdf"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/help/ReqDeck-Guide.ru.pdf"
+)
+add_custom_command(TARGET appReqDeck POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "$<TARGET_FILE_DIR:appReqDeck>/help"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different ${REQDECK_GUIDE_FILES} "$<TARGET_FILE_DIR:appReqDeck>/help"
+    VERBATIM
+)
+install(FILES ${REQDECK_GUIDE_FILES} DESTINATION "${CMAKE_INSTALL_BINDIR}/help")

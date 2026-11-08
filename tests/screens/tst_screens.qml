@@ -1439,6 +1439,125 @@ Item {
             compare(findChild(panel, "helpMore").text, "More in the guide");
         }
 
+        /*! Verifies that the panel names the chapter More opens, since the viewer starts at page one. */
+        function test_panelNamesGuideChapter() {
+            const window = createMain();
+            const button = findChild(window.contentItem, "manageEnvironmentsButton");
+            mouseMove(button, button.width / 2, button.height / 2);
+
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+
+            const panel = helpPanel(window);
+            tryCompare(panel, "opened", true);
+            const chapter = findChild(panel, "helpChapter");
+            compare(chapter.visible, true);
+            compare(chapter.text, "Guide chapter: Variables and environments");
+        }
+
+        /*! Verifies that the Help menu opens the guide and both web links. */
+        function test_helpMenuOffersGuideAndLinks() {
+            verify(cppTestHost.setGuidePresent(true));
+            const window = createMain();
+
+            findChild(window, "guideMenuItem").triggered();
+            findChild(window, "practiceApiMenuItem").triggered();
+            findChild(window, "statusCodesMenuItem").triggered();
+
+            const urls = cppTestHost.openedUrls();
+            compare(urls.length, 3);
+            verify(urls[0].startsWith("file:///"), urls[0]);
+            verify(urls[0].endsWith("/help/ReqDeck-Guide.en.pdf"), urls[0]);
+            compare(urls[1], "https://httpbin.org");
+            compare(urls[2], "https://developer.mozilla.org/docs/Web/HTTP/Status");
+        }
+
+        /*! Verifies that More in the panel opens the guide. */
+        function test_moreOpensGuide() {
+            verify(cppTestHost.setGuidePresent(true));
+            const window = createMain();
+            mouseMove(window.contentItem, window.width - 4, window.height - 30);
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+            const panel = helpPanel(window);
+            tryCompare(panel, "opened", true);
+
+            mouseClick(findChild(panel, "helpMore"));
+
+            compare(cppTestHost.openedUrls().length, 1);
+            verify(cppTestHost.openedUrls()[0].endsWith("/help/ReqDeck-Guide.en.pdf"));
+        }
+
+        /*!
+            Saves the screenshots of the beginner guide into the folder named by
+            REQDECK_GUIDE_SHOTS, and is skipped without it. It sends the sample
+            requests to their public servers, so it needs the internet.
+        */
+        function test_guideShots() {
+            const folder = cppTestHost.guideShotsDir();
+            if (folder.length === 0)
+                skip("REQDECK_GUIDE_SHOTS is not set");
+            verify(cppTestHost.openSamples());
+            const window = createMain();
+            window.width = 1180;
+            window.height = 720;
+            window.darkTheme = false;
+            const tree = findChild(window.contentItem, "tree");
+            tree.expandRecursively();
+            const collection = tree.parent;
+            const send = (id) => {
+                collection.selectNode(id);
+                cppRequestEditor.send();
+                tryCompare(cppResponse, "busy", false, 20000);
+                compare(cppResponse.statusCode >= 200 && cppResponse.statusCode < 300, true,
+                        id + " " + cppResponse.errorText);
+            };
+            const save = (item, name) => {
+                wait(700);
+                verify(cppTestHost.saveGrab(item, folder + "/" + name), name);
+            };
+
+            send("placeholder-post");
+            send("get");
+            cppTestHost.addHistory("http://localhost:9/orders", 1, "Connection refused");
+            send("placeholder-get");
+            save(window.contentItem, "first-request.png");
+            save(findChild(window.contentItem, "responsePane"), "response.png");
+
+            mouseMove(findChild(window.contentItem, "urlField"), 40, 10);
+            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
+            tryCompare(helpPanel(window), "opened", true);
+            wait(700);
+            const pane = findChild(window.contentItem, "requestPane");
+            const left = pane.mapToItem(window.contentItem, 0, 0).x;
+            const panel = helpPanel(window);
+            verify(cppTestHost.saveGrabArea(window, Qt.rect(left, 0, window.width - left, panel.y + panel.height + 12),
+                                            folder + "/help.png"));
+            helpPanel(window).close();
+
+            collection.selectNode("post");
+            findChild(window.contentItem, "tabs").currentIndex = 2;
+            save(findChild(window.contentItem, "requestPane"), "body.png");
+
+            findChild(window.contentItem, "manageEnvironmentsButton").clicked();
+            tryCompare(findChild(window, "environmentDialog"), "opened", true);
+            save(window.contentItem, "environments.png");
+            findChild(window, "environmentDialog").close();
+
+            findChild(window.contentItem, "sidebarTabs").currentIndex = 1;
+            save(window.contentItem, "history.png");
+        }
+
+        /*! Verifies that a missing guide is reported with its path instead of doing nothing. */
+        function test_missingGuideIsReported() {
+            const window = createMain();
+
+            findChild(window, "guideMenuItem").triggered();
+
+            compare(cppTestHost.openedUrls().length, 0);
+            verify(window.statusMessage.startsWith("The guide was not found: "), window.statusMessage);
+            verify(window.statusMessage.endsWith("ReqDeck-Guide.en.pdf"), window.statusMessage);
+            compare(window.statusMessageLevel, 2);
+        }
+
         /*! Verifies that the panel leaves the focus where it was. */
         function test_panelDoesNotTakeFocus() {
             const window = createMainTypingName();

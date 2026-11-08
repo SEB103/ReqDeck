@@ -1,7 +1,10 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
@@ -53,6 +56,18 @@ private slots:
 
     /*! Verifies where the guide is looked for. */
     void guidePathFollowsLanguage();
+
+    /*! Verifies that the guide is looked for in the folder set for it. */
+    void guideIsFoundWhereSet();
+
+    /*! Verifies that a topic names the chapter of the guide it points to. */
+    void topicCarriesChapterTitle();
+
+    /*! Verifies the web addresses of the Help menu in both languages. */
+    void linksAreWebAddresses();
+
+    /*! Verifies the chapters, their screenshots, and the committed PDF files. */
+    void guideChaptersExist();
 };
 
 void HelpLibraryTest::loadsTopics()
@@ -160,6 +175,93 @@ void HelpLibraryTest::guidePathFollowsLanguage()
 
     QVERIFY(russian.guidePath().endsWith(QStringLiteral("/help/ReqDeck-Guide.ru.pdf")));
     QCOMPARE(russian.language(), QStringLiteral("ru"));
+}
+
+void HelpLibraryTest::guideIsFoundWhereSet()
+{
+    QTemporaryDir dir;
+    HelpLibrary english(QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR));
+    english.setGuideDirectory(dir.path());
+
+    QVERIFY(!english.hasGuide());
+    QFile guide(dir.filePath(QStringLiteral("ReqDeck-Guide.en.pdf")));
+    QVERIFY(guide.open(QIODevice::WriteOnly));
+    guide.write("%PDF-1.7");
+    guide.close();
+
+    QVERIFY(english.hasGuide());
+    QVERIFY(english.guideUrl().isLocalFile());
+    QCOMPARE(english.guideUrl().toLocalFile(), english.guidePath());
+}
+
+void HelpLibraryTest::topicCarriesChapterTitle()
+{
+    const HelpLibrary english(QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR));
+    const HelpLibrary russian(QStringLiteral("ru"), QStringLiteral(REQDECK_HELP_DIR));
+
+    QCOMPARE(english.topic(QStringLiteral("environments.add")).value(QStringLiteral("chapterTitle")).toString(),
+             QStringLiteral("Variables and environments"));
+    QCOMPARE(russian.topic(QStringLiteral("environments.add")).value(QStringLiteral("chapterTitle")).toString(),
+             QStringLiteral("Переменные и окружения"));
+}
+
+void HelpLibraryTest::linksAreWebAddresses()
+{
+    const HelpLibrary english(QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR));
+    const HelpLibrary russian(QStringLiteral("ru"), QStringLiteral(REQDECK_HELP_DIR));
+
+    for (const HelpLibrary *library : {&english, &russian}) {
+        for (const QString &key : {QStringLiteral("practice"), QStringLiteral("statusCodes")}) {
+            const QUrl url(library->links().value(key).toString());
+            QVERIFY2(url.isValid() && url.scheme() == QStringLiteral("https"), qPrintable(key));
+        }
+    }
+    QVERIFY(russian.links().value(QStringLiteral("statusCodes")).toString().contains(QStringLiteral("/ru/")));
+}
+
+void HelpLibraryTest::guideChaptersExist()
+{
+    const QStringList chapters {QStringLiteral("first-request"), QStringLiteral("requests"),
+                                QStringLiteral("variables"), QStringLiteral("auth"),
+                                QStringLiteral("response"), QStringLiteral("history"),
+                                QStringLiteral("troubleshooting")};
+    const QStringList blockTypes {QStringLiteral("p"), QStringLiteral("steps"), QStringLiteral("shot"),
+                                  QStringLiteral("tip"), QStringLiteral("warn"), QStringLiteral("table")};
+
+    for (const QString &language : {QStringLiteral("en"), QStringLiteral("ru")}) {
+        QCOMPARE(HelpLibrary(language, QStringLiteral(REQDECK_HELP_DIR)).chapterIds(), chapters);
+
+        QFile file(QDir(QStringLiteral(REQDECK_HELP_DIR)).filePath(QStringLiteral("help.%1.json").arg(language)));
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QJsonObject help = QJsonDocument::fromJson(file.readAll()).object();
+        const QJsonObject guide = help.value(QStringLiteral("guide")).toObject();
+        for (const QString &key : {QStringLiteral("title"), QStringLiteral("subtitle"), QStringLiteral("contents"),
+                                   QStringLiteral("tip"), QStringLiteral("warn"), QStringLiteral("keys"),
+                                   QStringLiteral("links")}) {
+            QVERIFY2(!guide.value(key).toString().isEmpty(), qPrintable(language + u' ' + key));
+        }
+        QVERIFY(!guide.value(QStringLiteral("shortcuts")).toArray().isEmpty());
+
+        for (const QJsonValue &chapter : help.value(QStringLiteral("chapters")).toArray()) {
+            const QJsonArray blocks = chapter.toObject().value(QStringLiteral("blocks")).toArray();
+            QVERIFY(!chapter.toObject().value(QStringLiteral("title")).toString().isEmpty());
+            QVERIFY(!blocks.isEmpty());
+            for (const QJsonValue &value : blocks) {
+                const QJsonObject block = value.toObject();
+                const QString type = block.value(QStringLiteral("type")).toString();
+                QVERIFY2(blockTypes.contains(type), qPrintable(language + u' ' + type));
+                if (type == QStringLiteral("shot")) {
+                    const QString shot = block.value(QStringLiteral("file")).toString();
+                    QVERIFY2(QFileInfo::exists(QDir(QStringLiteral(REQDECK_GUIDE_SHOTS_DIR)).filePath(shot)),
+                             qPrintable(shot));
+                }
+            }
+        }
+
+        QFile pdf(QDir(QStringLiteral(REQDECK_HELP_DIR)).filePath(QStringLiteral("ReqDeck-Guide.%1.pdf").arg(language)));
+        QVERIFY2(pdf.open(QIODevice::ReadOnly), qPrintable(pdf.fileName()));
+        QVERIFY(pdf.read(5) == "%PDF-");
+    }
 }
 
 QTEST_GUILESS_MAIN(HelpLibraryTest)

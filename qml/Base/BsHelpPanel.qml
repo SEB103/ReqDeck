@@ -141,6 +141,17 @@ Popup {
             key: "next"
         }
 
+        Label {
+            objectName: "helpChapter"
+
+            Layout.fillWidth: true
+            visible: root.textOf(root.topic, "chapterTitle").length > 0
+            wrapMode: Text.Wrap
+            textFormat: Text.PlainText
+            opacity: 0.7
+            text: root.textOf(root.labels, "chapter") + ": " + root.textOf(root.topic, "chapterTitle")
+        }
+
         Button {
             objectName: "helpMore"
 

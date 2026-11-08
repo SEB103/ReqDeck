@@ -1,0 +1,426 @@
+/* SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
+/* Print styles of the beginner guide; colors follow BsTheme in the light theme. */
+
+@page {
+    size: A4;
+    margin: 16mm 16mm 18mm 16mm;
+
+    @bottom-center {
+        content: counter(page);
+        font: 9pt "Segoe UI", Arial, sans-serif;
+        color: #8a7a82;
+    }
+}
+
+@page :first {
+    margin: 0;
+
+    @bottom-center {
+        content: none;
+    }
+}
+
+:root {
+    --accent: #C2185B;
+    --accent-strong: #AD1457;
+    --accent-soft: #FCE4EC;
+    --ink: #2b2228;
+    --muted: #6d5f67;
+    --rule: #eadde3;
+    --paper: #ffffff;
+    --tint: #F7F0F3;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 10.5pt/1.55 "Segoe UI", Arial, sans-serif;
+}
+
+h1, h2 {
+    line-height: 1.2;
+    margin: 0;
+}
+
+p {
+    margin: 0 0 3.2mm;
+}
+
+a {
+    color: var(--accent-strong);
+    text-decoration: none;
+}
+
+code.var, kbd {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 9.5pt;
+    white-space: nowrap;
+}
+
+code.var {
+    color: var(--accent-strong);
+    background: var(--accent-soft);
+    border-radius: 3px;
+    padding: 0 1.2mm;
+}
+
+kbd {
+    display: inline-block;
+    min-width: 6mm;
+    padding: 0 1.6mm;
+    border: 1px solid #cdbfc6;
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: #fbf8fa;
+    text-align: center;
+    line-height: 1.5;
+}
+
+/* Cover */
+
+.cover {
+    height: 297mm;
+    padding: 34mm 22mm 0;
+    background: linear-gradient(160deg, #AD1457 0%, #C2185B 45%, #6A1B9A 100%);
+    color: #fff;
+    break-after: page;
+}
+
+.cover .logo {
+    width: 30mm;
+    height: 30mm;
+    border-radius: 7mm;
+    background: #fff;
+    padding: 2mm;
+}
+
+.cover .brand {
+    margin: 9mm 0 2mm;
+    font-size: 13pt;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    opacity: 0.85;
+}
+
+.cover h1 {
+    font-size: 34pt;
+    font-weight: 700;
+    max-width: 150mm;
+}
+
+.cover .subtitle {
+    margin-top: 6mm;
+    font-size: 14pt;
+    max-width: 140mm;
+    opacity: 0.92;
+}
+
+.cover-art {
+    display: block;
+    width: 160mm;
+    margin-top: 26mm;
+}
+
+.cover-art .card rect:first-child {
+    fill: rgba(255, 255, 255, 0.96);
+}
+
+.cover-art .line {
+    fill: #ead7e0;
+}
+
+.cover-art text {
+    font: 700 22px "Segoe UI", Arial, sans-serif;
+}
+
+.cover-art .method {
+    fill: #2E7D32;
+}
+
+.cover-art .ok {
+    fill: #2E7D32;
+}
+
+.cover-art .mono {
+    font: 15px Consolas, monospace;
+    fill: #4a3d44;
+}
+
+.cover-art .arrow path {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Contents */
+
+.contents {
+    break-after: page;
+    padding-top: 8mm;
+}
+
+.contents h2, .chapter h2 {
+    font-size: 20pt;
+    color: var(--ink);
+}
+
+.contents ol {
+    list-style: none;
+    padding: 0;
+    margin: 8mm 0 0;
+}
+
+.contents li {
+    border-bottom: 1px solid var(--rule);
+}
+
+.contents a {
+    display: flex;
+    align-items: center;
+    gap: 5mm;
+    padding: 3.2mm 0;
+    color: var(--ink);
+    font-size: 12.5pt;
+}
+
+.contents .num {
+    flex: none;
+    width: 9mm;
+    height: 9mm;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 11pt;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Chapters */
+
+.chapter {
+    break-before: page;
+}
+
+.chapter header {
+    margin-bottom: 6mm;
+    padding-bottom: 3mm;
+    border-bottom: 3px solid var(--accent);
+}
+
+.chapter .badge {
+    display: inline-block;
+    margin-bottom: 2mm;
+    padding: 0.6mm 3mm;
+    border-radius: 99px;
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.chapter > h2 {
+    margin: 10mm 0 5mm;
+}
+
+ol.steps {
+    counter-reset: step;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 4mm;
+}
+
+ol.steps li {
+    counter-increment: step;
+    position: relative;
+    padding: 1.4mm 0 1.4mm 11mm;
+    min-height: 8mm;
+}
+
+ol.steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0.8mm;
+    width: 7.5mm;
+    height: 7.5mm;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 10pt;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+aside {
+    display: flex;
+    gap: 3.5mm;
+    margin: 4mm 0;
+    padding: 3.5mm 4mm;
+    border-radius: 3mm;
+    break-inside: avoid;
+}
+
+aside svg {
+    flex: none;
+    width: 7mm;
+    height: 7mm;
+}
+
+aside b {
+    display: block;
+    margin-bottom: 0.5mm;
+}
+
+aside.tip {
+    background: #E8F5E9;
+    border-left: 4px solid #2E7D32;
+}
+
+aside.tip svg {
+    fill: #2E7D32;
+}
+
+aside.warn {
+    background: #FFF3E0;
+    border-left: 4px solid #BF4400;
+}
+
+aside.warn svg {
+    fill: #BF4400;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2mm 0 5mm;
+    break-inside: avoid;
+}
+
+th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: 2.2mm 3mm;
+    border-bottom: 1px solid var(--rule);
+}
+
+tr:nth-child(odd) th, tr:nth-child(odd) td {
+    background: var(--tint);
+}
+
+th {
+    width: 36%;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.m-get, .s-2xx {
+    color: #2E7D32;
+}
+
+.m-post {
+    color: #BF4400;
+}
+
+.m-put, .s-3xx {
+    color: #1565C0;
+}
+
+.m-patch {
+    color: #7B1FA2;
+}
+
+.m-delete, .s-5xx {
+    color: #C62828;
+}
+
+.s-4xx {
+    color: #B85C00;
+}
+
+figure {
+    margin: 4mm 0 5mm;
+    break-inside: avoid;
+}
+
+figure img {
+    display: block;
+    max-width: 100%;
+    max-height: 72mm;
+    margin: 0 auto;
+    border: 1px solid var(--rule);
+    border-radius: 2.5mm;
+    box-shadow: 0 1.5mm 4mm rgba(80, 20, 50, 0.16);
+}
+
+figure.small img {
+    max-height: 48mm;
+}
+
+figcaption {
+    margin-top: 2.5mm;
+    text-align: center;
+    color: var(--muted);
+    font-size: 9.5pt;
+    font-style: italic;
+}
+
+/* Keys and links */
+
+dl.keys {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 3mm 6mm;
+    align-items: center;
+    margin: 0;
+}
+
+dl.keys dt {
+    white-space: nowrap;
+}
+
+dl.keys dd {
+    margin: 0;
+}
+
+ul.links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+ul.links li {
+    margin-bottom: 4mm;
+    padding: 3.5mm 4mm;
+    border-radius: 3mm;
+    background: var(--tint);
+}
+
+ul.links a {
+    display: block;
+    font-weight: 700;
+    font-size: 11.5pt;
+}
+
+ul.links span {
+    color: var(--muted);
+}

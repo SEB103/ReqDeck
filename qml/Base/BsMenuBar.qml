@@ -101,6 +101,15 @@ MenuBar {
     /*! Emitted when the user opens the About dialog. */
     signal aboutRequested()
 
+    /*! Emitted to open the beginner guide. */
+    signal guideRequested()
+
+    /*! Emitted to open a public API for practice in the browser. */
+    signal practiceApiRequested()
+
+    /*! Emitted to open a reference of HTTP status codes in the browser. */
+    signal statusCodesRequested()
+
     /*! Emitted to add a request. */
     signal newRequestRequested()
 
@@ -336,6 +345,30 @@ MenuBar {
 
         title: qsTr("&Help")
         delegate: BsMenuItem {}
+
+        BsMenuItem {
+            objectName: "guideMenuItem"
+
+            text: qsTr("Beginner &Guide")
+            icon.source: "qrc:/images/svg/article.svg"
+            onTriggered: appMenuBar.guideRequested()
+        }
+
+        BsMenuItem {
+            objectName: "practiceApiMenuItem"
+
+            text: qsTr("&Practice API")
+            onTriggered: appMenuBar.practiceApiRequested()
+        }
+
+        BsMenuItem {
+            objectName: "statusCodesMenuItem"
+
+            text: qsTr("HTTP &Status Codes")
+            onTriggered: appMenuBar.statusCodesRequested()
+        }
+
+        MenuSeparator {}
 
         BsMenuItem {
             text: qsTr("&Check for Updates…")

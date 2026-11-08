@@ -209,6 +209,25 @@ generated placeholders until final artwork exists; replace `ReqDeck.ico`,
 `MaintenanceTool.ico`, `ReqDeckLogo.png`, and the sources in
 `resources/images/app/source/` together.
 
+**Beginner guide.** The application opens `help/ReqDeck-Guide.<en|ru>.pdf` next to
+the executable from Help > Beginner Guide and from the F1 help panel. The CMake
+install rule copies both files from `resources/help/`, and
+`verify-deployment.ps1` checks that they are there. The PDF files are committed;
+make them again after a change to the chapters in `resources/help/help.*.json`
+or to the screens they show:
+
+```powershell
+# 1. Retake the screenshots (needs the internet: it sends the sample requests).
+$env:REQDECK_GUIDE_SHOTS = "$PWD/packaging/help/shots"
+$env:QT_QUICK_CONTROLS_CONF = "$PWD/resources/qtquickcontrols2.conf"
+$env:QT_ENABLE_HIGHDPI_SCALING = "0"
+$env:QML2_IMPORT_PATH = "$PWD/build/windows-msvc2022-debug/qml"
+$env:PATH = "C:/Qt/6.11.1/msvc2022_64/bin;$env:PATH"
+build/windows-msvc2022-debug/Debug/tst_screens.exe Screens::test_guideShots
+# 2. Print both PDF files with Microsoft Edge (pass --edge for another path).
+python packaging/help/build_guide.py
+```
+
 ---
 
 ## 11. Continuous integration and publishing
