@@ -411,7 +411,8 @@ void RequestEditor::copyAsCurl()
 {
     if (!hasRequest())
         return;
-    QGuiApplication::clipboard()->setText(CurlConverter::toCurl(m_request));
+    QGuiApplication::clipboard()->setText(CurlConverter::toCurl(m_request, m_builderOptions.followRedirects,
+                                                                 m_builderOptions.defaultTimeoutMs));
     emit copiedToClipboard();
 }
 

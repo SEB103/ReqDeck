@@ -164,7 +164,8 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
 
     QUrl url(urlText, QUrl::TolerantMode);
     if (!url.isValid() || url.host().isEmpty())
-        return failure(std::move(built), QStringLiteral("Invalid URL: %1").arg(urlText));
+        // The text as typed: the resolved one may show the value of a secret variable.
+        return failure(std::move(built), QStringLiteral("Invalid URL: %1").arg(spec.url.trimmed()));
     const QString scheme = url.scheme().toLower();
     if (scheme != QLatin1StringView("http") && scheme != QLatin1StringView("https"))
         return failure(std::move(built), QStringLiteral("Unsupported URL scheme: %1").arg(scheme));

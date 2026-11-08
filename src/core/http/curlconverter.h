@@ -40,7 +40,7 @@ public:
      * Returns a multi-line bash cURL command for \a spec. Variables are
      * exported unresolved; disabled rows are omitted.
      */
-    static QString toCurl(const RequestSpec &spec);
+    static QString toCurl(const RequestSpec &spec, bool followRedirects = false, int defaultTimeoutMs = 0);
 };
 
 #endif // CURLCONVERTER_H

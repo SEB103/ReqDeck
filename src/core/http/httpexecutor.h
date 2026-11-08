@@ -75,6 +75,9 @@ public:
     /** Returns whether \a host is this computer: a loopback address, localhost, or a name under it. */
     static bool isThisComputer(const QString &host);
 
+    /** Removes body files an earlier run left in \a directory; returns how many were removed. */
+    static int removeStaleBodyFiles(const QString &directory);
+
     /** Maps a Qt network \a error to a ResponseError; \a abortRequested marks a user cancel. */
     static ResponseError classifyError(QNetworkReply::NetworkError error, bool abortRequested);
 

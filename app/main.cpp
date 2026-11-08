@@ -4,6 +4,7 @@
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <QDebug>
+#include <QDir>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QQmlApplicationEngine>
@@ -12,6 +13,7 @@
 
 #include "appcore.h"
 #include "appengine.h"
+#include "core/http/httpexecutor.h"
 #include "framework/apppaths.h"
 #include "localecontroller.h"
 #include "productinfo.h"
@@ -37,6 +39,9 @@ int main(int argc, char *argv[])
 
     // Resolve installed/portable data locations once, before anything opens them.
     AppPaths::instance().initialize();
+
+    // Large response bodies of a run that ended abnormally are still on disk.
+    HttpExecutor::removeStaleBodyFiles(QDir::tempPath());
 
     // A failure only means the samples are missing; the application still works.
     QString seedError;

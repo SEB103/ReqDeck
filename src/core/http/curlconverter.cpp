@@ -631,10 +631,17 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
  * form bodies rely on curl's own form default.
  * \param spec The request to export; variables stay unresolved.
  */
-QString CurlConverter::toCurl(const RequestSpec &spec)
+QString CurlConverter::toCurl(const RequestSpec &spec, bool followRedirects, int defaultTimeoutMs)
 {
     QStringList lines {QStringLiteral("curl")};
     const bool hasBody = spec.method != HttpMethod::Head && spec.body.mode != BodyMode::None;
+
+    // curl follows no redirect and waits forever unless told otherwise.
+    if (followRedirects)
+        lines.append(QStringLiteral("-L"));
+    const int timeoutMs = spec.timeoutMs > 0 ? spec.timeoutMs : defaultTimeoutMs;
+    if (timeoutMs > 0)
+        lines.append(QStringLiteral("-m ") + QString::number(timeoutMs / 1000.0, 'g', 10));
 
     if (spec.method == HttpMethod::Head)
         lines.append(QStringLiteral("--head"));

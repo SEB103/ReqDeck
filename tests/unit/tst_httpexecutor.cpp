@@ -147,6 +147,10 @@ private slots:
     void spillFileGoesWithResponse();
     /*! Verifies the default memory limit. */
     void defaultBodyMemoryLimit();
+    /*! Verifies that a cancel from the busy signal still ends with one finished(). */
+    void abortFromBusySignal();
+    /*! Verifies that body files left by an earlier run are removed, and nothing else. */
+    void staleBodyFilesRemoved();
     /*! Verifies that a body that cannot go to disk is an error that keeps no size or data. */
     void failedSpillKeepsNothing();
 
@@ -545,6 +549,53 @@ void HttpExecutorTest::defaultBodyMemoryLimit()
 {
     const HttpExecutor executor;
     QCOMPARE(executor.bodyMemoryLimit(), qint64(32 * 1024 * 1024));
+}
+
+void HttpExecutorTest::abortFromBusySignal()
+{
+    HttpExecutor executor;
+    QList<bool> busy;
+    int finished = 0;
+    std::optional<ResponseData> result;
+    connect(&executor, &HttpExecutor::busyChanged, &executor, [&](bool running) {
+        busy.append(running);
+        if (running)
+            executor.abort();
+    });
+    connect(&executor, &HttpExecutor::finished, &executor, [&](const ResponseData &response) {
+        ++finished;
+        result = response;
+    });
+
+    QVERIFY(executor.send(buildRequest(specFor(m_server.url(QStringLiteral("/delay/2000"))))));
+    QTRY_COMPARE(finished, 1);
+    QTest::qWait(100);
+
+    QCOMPARE(finished, 1);
+    QCOMPARE(busy, QList<bool>({true, false}));
+    QCOMPARE(result->error, ResponseError::Aborted);
+    QVERIFY(!executor.isBusy());
+}
+
+void HttpExecutorTest::staleBodyFilesRemoved()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QDateTime old = QDateTime::currentDateTime().addDays(-2);
+    for (const QString &name : {QStringLiteral("ReqDeck-abc123.body"), QStringLiteral("ReqDeck-x.body"),
+                                QStringLiteral("ReqDeck-fresh.body"), QStringLiteral("Other-abc.body"),
+                                QStringLiteral("ReqDeck-abc.txt")}) {
+        QFile file(dir.filePath(name));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        if (name != QLatin1StringView("ReqDeck-fresh.body"))
+            QVERIFY(file.setFileTime(old, QFileDevice::FileModificationTime));
+    }
+
+    QCOMPARE(HttpExecutor::removeStaleBodyFiles(dir.path()), 2);
+
+    QCOMPARE(QDir(dir.path()).entryList(QDir::Files, QDir::Name),
+             QStringList({QStringLiteral("Other-abc.body"), QStringLiteral("ReqDeck-abc.txt"),
+                          QStringLiteral("ReqDeck-fresh.body")}));
 }
 
 void HttpExecutorTest::failedSpillKeepsNothing()

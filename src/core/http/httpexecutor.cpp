@@ -3,7 +3,9 @@
 
 #include "core/http/httpexecutor.h"
 
+#include <QDateTime>
 #include <QDir>
+#include <QFileInfo>
 #include <QHostAddress>
 #include <QHttpHeaders>
 #include <QNetworkAccessManager>
@@ -170,6 +172,29 @@ void HttpExecutor::setBodyMemoryLimit(qint64 bytes)
 QList<QNetworkProxy> HttpExecutor::proxiesFor(const QUrl &url) const
 {
     return m_network->proxyFactory()->queryProxy(QNetworkProxyQuery(url));
+}
+
+/*!
+ * \brief Removes the temporary files of large bodies that an earlier run left behind.
+ *
+ * A body file is deleted with its response, but not when the application
+ * crashed or was killed. Only files untouched for a day go: a younger one may
+ * belong to another running instance, which would lose the body it can still
+ * save, because Windows lets a file be deleted while it is open.
+ * \param directory The temporary folder, normally QDir::tempPath().
+ * \return The number of files removed.
+ */
+int HttpExecutor::removeStaleBodyFiles(const QString &directory)
+{
+    int removed = 0;
+    const QDateTime cutoff = QDateTime::currentDateTime().addDays(-1);
+    const QDir folder(directory);
+    const QFileInfoList files = folder.entryInfoList({QStringLiteral("ReqDeck-*.body")}, QDir::Files);
+    for (const QFileInfo &file : files) {
+        if (file.lastModified() < cutoff && QFile::remove(file.filePath()))
+            ++removed;
+    }
+    return removed;
 }
 
 /*!

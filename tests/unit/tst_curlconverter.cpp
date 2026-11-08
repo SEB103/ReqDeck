@@ -69,6 +69,9 @@ class CurlConverterTest : public QObject
     Q_OBJECT
 
 private slots:
+    /*! Verifies that the cURL command follows redirects and times out like ReqDeck. */
+    void toCurlFollowsAndTimesOut();
+
     /*! Verifies method, URL, and body mode of simple commands. */
     void parsesBasicForms_data();
     /*! Runs one simple-command case. */
@@ -426,6 +429,25 @@ void CurlConverterTest::roundTripIsStable()
     const CurlConverter::ParseResult second = CurlConverter::parse(exported);
     QVERIFY2(second.ok, qPrintable(second.errorString));
     QVERIFY2(second.request == first.request, qPrintable(exported));
+}
+
+void CurlConverterTest::toCurlFollowsAndTimesOut()
+{
+    RequestSpec spec;
+    spec.url = QStringLiteral("https://h/x");
+
+    QVERIFY(!CurlConverter::toCurl(spec).contains(QStringLiteral(" -L")));
+    QVERIFY(!CurlConverter::toCurl(spec).contains(QStringLiteral(" -m ")));
+
+    const QString defaults = CurlConverter::toCurl(spec, true, 30000);
+    QVERIFY2(defaults.contains(QStringLiteral("  -L \\\n")), qPrintable(defaults));
+    QVERIFY2(defaults.contains(QStringLiteral("  -m 30 \\\n")), qPrintable(defaults));
+
+    spec.timeoutMs = 1500;
+    const QString own = CurlConverter::toCurl(spec, false, 30000);
+    QVERIFY2(own.contains(QStringLiteral("  -m 1.5 \\\n")), qPrintable(own));
+    QVERIFY2(!own.contains(QStringLiteral(" -L")), qPrintable(own));
+    QVERIFY(CurlConverter::parse(own).ok);
 }
 
 QTEST_GUILESS_MAIN(CurlConverterTest)

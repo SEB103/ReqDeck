@@ -60,6 +60,9 @@ private slots:
     /*! Verifies that only http and https are accepted. */
     void rejectsUnsupportedScheme();
 
+    /*! Verifies that an invalid URL is reported as typed, so no variable value shows. */
+    void invalidUrlKeepsVariables();
+
     /*! Verifies that parameters extend an existing query string. */
     void appendsParamsToExistingQuery();
 
@@ -130,6 +133,17 @@ void RequestBuilderTest::rejectsEmptyUrl()
     const BuiltRequest built = build(specFor(QStringLiteral("   ")));
     QVERIFY(!built.ok);
     QCOMPARE(built.errorString, QStringLiteral("URL is empty."));
+}
+
+void RequestBuilderTest::invalidUrlKeepsVariables()
+{
+    const VariableResolver variables =
+        VariableResolver::fromKeyValues({{QStringLiteral("host"), QStringLiteral("[secret-value"), true}});
+
+    const BuiltRequest built = build(specFor(QStringLiteral("http://{{host}}/x")), variables);
+
+    QVERIFY(!built.ok);
+    QCOMPARE(built.errorString, QStringLiteral("Invalid URL: http://{{host}}/x"));
 }
 
 void RequestBuilderTest::rejectsUnresolvedInUrl()
