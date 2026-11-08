@@ -5,6 +5,7 @@
 #define SECRETSTORE_H
 
 #include <QByteArray>
+#include <QJsonObject>
 #include <QString>
 
 #include <optional>
@@ -53,6 +54,12 @@ public:
      * the file when no value is left. Fails for an invalid workspace id.
      */
     bool save(const WorkspaceData &data, QString *errorString = nullptr) const;
+
+    /** Returns whether the secrets file of \a workspaceId holds plain values of schema 1. */
+    bool isPlain(const QString &workspaceId) const;
+
+    /** Returns the secret values of \a data as save() stores them, to tell whether they changed. */
+    static QJsonObject valuesOf(const WorkspaceData &data);
 
     /** Returns the content of the secrets file; nullopt when missing or unreadable. */
     std::optional<QByteArray> snapshot(const QString &workspaceId) const;

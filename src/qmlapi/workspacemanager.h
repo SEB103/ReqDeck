@@ -4,6 +4,7 @@
 #ifndef WORKSPACEMANAGER_H
 #define WORKSPACEMANAGER_H
 
+#include <QJsonObject>
 #include <QList>
 #include <QObject>
 #include <QString>
@@ -279,6 +280,9 @@ protected:
 
     /** Whether stored secrets of the active workspace could not be read yet. */
     bool m_secretsUnread {false};
+
+    /** Secret values as the secrets file holds them, so that an unchanged save does not rewrite it. */
+    QJsonObject m_storedSecrets;
 
     /** Last notification, kept re-buildable so retranslate() can refresh it. */
     RetranslatableStatus m_lastStatus;

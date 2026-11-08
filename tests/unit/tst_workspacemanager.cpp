@@ -198,12 +198,27 @@ private slots:
     /*! Verifies that a failed Save As leaves no secrets file behind. */
     void failedSaveAsLeavesNoSecrets();
 
+    /*! Verifies that a plain secrets file is encrypted as soon as the workspace opens. */
+    void migratesPlainFileOnOpen();
+
+    /*! Verifies that secrets of another computer are reported and do not block saving. */
+    void unavailableSecretsDoNotBlockSaving();
+
+    /*! Verifies that the file of another computer stays until a value is saved here. */
+    void unavailableFileStaysUntilValues();
+
+    /*! Verifies that saving without a change leaves both files as they were. */
+    void unchangedSaveKeepsFiles();
+
 private:
     /*! Builds a settings store inside \a dir for one test. */
     static QSettings *makeSettings(QTemporaryDir &dir, QObject *parent);
 
     /*! Creates a workspace in \a dir whose secrets file cannot be read; returns that file. */
     static QString makeLockedWorkspace(QTemporaryDir &dir, QByteArray &secrets);
+
+    /*! Creates a workspace in \a dir whose secrets were encrypted on another computer; returns that file. */
+    static QString makeForeignWorkspace(QTemporaryDir &dir);
 };
 
 QSettings *WorkspaceManagerTest::makeSettings(QTemporaryDir &dir, QObject *parent)
@@ -856,6 +871,131 @@ void WorkspaceManagerTest::saveAsGetsOwnSecrets()
     QVERIFY(manager.openWorkspace(firstPath));
     QCOMPARE(manager.workspaceData().environments.at(0).variables.at(1).value,
              QStringLiteral("original"));
+}
+
+/*!
+ * \brief Creates \a dir/Foreign.reqdeck whose secrets file was encrypted on another computer.
+ * \return The path of the secrets file, or an empty string on failure.
+ */
+QString WorkspaceManagerTest::makeForeignWorkspace(QTemporaryDir &dir)
+{
+    const QString path = dir.filePath(QStringLiteral("Foreign.reqdeck"));
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    if (!manager.createWorkspaceAtPath(path))
+        return {};
+    manager.updateWorkspaceData(withSecret(manager.workspaceData(), QString()));
+    if (!manager.saveWorkspace())
+        return {};
+    const SecretStore other(manager.secretsDir(), SecretCipher(QByteArrayLiteral("another computer")));
+    const WorkspaceData data = withSecret(manager.workspaceData(), QStringLiteral("from-elsewhere"));
+    if (!other.save(data))
+        return {};
+    return other.filePath(data.id);
+}
+
+void WorkspaceManagerTest::migratesPlainFileOnOpen()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("Plain.reqdeck"));
+    QString secretsFile;
+    {
+        TestableWorkspaceManager manager;
+        manager.setSettings(makeSettings(dir, &manager));
+        manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+        QVERIFY(manager.createWorkspaceAtPath(path));
+        manager.updateWorkspaceData(withSecret(manager.workspaceData(), QStringLiteral("x")));
+        QVERIFY(manager.saveWorkspace());
+        secretsFile = SecretStore(manager.secretsDir()).filePath(manager.workspaceData().id);
+    }
+    QFile plain(secretsFile);
+    QVERIFY(plain.open(QIODevice::WriteOnly));
+    plain.write("{\"schema\":1,\"environments\":{\"e1\":{\"token\":[\"plain-one\"]}}}");
+    plain.close();
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.openWorkspace(path));
+
+    QCOMPARE(manager.workspaceData().environments.at(0).variables.at(1).value, QStringLiteral("plain-one"));
+    QVERIFY(!readFile(secretsFile).contains("plain-one"));
+    QVERIFY(storedSecrets(secretsFile).contains("plain-one"));
+    QVERIFY(!manager.dirty());
+}
+
+void WorkspaceManagerTest::unavailableSecretsDoNotBlockSaving()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString secretsFile = makeForeignWorkspace(dir);
+    QVERIFY(!secretsFile.isEmpty());
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QSignalSpy notes(&manager, &WorkspaceManager::notification);
+    QVERIFY(manager.openWorkspace(dir.filePath(QStringLiteral("Foreign.reqdeck"))));
+
+    QVERIFY(manager.workspaceData().environments.at(0).variables.at(1).value.isEmpty());
+    QVERIFY(!manager.secretsUnread());
+    QVERIFY(std::any_of(notes.cbegin(), notes.cend(), [](const QList<QVariant> &note) {
+        return note.at(1).toString().contains(QStringLiteral("another computer"));
+    }));
+
+    manager.updateWorkspaceData(withSecret(manager.workspaceData(), QStringLiteral("entered-here")));
+    QVERIFY(manager.saveWorkspace());
+    QVERIFY(storedSecrets(secretsFile).contains("entered-here"));
+}
+
+void WorkspaceManagerTest::unavailableFileStaysUntilValues()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString secretsFile = makeForeignWorkspace(dir);
+    QVERIFY(!secretsFile.isEmpty());
+    const QByteArray foreign = readFile(secretsFile);
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.openWorkspace(dir.filePath(QStringLiteral("Foreign.reqdeck"))));
+    WorkspaceData changed = manager.workspaceData();
+    changed.environments[0].variables[0].value = QStringLiteral("https://other");
+    manager.updateWorkspaceData(changed);
+
+    QVERIFY(manager.saveWorkspace());
+    QCOMPARE(readFile(secretsFile), foreign);
+}
+
+void WorkspaceManagerTest::unchangedSaveKeepsFiles()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("Same.reqdeck"));
+    {
+        TestableWorkspaceManager manager;
+        manager.setSettings(makeSettings(dir, &manager));
+        manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+        QVERIFY(manager.createWorkspaceAtPath(path));
+        manager.updateWorkspaceData(withSecret(manager.workspaceData(), QStringLiteral("kept")));
+        QVERIFY(manager.saveWorkspace());
+    }
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.openWorkspace(path));
+    const QString secretsFile = SecretStore(manager.secretsDir()).filePath(manager.workspaceData().id);
+    const QByteArray workspaceBefore = readFile(path);
+    const QByteArray secretsBefore = readFile(secretsFile);
+    QVERIFY(!secretsBefore.isEmpty());
+
+    QVERIFY(manager.saveWorkspace());
+
+    QCOMPARE(readFile(path), workspaceBefore);
+    QCOMPARE(readFile(secretsFile), secretsBefore);
 }
 
 QString WorkspaceManagerTest::makeLockedWorkspace(QTemporaryDir &dir, QByteArray &secrets)

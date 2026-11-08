@@ -321,7 +321,10 @@ bool WorkspaceManager::createWorkspaceAtPath(const QString &pathOrUrl)
  * without an id gets one that is written with the next save, which does not
  * count as an unsaved change. Secret values that cannot be read are reported as
  * a warning, because the workspace itself is intact. A file that could not be
- * read at all stays protected: the next save reads it again first.
+ * read at all stays protected: the next save reads it again first. A plain
+ * secrets file of an older version is encrypted at once. One encrypted on
+ * another computer or by another user is reported and kept; saving is allowed,
+ * and the file is replaced only once a secret value is saved here.
  */
 bool WorkspaceManager::openWorkspace(const QString &pathOrUrl)
 {
@@ -339,7 +342,11 @@ bool WorkspaceManager::openWorkspace(const QString &pathOrUrl)
         result.data.id = newItemId();
 
     const QString name = result.data.displayName;
-    const SecretStore::ReadStatus secrets = SecretStore(secretsDir()).applyTo(result.data);
+    const SecretStore store(secretsDir());
+    const SecretStore::ReadStatus secrets = store.applyTo(result.data);
+    QString migrationError;
+    const bool migrationFailed = secrets == SecretStore::ReadStatus::Ok && store.isPlain(result.data.id)
+                                 && !store.save(result.data, &migrationError);
 
     setActiveWorkspace(path, result.data);
     emit workspaceReplaced();
@@ -348,9 +355,20 @@ bool WorkspaceManager::openWorkspace(const QString &pathOrUrl)
     notify(Diagnostics::Info, [=, this] {
         return tr("Opened workspace %1.").arg(name);
     });
-    if (secrets != SecretStore::ReadStatus::Ok) {
+    if (secrets == SecretStore::ReadStatus::Unavailable) {
+        notify(Diagnostics::Warning, [=, this] {
+            return tr("The secret values of workspace %1 were saved on another computer or by another "
+                      "Windows user and cannot be read here. Enter them again.")
+                .arg(name);
+        });
+    } else if (secrets != SecretStore::ReadStatus::Ok) {
         notify(Diagnostics::Warning, [=, this] {
             return tr("The secret values of workspace %1 could not be read.").arg(name);
+        });
+    } else if (migrationFailed) {
+        notify(Diagnostics::Warning, [=, this] {
+            return tr("The secret values of workspace %1 are still stored unencrypted: %2")
+                .arg(name, migrationError);
         });
     }
     return true;
@@ -412,7 +430,8 @@ bool WorkspaceManager::saveWorkspaceAs(const QString &pathOrUrl)
  * user never saw are not replaced by empty ones; while the file stays unreadable
  * saving is refused. The secret values are then written before the workspace
  * file, and a failure of the latter puts the previous secrets back: both files
- * change together or not at all.
+ * change together or not at all. Unchanged secret values of the same workspace
+ * are not written again, because encryption gives a different file each time.
  */
 bool WorkspaceManager::writeActiveWorkspaceTo(const QString &path, const QString &displayName)
 {
@@ -428,24 +447,29 @@ bool WorkspaceManager::writeActiveWorkspaceTo(const QString &path, const QString
         return false;
     }
 
-    if (canonicalKey(path) != canonicalKey(m_activePath))
+    const bool sameFile = canonicalKey(path) == canonicalKey(m_activePath);
+    if (!sameFile)
         data.id = newItemId();
+    const bool writeSecrets = !sameFile || SecretStore::valuesOf(data) != m_storedSecrets;
 
-    const std::optional<QByteArray> previousSecrets = store.snapshot(data.id);
-    if (!previousSecrets && QFile::exists(store.filePath(data.id))) {
-        emit workspaceError(tr("The secret values of workspace %1 could not be read, "
-                               "so it was not saved. Try again.")
-                                .arg(displayName));
-        return false;
-    }
-
+    std::optional<QByteArray> previousSecrets;
     QString error;
-    if (!store.save(data, &error)) {
-        emit workspaceError(error);
-        return false;
+    if (writeSecrets) {
+        previousSecrets = store.snapshot(data.id);
+        if (!previousSecrets && QFile::exists(store.filePath(data.id))) {
+            emit workspaceError(tr("The secret values of workspace %1 could not be read, "
+                                   "so it was not saved. Try again.")
+                                    .arg(displayName));
+            return false;
+        }
+        if (!store.save(data, &error)) {
+            emit workspaceError(error);
+            return false;
+        }
     }
     if (!WorkspaceSerializer::save(path, data, &error)) {
-        store.restore(data.id, previousSecrets);
+        if (writeSecrets)
+            store.restore(data.id, previousSecrets);
         emit workspaceError(error);
         return false;
     }
@@ -586,6 +610,7 @@ void WorkspaceManager::setActiveWorkspace(const QString &path, const WorkspaceDa
     setSecretsUnread(false);
     m_activePath = QDir::cleanPath(QFileInfo(path).absoluteFilePath());
     m_data = data;
+    m_storedSecrets = SecretStore::valuesOf(data);
     setDirty(false);
     emit activeWorkspaceChanged();
 }
@@ -602,6 +627,7 @@ void WorkspaceManager::clearActiveWorkspace()
     }
     m_activePath.clear();
     m_data = WorkspaceData();
+    m_storedSecrets = {};
     setDirty(false);
     emit activeWorkspaceChanged();
     emit workspaceReplaced();

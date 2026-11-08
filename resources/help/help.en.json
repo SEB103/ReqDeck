@@ -780,6 +780,10 @@
                         [
                             "Proxy or company network",
                             "ReqDeck uses the proxy set in Windows, like your browser. Requests to your own computer always go directly."
+                        ],
+                        [
+                            "Secret values are empty on another computer",
+                            "Secret values are encrypted for your Windows user on the computer where you saved them. On another computer or user, enter them again and save. The workspace file itself is not affected."
                         ]
                     ]
                 },

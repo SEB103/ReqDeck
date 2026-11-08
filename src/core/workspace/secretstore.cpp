@@ -180,22 +180,7 @@ bool SecretStore::save(const WorkspaceData &data, QString *errorString) const
     if (!isValidWorkspaceId(data.id))
         return fail(errorString, writeError);
 
-    QJsonObject environments;
-    for (const Environment &environment : data.environments) {
-        QJsonObject values;
-        bool hasValue = false;
-        for (const EnvironmentVariable &variable : environment.variables) {
-            if (!variable.secret)
-                continue;
-            QJsonArray rows = values.value(variable.key).toArray();
-            rows.append(variable.value);
-            values.insert(variable.key, rows);
-            hasValue = hasValue || !variable.value.isEmpty();
-        }
-        if (hasValue)
-            environments.insert(environment.id, values);
-    }
-
+    const QJsonObject environments = valuesOf(data);
     const QString path = filePath(data.id);
     if (environments.isEmpty()) {
         if (QFile::exists(path) && !QFile::remove(path))
@@ -214,6 +199,47 @@ bool SecretStore::save(const WorkspaceData &data, QString *errorString) const
     root.insert(QLatin1StringView("protection"), kDpapiProtection);
     root.insert(QLatin1StringView("data"), QString::fromLatin1(sealed->toBase64()));
     return writeJsonFile(path, root) || fail(errorString, writeError);
+}
+
+/*!
+ * \brief Returns whether the secrets file of \a workspaceId is a plain file of schema 1.
+ *
+ * Such a file is read like any other; the caller saves it again to encrypt it.
+ * \param workspaceId The UUID of the workspace.
+ */
+bool SecretStore::isPlain(const QString &workspaceId) const
+{
+    const std::optional<QByteArray> content = snapshot(workspaceId);
+    return content
+           && QJsonDocument::fromJson(*content).object().value(QLatin1StringView("schema")).toInt()
+                  == kPlainSecretsSchemaVersion;
+}
+
+/*!
+ * \brief Returns the secret values of \a data, per environment and key, as save() stores them.
+ *
+ * Environments without any value are left out, so two workspaces whose secrets
+ * would give the same file compare equal.
+ * \param data The workspace.
+ */
+QJsonObject SecretStore::valuesOf(const WorkspaceData &data)
+{
+    QJsonObject environments;
+    for (const Environment &environment : data.environments) {
+        QJsonObject values;
+        bool hasValue = false;
+        for (const EnvironmentVariable &variable : environment.variables) {
+            if (!variable.secret)
+                continue;
+            QJsonArray rows = values.value(variable.key).toArray();
+            rows.append(variable.value);
+            values.insert(variable.key, rows);
+            hasValue = hasValue || !variable.value.isEmpty();
+        }
+        if (hasValue)
+            environments.insert(environment.id, values);
+    }
+    return environments;
 }
 
 /*!
