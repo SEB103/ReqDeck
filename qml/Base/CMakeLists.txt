@@ -31,6 +31,7 @@ qt_add_qml_module(Base
         BsTheme.qml
         BsTopBarActions.qml
         BsUnknownVariablesMark.qml
+        BsVariableCompleter.qml
         BsVariables.qml
 )
 

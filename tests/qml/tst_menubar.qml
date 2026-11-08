@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick
+import QtQuick.Controls
 import QtTest
 import Base
 
@@ -86,6 +87,32 @@ Item {
             width: 500
             height: 200
             model: keyValueModel
+        }
+    }
+
+    Component {
+        id: completerFieldComponent
+
+        // A field wired to the completer the way the application does it.
+        TextField {
+            id: field
+
+            property alias completer: completer
+
+            width: 300
+            onTextEdited: completer.refresh()
+            Keys.onPressed: (event) => completer.handleKey(event)
+
+            BsVariableCompleter {
+                id: completer
+
+                target: field
+                names: ["baseUrl", "base2", "token"]
+                onCompleted: (text, cursorPosition) => {
+                    field.text = text
+                    field.cursorPosition = cursorPosition
+                }
+            }
         }
     }
 
@@ -343,6 +370,65 @@ Item {
             compare(rowChild(table, 0, "valueField").text, "*/*");
             compare(rowChild(table, 0, "enabledBox").checked, true);
             compare(rowChild(table, 1, "enabledBox").checked, false);
+        }
+
+        /*! Verifies when the completer opens and which names it offers. */
+        function test_completerOffersMatchingNames() {
+            const field = createTemporaryObject(completerFieldComponent, root);
+            verify(field !== null);
+            const completer = field.completer;
+
+            field.text = "{{ba";
+            field.cursorPosition = 4;
+            completer.refresh();
+            compare(completer.visible, true);
+            compare(completer.matches, ["baseUrl", "base2"]);
+
+            field.text = "{{baseUrl}} x";
+            field.cursorPosition = field.text.length;
+            completer.refresh();
+            tryCompare(completer, "visible", false);
+
+            field.text = "{{zz";
+            field.cursorPosition = 4;
+            completer.refresh();
+            tryCompare(completer, "visible", false);
+        }
+
+        /*! Verifies that Enter inserts the highlighted name and the closing braces once. */
+        function test_completerInsertsOnEnter() {
+            const field = createTemporaryObject(completerFieldComponent, root);
+            verify(field !== null);
+            field.forceActiveFocus();
+            field.text = "x/{{to}}/y";
+            field.cursorPosition = 6;
+            field.completer.refresh();
+            compare(field.completer.visible, true);
+
+            keyClick(Qt.Key_Return);
+
+            compare(field.text, "x/{{token}}/y");
+            compare(field.cursorPosition, 11);
+            tryCompare(field.completer, "visible", false);
+        }
+
+        /*! Verifies that the arrows move the choice and Ctrl+Enter is left to the application. */
+        function test_completerLeavesCtrlEnter() {
+            const field = createTemporaryObject(completerFieldComponent, root);
+            verify(field !== null);
+            field.forceActiveFocus();
+            field.text = "{{ba";
+            field.cursorPosition = 4;
+            field.completer.refresh();
+
+            keyClick(Qt.Key_Down);
+            compare(field.completer.current, 1);
+            keyClick(Qt.Key_Return, Qt.ControlModifier);
+            compare(field.text, "{{ba");
+            compare(field.completer.visible, true);
+
+            keyClick(Qt.Key_Tab);
+            compare(field.text, "{{base2}}");
         }
 
         /*! Verifies that only names missing from the known list are reported, once each. */

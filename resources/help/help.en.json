@@ -551,6 +551,14 @@
             "example": "A token abc123 becomes the secret variable token, and the field shows {{token}}.",
             "next": "Save the workspace. Without an active environment, ReqDeck makes one named Default.",
             "chapter": "auth"
+        },
+        "completer": {
+            "title": "Variable suggestions",
+            "what": "After you type {{, ReqDeck lists the variables of the active environment that start with what follows.",
+            "why": "You do not have to remember or spell variable names.",
+            "example": "{{ba offers {{baseUrl}}.",
+            "next": "Arrow keys choose, Enter or Tab inserts, Escape closes the list.",
+            "chapter": "variables"
         }
     },
     "chapters": [
