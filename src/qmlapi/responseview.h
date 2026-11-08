@@ -5,6 +5,7 @@
 #define RESPONSEVIEW_H
 
 #include <QObject>
+#include <QUrl>
 #include <QString>
 #include <QStringList>
 
@@ -84,6 +85,9 @@ class ResponseView : public QObject
     /** Whether the body was too large for memory and only its start is shown. */
     Q_PROPERTY(bool bodyOnDisk READ bodyOnDisk NOTIFY responseChanged)
 
+    /** Whether there is a body to save. */
+    Q_PROPERTY(bool canSaveBody READ canSaveBody NOTIFY responseChanged)
+
     /** Whether the body has a run too long to wrap at word boundaries. */
     Q_PROPERTY(bool wrapAnywhere READ wrapAnywhere NOTIFY responseChanged)
 
@@ -160,6 +164,18 @@ public:
     /** Returns whether only the start of the body is in memory. */
     bool bodyOnDisk() const;
 
+    /** Returns whether there is a body to save. */
+    bool canSaveBody() const;
+
+    /** Returns a file name for the body, from the last part of the URL and the kind of body. */
+    Q_INVOKABLE QString suggestedFileName() const;
+
+    /**
+     * Writes the whole body, as received, to the local file \a fileUrl; emits
+     * bodySaved() or bodySaveFailed() and returns whether it worked.
+     */
+    Q_INVOKABLE bool saveBody(const QUrl &fileUrl);
+
     /** Returns whether the body has a run too long to wrap at word boundaries. */
     bool wrapAnywhere() const;
 
@@ -209,6 +225,12 @@ signals:
     /** Emitted when darkTheme() changes. */
     void darkThemeChanged();
 
+    /** Emitted after the body was saved to \a path. */
+    void bodySaved(const QString &path);
+
+    /** Emitted when the body could not be saved, with \a message for the user. */
+    void bodySaveFailed(const QString &message);
+
 private:
     /** Forgets the shown result, keeping requestName() and pretty(). */
     void resetResult();
@@ -227,6 +249,9 @@ private:
 
     /** Decoded body. */
     DecodedBody m_body;
+
+    /** Body as received, for saving; empty when the body is on disk. */
+    QByteArray m_rawBody;
 
     /** Formatted body; built on first use because large bodies take time. */
     mutable QString m_formatted;

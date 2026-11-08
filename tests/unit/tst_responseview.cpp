@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QSignalSpy>
+#include <QTemporaryDir>
+#include <QDir>
+#include <QFile>
 #include <QtTest>
 
 #include "core/http/responsedata.h"
@@ -90,6 +93,17 @@ private slots:
 
     /*! Verifies the warning about unknown variables. */
     void unresolvedVariablesBecomeWarning();
+
+    /*! Verifies that saving writes the body as received, not the formatted text. */
+    void saveBodyWritesBytes();
+    /*! Verifies that saving a body on disk copies the whole file. */
+    void saveSpilledBodyCopiesFile();
+    /*! Verifies that a failed save says where and why, and keeps no partial file. */
+    void saveFailsWithMessage();
+    /*! Provides URLs and kinds of body with the file name they suggest. */
+    void suggestedFileNameFollowsUrlAndKind_data();
+    /*! Verifies the suggested file name. */
+    void suggestedFileNameFollowsUrlAndKind();
 
     /*! Verifies that a body on disk shows its start, its whole size, and no formatting. */
     void bodyOnDiskShowsStart();
@@ -350,6 +364,98 @@ void ResponseViewTest::unresolvedVariablesBecomeWarning()
 
     view.setResponse(makeResponse("{}", QStringLiteral("application/json")), {});
     QVERIFY(view.property("warningText").toString().isEmpty());
+}
+
+void ResponseViewTest::saveBodyWritesBytes()
+{
+    ResponseView view;
+    QCOMPARE(view.property("canSaveBody").toBool(), false);
+    view.setResponse(makeResponse("{\"a\":1}", QStringLiteral("application/json")), {});
+    QCOMPARE(view.property("canSaveBody").toBool(), true);
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("r.json"));
+    QSignalSpy saved(&view, &ResponseView::bodySaved);
+
+    QVERIFY(view.saveBody(QUrl::fromLocalFile(path)));
+
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    QCOMPARE(file.readAll(), QByteArray("{\"a\":1}"));
+    QCOMPARE(saved.count(), 1);
+    QCOMPARE(saved.first().first().toString(), QDir::toNativeSeparators(path));
+}
+
+void ResponseViewTest::saveSpilledBodyCopiesFile()
+{
+    ResponseData response = makeResponse("whole", QStringLiteral("text/plain"));
+    response.bodyFile = std::make_shared<QTemporaryFile>();
+    QVERIFY(response.bodyFile->open());
+    const QByteArray whole = QByteArray(3 * 1024 * 1024, 'x') + "end";
+    QCOMPARE(response.bodyFile->write(whole), whole.size());
+    QVERIFY(response.bodyFile->flush());
+    response.sizeBytes = whole.size();
+    ResponseView view;
+    view.setResponse(response, {});
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("big.txt"));
+
+    QVERIFY(view.saveBody(QUrl::fromLocalFile(path)));
+
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    QCOMPARE(file.readAll(), whole);
+}
+
+void ResponseViewTest::saveFailsWithMessage()
+{
+    ResponseView view;
+    view.setResponse(makeResponse("{}", QStringLiteral("application/json")), {});
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("missing/r.json"));
+    QSignalSpy failed(&view, &ResponseView::bodySaveFailed);
+
+    QVERIFY(!view.saveBody(QUrl::fromLocalFile(path)));
+
+    QCOMPARE(failed.count(), 1);
+    const QString message = failed.first().first().toString();
+    QVERIFY2(message.contains(QDir::toNativeSeparators(path)), qPrintable(message));
+    QVERIFY(!QFile::exists(path));
+}
+
+void ResponseViewTest::suggestedFileNameFollowsUrlAndKind_data()
+{
+    QTest::addColumn<QString>("url");
+    QTest::addColumn<QByteArray>("body");
+    QTest::addColumn<QString>("contentType");
+    QTest::addColumn<QString>("name");
+
+    QTest::newRow("json") << "https://api.example.com/v1/users" << QByteArray("{}")
+                          << "application/json" << "users.json";
+    QTest::newRow("root") << "https://api.example.com/" << QByteArray("{}") << "application/json"
+                          << "response.json";
+    QTest::newRow("xml") << "https://x/feed" << QByteArray("<a/>") << "application/xml" << "feed.xml";
+    QTest::newRow("html") << "https://x/page" << QByteArray("<p>") << "text/html; charset=utf-8" << "page.html";
+    QTest::newRow("text") << "https://x/notes" << QByteArray("hi") << "text/plain" << "notes.txt";
+    QTest::newRow("has extension") << "https://x/files/report.pdf" << QByteArray("%PDF\0\1")
+                                   << "application/pdf" << "report.pdf";
+    QTest::newRow("binary") << "https://x/blob" << QByteArray("\0\1\2", 3) << "application/octet-stream"
+                            << "blob.bin";
+    QTest::newRow("unsafe") << "https://x/a%3Fb%3Ac" << QByteArray("hi") << "text/plain" << "a_b_c.txt";
+}
+
+void ResponseViewTest::suggestedFileNameFollowsUrlAndKind()
+{
+    QFETCH(QString, url);
+    QFETCH(QByteArray, body);
+    QFETCH(QString, contentType);
+    QFETCH(QString, name);
+
+    ResponseData response = makeResponse(body, contentType);
+    response.finalUrl = QUrl(url);
+    ResponseView view;
+    view.setResponse(response, {});
+
+    QCOMPARE(view.suggestedFileName(), name);
 }
 
 void ResponseViewTest::bodyOnDiskShowsStart()

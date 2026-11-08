@@ -399,6 +399,19 @@ ApplicationWindow {
     }
 
     Connections {
+        target: cppResponse
+
+        function onBodySaved(path) {
+            mainWindow.showNotification(1, // Diagnostics::Info
+                                        qsTr("Saved the response to %1.").arg(path))
+        }
+
+        function onBodySaveFailed(message) {
+            mainWindow.showNotification(2, message) // Diagnostics::Warning
+        }
+    }
+
+    Connections {
         target: cppRequestEditor
 
         function onCopiedToClipboard() {

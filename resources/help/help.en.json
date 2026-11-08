@@ -519,6 +519,14 @@
             "example": "https://localhost:8443 with a self-made certificate.",
             "next": "The answer shows a warning, and the log records it. The next request is checked again.",
             "chapter": "troubleshooting"
+        },
+        "response.save": {
+            "title": "Save the response",
+            "what": "Writes the answer to a file, exactly as the server sent it.",
+            "why": "To keep a download, open the answer in another program, or get all of a very large one.",
+            "example": "users.json in your Downloads folder.",
+            "next": "Choose where to save; a message says where the file went.",
+            "chapter": "response"
         }
     },
     "chapters": [

@@ -183,6 +183,23 @@ public:
     /*! Returns the URL of \a path on the mock server. */
     Q_INVOKABLE QString serverUrl(const QString &path) const { return m_server.url(path).toString(); }
 
+    /*! Returns a path for a file named \a name in the test directory. */
+    Q_INVOKABLE QString scratchFile(const QString &name) const { return m_dir.filePath(name); }
+
+    /*! Returns whether the file \a path holds exactly \a size bytes of the /bytes/ pattern. */
+    Q_INVOKABLE bool fileMatchesPattern(const QString &path, qint64 size) const
+    {
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly) || file.size() != size)
+            return false;
+        for (qint64 offset = 0; offset < size; offset += 1024 * 1024) {
+            const QByteArray chunk = file.read(1024 * 1024);
+            if (chunk != MockHttpServer::patternBytes(offset, chunk.size()))
+                return false;
+        }
+        return true;
+    }
+
     /*! Returns the address of \a path on the HTTPS server with an untrusted certificate. */
     Q_INVOKABLE QString tlsServerUrl(const QString &path) const { return m_tlsServer.url(path).toString(); }
 

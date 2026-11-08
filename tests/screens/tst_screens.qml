@@ -1777,6 +1777,41 @@ Item {
             }
         }
 
+        /*! Verifies that Save writes the body and reports where. */
+        function test_saveResponseWritesFile() {
+            const window = createMain();
+            findChild(window.contentItem, "tree").parent.selectNode("r2");
+            cppRequestEditor.url = cppTestHost.serverUrl("/bytes/1000");
+            cppRequestEditor.send();
+            tryCompare(cppResponse, "busy", false, 10000);
+            const button = findChild(window.contentItem, "saveResponseButton");
+            compare(button.visible, true);
+            compare(button.enabled, true);
+            const path = cppTestHost.scratchFile("saved.txt");
+
+            findChild(window.contentItem, "responsePane").saveTo("file:///" + path);
+
+            verify(cppTestHost.fileMatchesPattern(path, 1000));
+            verify(window.statusMessage.indexOf("saved.txt") >= 0, window.statusMessage);
+        }
+
+        /*! Verifies that a body too large for memory is saved whole. */
+        function test_saveLargeBodyIsComplete() {
+            const size = 33 * 1024 * 1024 + 17;
+            const window = createMain();
+            findChild(window.contentItem, "tree").parent.selectNode("r2");
+            cppRequestEditor.url = cppTestHost.serverUrl("/bytes/" + size);
+            cppRequestEditor.send();
+            tryCompare(cppResponse, "busy", false, 60000);
+            compare(cppResponse.bodyOnDisk, true);
+            verify(findChild(window.contentItem, "truncatedLabel").text.indexOf("Save") >= 0);
+            const path = cppTestHost.scratchFile("large.txt");
+
+            findChild(window.contentItem, "responsePane").saveTo("file:///" + path);
+
+            verify(cppTestHost.fileMatchesPattern(path, size));
+        }
+
         /*! Verifies the banner of an untrusted certificate and its Continue button. */
         function test_certificateBannerContinues() {
             const window = createMain();

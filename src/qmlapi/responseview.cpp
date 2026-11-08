@@ -3,7 +3,11 @@
 
 #include "qmlapi/responseview.h"
 
+#include <QDir>
+#include <QFile>
 #include <QQuickTextDocument>
+#include <QRegularExpression>
+#include <QSaveFile>
 
 #include "qmlapi/bodyhighlighter.h"
 
@@ -202,6 +206,84 @@ bool ResponseView::bodyOnDisk() const
     return m_response.bodyFile != nullptr;
 }
 
+bool ResponseView::canSaveBody() const
+{
+    return m_hasResponse && m_response.sizeBytes > 0;
+}
+
+/*!
+ * \brief Returns a file name for the body.
+ *
+ * The last part of the URL path names the file, with characters Windows does
+ * not allow replaced; "response" stands in for a URL without a path. A name
+ * without an extension gets one from the kind of body.
+ */
+QString ResponseView::suggestedFileName() const
+{
+    QString name = QUrl::fromPercentEncoding(m_response.finalUrl.path().section(u'/', -1).toUtf8());
+    static const QRegularExpression unsafe(QStringLiteral("[<>:\"/\\\\|?*\\x00-\\x1f]"));
+    name.replace(unsafe, QStringLiteral("_"));
+    name = name.trimmed();
+    if (name.isEmpty() || name == u'.' || name == QLatin1StringView(".."))
+        name = QStringLiteral("response");
+    if (name.contains(u'.'))
+        return name;
+
+    switch (m_body.kind) {
+    case BodyKind::Json:
+        return name + QStringLiteral(".json");
+    case BodyKind::Xml:
+        return name + QStringLiteral(".xml");
+    case BodyKind::Binary:
+        return name + QStringLiteral(".bin");
+    case BodyKind::Text:
+        break;
+    }
+    return name + (m_response.contentType.contains(QLatin1StringView("html"), Qt::CaseInsensitive)
+                       ? QStringLiteral(".html")
+                       : QStringLiteral(".txt"));
+}
+
+/*!
+ * \brief Writes the whole body, as received after decompression, to \a fileUrl.
+ *
+ * A body on disk is copied in pieces, so saving it needs no memory either. The
+ * target is replaced only once everything was written, so a failed save leaves
+ * an existing file as it was.
+ * \param fileUrl A local file, usually chosen in a file dialog.
+ * \return Whether the file was written.
+ */
+bool ResponseView::saveBody(const QUrl &fileUrl)
+{
+    const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
+    QSaveFile out(path);
+    QString error;
+    if (!out.open(QIODevice::WriteOnly)) {
+        error = out.errorString();
+    } else if (m_response.bodyFile) {
+        QFile in(m_response.bodyFile->fileName());
+        if (!in.open(QIODevice::ReadOnly))
+            error = in.errorString();
+        while (error.isEmpty() && !in.atEnd()) {
+            const QByteArray chunk = in.read(1024 * 1024);
+            if (out.write(chunk) != chunk.size())
+                error = out.errorString();
+        }
+    } else if (out.write(m_rawBody) != m_rawBody.size()) {
+        error = out.errorString();
+    }
+    if (error.isEmpty() && !out.commit())
+        error = out.errorString();
+
+    if (!error.isEmpty()) {
+        emit bodySaveFailed(tr("The response could not be saved to %1: %2")
+                                .arg(QDir::toNativeSeparators(path), error));
+        return false;
+    }
+    emit bodySaved(QDir::toNativeSeparators(path));
+    return true;
+}
+
 /*!
  * \brief Returns whether the body has a run too long to wrap at word boundaries.
  */
@@ -302,6 +384,9 @@ void ResponseView::setResponse(const ResponseData &response, const QStringList &
     m_highlighter->setKind(int(m_body.kind));
     m_wrapAnywhere = hasLongRun(QStringView(m_body.text).first(qMin(m_body.text.size(), kMaxDisplayChars)));
     m_response = response;
+    // The bytes as received stay for saving; a body on disk keeps them there.
+    if (!response.bodyFile)
+        m_rawBody = response.body;
     m_response.body.clear();
     QStringList warnings;
     if (response.tlsErrorsIgnored) {
@@ -359,6 +444,7 @@ void ResponseView::clear()
 void ResponseView::resetResult()
 {
     m_response = ResponseData();
+    m_rawBody.clear();
     m_body = DecodedBody();
     m_formatted.clear();
     m_hasFormatted = false;

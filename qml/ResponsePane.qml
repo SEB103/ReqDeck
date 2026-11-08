@@ -7,6 +7,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
+import QtQuick.Dialogs
+import QtCore
 import Base as Base
 
 /*!
@@ -22,6 +24,11 @@ Item {
 
     /*! Topic of the F1 help. */
     property string helpTopic: "response.body"
+
+    /*! Saves the body to the local file \a fileUrl; the result is reported by cppResponse. */
+    function saveTo(fileUrl) {
+        cppResponse.saveBody(fileUrl)
+    }
 
     Binding {
         target: cppResponse
@@ -111,6 +118,28 @@ Item {
 
                 visible: cppResponse.statusCode > 0
                 text: cppResponse.sizeText
+            }
+
+            ToolButton {
+                /*! Topic of the F1 help. */
+                property string helpTopic: "response.save"
+
+                objectName: "saveResponseButton"
+
+                visible: cppResponse.canSaveBody
+                enabled: !cppResponse.busy
+                display: AbstractButton.IconOnly
+                icon.source: "qrc:/images/svg/save.svg"
+                icon.width: 18
+                icon.height: 18
+                Accessible.name: qsTr("Save response")
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Save response to a file")
+                onClicked: {
+                    saveDialog.selectedFile = StandardPaths.writableLocation(StandardPaths.DownloadLocation)
+                                              + "/" + cppResponse.suggestedFileName()
+                    saveDialog.open()
+                }
             }
         }
 
@@ -370,5 +399,13 @@ Item {
                 }
             }
         }
+    }
+
+    FileDialog {
+        id: saveDialog
+
+        title: qsTr("Save Response")
+        fileMode: FileDialog.SaveFile
+        onAccepted: root.saveTo(selectedFile)
     }
 }
