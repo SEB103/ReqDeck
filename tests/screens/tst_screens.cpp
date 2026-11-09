@@ -386,6 +386,21 @@ public:
         return guide.write("%PDF-1.7\n") > 0;
     }
 
+    /*! Returns whether the active environment has a secret variable \a key. */
+    Q_INVOKABLE bool isSecretVariable(const QString &key) const
+    {
+        const WorkspaceData &data = m_manager.workspaceData();
+        for (const Environment &environment : data.environments) {
+            if (environment.id != data.activeEnvironmentId)
+                continue;
+            for (const EnvironmentVariable &variable : environment.variables) {
+                if (variable.key == key)
+                    return variable.secret;
+            }
+        }
+        return false;
+    }
+
     /*! Closes the workspace, so the launcher shows, and points Open Samples at a fresh copy. */
     Q_INVOKABLE bool prepareLauncherSamples()
     {

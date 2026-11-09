@@ -3041,8 +3041,9 @@ Item {
             tryCompare(dialog, "opened", true);
             compare(dialog.names, ["target"]);
             const field = findChild(dialog.contentItem, "missingValueField");
+            tryCompare(field, "activeFocus", true);
             field.text = cppTestHost.serverUrl("/status/201");
-            dialog.accept();
+            keyClick(Qt.Key_Return);
 
             tryCompare(cppResponse, "statusCode", 201, 10000);
             compare(cppEnvironments.activeVariableNames, before);
@@ -3065,6 +3066,7 @@ Item {
 
             tryCompare(cppResponse, "statusCode", 202, 10000);
             verify(cppEnvironments.activeVariableNames.indexOf("target") >= 0);
+            verify(cppTestHost.isSecretVariable("target"));
         }
 
         /*! Verifies that Ctrl+K finds a request by its name and opens it with Enter. */

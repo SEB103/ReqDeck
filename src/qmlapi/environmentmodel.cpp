@@ -323,14 +323,16 @@ QString EnvironmentModel::addSecretVariable(const QString &baseKey, const QStrin
 }
 
 /*!
- * \brief Sets the plain variable \a key of the active environment to \a value.
+ * \brief Sets the variable \a key of the active environment to \a value.
  *
  * Used to keep a value the user entered for a missing variable. The first row
- * with the key changes; without one, an enabled plain variable is added.
+ * with the key changes and keeps its secret flag; without one, an enabled
+ * variable is added.
  * \param key The variable.
  * \param value Its value.
+ * \param secret Whether an added variable is secret.
  */
-void EnvironmentModel::setVariable(const QString &key, const QString &value)
+void EnvironmentModel::setVariable(const QString &key, const QString &value, bool secret)
 {
     if (key.isEmpty())
         return;
@@ -346,7 +348,7 @@ void EnvironmentModel::setVariable(const QString &key, const QString &value)
         existing->value = value;
         existing->enabled = true;
     } else {
-        variables.append({key, value, true, false});
+        variables.append({key, value, true, secret});
     }
     m_manager->updateWorkspaceData(data);
 

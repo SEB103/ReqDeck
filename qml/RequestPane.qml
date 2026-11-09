@@ -33,7 +33,8 @@ Item {
         const focused = root.Window.activeFocusItem
         root.forceActiveFocus(Qt.ShortcutFocusReason)
         root.trySend()
-        if (focused)
+        // An open dialog asking for values keeps the focus.
+        if (focused && !missingValuesDialog.visible)
             focused.forceActiveFocus(Qt.ShortcutFocusReason)
     }
 
@@ -625,6 +626,10 @@ Item {
             missingValuesDialog.names = list
             keepBox.checked = false
             missingValuesDialog.open()
+            Qt.callLater(() => {
+                if (valueFields.count > 0)
+                    valueFields.itemAt(0).forceActiveFocus()
+            })
         }
 
         objectName: "missingValuesDialog"
@@ -641,7 +646,8 @@ Item {
                 values[missingValuesDialog.names[i]] = valueFields.itemAt(i).text
             if (keepBox.checked) {
                 for (const name of missingValuesDialog.names)
-                    cppEnvironments.setVariable(name, values[name])
+                    // Typed values may be tokens or passwords: they stay on this computer.
+                    cppEnvironments.setVariable(name, values[name], true)
                 cppRequestEditor.send()
             } else {
                 cppRequestEditor.sendWithValues(values)
@@ -670,6 +676,7 @@ Item {
                     Layout.fillWidth: true
                     placeholderText: "{{" + modelData + "}}"
                     selectByMouse: true
+                    onAccepted: missingValuesDialog.accept()
                     Accessible.name: modelData
                 }
             }
@@ -678,7 +685,7 @@ Item {
                 id: keepBox
 
                 objectName: "keepValuesBox"
-                text: qsTr("Keep them in the active environment")
+                text: qsTr("Keep them in the active environment, as secret values")
             }
         }
     }

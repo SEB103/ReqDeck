@@ -123,10 +123,11 @@ public:
     Q_INVOKABLE QString addSecretVariable(const QString &baseKey, const QString &value);
 
     /**
-     * Sets the plain variable \a key of the active environment to \a value, adding it
-     * when missing; an environment named "Default" is made active when none is.
+     * Sets the variable \a key of the active environment to \a value, adding it, secret
+     * when \a secret is true, when missing; an environment named "Default" is made
+     * active when none is.
      */
-    Q_INVOKABLE void setVariable(const QString &key, const QString &value);
+    Q_INVOKABLE void setVariable(const QString &key, const QString &value, bool secret = false);
 
     /** Colors the URL held by \a document. */
     Q_INVOKABLE void attachUrlHighlighter(QQuickTextDocument *document);
