@@ -104,7 +104,13 @@ Popup {
     }
 
     parent: completer.target
-    y: completer.target ? completer.target.height : 0
+    // Below the cursor in a text field or area; below the whole control otherwise.
+    x: completer.target && completer.target.cursorRectangle !== undefined
+       ? Math.max(0, Math.min(completer.target.cursorRectangle.x, completer.target.width - completer.width)) : 0
+    y: !completer.target ? 0
+       : completer.target.cursorRectangle !== undefined
+         ? completer.target.cursorRectangle.y + completer.target.cursorRectangle.height + 2
+         : completer.target.height
     width: 260
     padding: 2
     focus: false

@@ -3100,6 +3100,26 @@ Item {
             compare(url.cursorPosition, 11);
         }
 
+        /*! Verifies that the raw body offers the variables after {{ too. */
+        function test_rawBodyCompleterInsertsVariable() {
+            const pane = createRequest("r1");
+            cppEnvironments.activeIndex = 0;
+            findChild(pane, "tabs").currentIndex = 2;
+            const area = findChild(pane, "rawBodyArea");
+            area.forceActiveFocus();
+            tryCompare(area, "activeFocus", true);
+
+            area.cursorPosition = area.length;
+            // Typing moves the cursor before the text changes are reported.
+            area.insert(area.length, "{");
+            area.cursorPosition = area.length;
+            area.insert(area.length, "{ba");
+            keyClick(Qt.Key_Return);
+
+            verify(cppRequestEditor.rawBody.endsWith("{{baseUrl}}"), cppRequestEditor.rawBody);
+            compare(area.cursorPosition, area.length);
+        }
+
         /*! Verifies that an auth field naming an unknown variable is framed. */
         function test_authFieldFlagsUnknownVariable() {
             const pane = createRequest("r1");

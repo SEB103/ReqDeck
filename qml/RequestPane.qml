@@ -320,13 +320,27 @@ Item {
                         font.family: "Consolas"
                         selectByMouse: true
                         placeholderText: qsTr("Request body")
+                        Keys.onPressed: (event) => rawBodyCompleter.handleKey(event)
                         onTextChanged: {
                             if (rawBodyArea.showingBody)
                                 return
                             rawBodyArea.shownBody = text
                             cppRequestEditor.rawBody = text
+                            if (rawBodyArea.activeFocus)
+                                rawBodyCompleter.refresh()
                         }
                         Component.onCompleted: rawBodyArea.showBody()
+
+                        Base.BsVariableCompleter {
+                            id: rawBodyCompleter
+
+                            target: rawBodyArea
+                            names: cppEnvironments.activeVariableNames
+                            onCompleted: (text, cursorPosition) => {
+                                rawBodyArea.text = text
+                                rawBodyArea.cursorPosition = cursorPosition
+                            }
+                        }
 
                         Connections {
                             target: cppRequestEditor
