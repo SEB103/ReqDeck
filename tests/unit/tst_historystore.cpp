@@ -265,6 +265,11 @@ void HistoryStoreTest::redactsUrlCredentials_data()
                                      << QStringLiteral("http://h/x?token={{t}}");
     QTest::newRow("before fragment") << QStringLiteral("http://h/x?token=T#top")
                                      << QStringLiteral("http://h/x?token=#top");
+    QTest::newRow("fragment token") << QStringLiteral("http://h/cb#access_token=T&state=s")
+                                    << QStringLiteral("http://h/cb#access_token=&state=s");
+    QTest::newRow("query and fragment") << QStringLiteral("http://h/cb?code=C&secret=S#id_token=I")
+                                        << QStringLiteral("http://h/cb?code=C&secret=#id_token=");
+    QTest::newRow("plain fragment") << QStringLiteral("http://h/x#section-2") << QStringLiteral("http://h/x#section-2");
     QTest::newRow("variable host") << QStringLiteral("{{baseUrl}}/items?secret=S")
                                    << QStringLiteral("{{baseUrl}}/items?secret=");
     QTest::newRow("at in path") << QStringLiteral("http://h/a@b") << QStringLiteral("http://h/a@b");

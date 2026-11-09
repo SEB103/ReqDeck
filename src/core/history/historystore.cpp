@@ -251,6 +251,21 @@ void redactQuery(QString &url)
 
 /*!
  * \internal
+ * \brief Clears credentials in a fragment of \a url that holds "name=value" pairs.
+ *
+ * OAuth implicit flows return the token there, as in "#access_token=...".
+ * A plain anchor such as "#section-2" has no pairs and stays.
+ */
+void redactFragment(QString &url)
+{
+    const qsizetype hash = url.indexOf(u'#');
+    if (hash < 0 || url.indexOf(u'=', hash) < 0)
+        return;
+    url.replace(hash + 1, url.size() - hash - 1, redactedPairs(url.sliced(hash + 1)));
+}
+
+/*!
+ * \internal
  * \brief Returns JSON \a text with the values of keys named like credentials cleared.
  *
  * The text is edited in place instead of being parsed and written again, which
@@ -607,6 +622,7 @@ RequestSpec HistoryStore::redacted(const RequestSpec &spec)
 
     redactUserInfo(result.url);
     redactQuery(result.url);
+    redactFragment(result.url);
     clearCredentialRows(result.queryParams);
     clearCredentialRows(result.headers);
     clearCredentialRows(result.body.form);
