@@ -88,6 +88,14 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 - Before a file format changes, ReqDeck keeps a copy of the workspace and its
   secrets; File > Restore Previous Copy puts it back.
 - Copy as cURL adds -L and -m to match ReqDeck's redirect and timeout settings.
+- Open Samples opens the request the guide starts with.
+- Variables are suggested after {{ in the URL, tables, auth fields, and body; a
+  field naming an unknown variable gets a red frame.
+- Send asks for the values of variables the active environment lacks, for this
+  send or to keep.
+- Ctrl+K finds a request or a menu command.
+- The tree selects several items with Ctrl and Shift, works with the keyboard,
+  and sorts a folder; the history can be searched.
 
 ### Fixed
 - Responses over HTTP/2 show the name of their status, for example 200 OK.
@@ -95,3 +103,6 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
   history value is limited in length.
 - Saving a workspace without changes leaves its files untouched.
 - "Invalid URL" shows the URL as typed, without variable values.
+- A token in the URL fragment, as in #access_token=..., is not kept in history.
+- JSON with a number such as 1e400 is formatted; CDATA and tags across lines
+  are highlighted; long bodies are cut without splitting a character.

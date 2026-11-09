@@ -30,6 +30,10 @@
                 "Send the request."
             ],
             [
+                "Ctrl+K",
+                "Find a request or a command."
+            ],
+            [
                 "Ctrl+S",
                 "Save the workspace."
             ],
@@ -40,6 +44,10 @@
             [
                 "Ctrl+O",
                 "Open a workspace."
+            ],
+            [
+                "F2",
+                "Rename the selected item in the tree."
             ],
             [
                 "Esc",
@@ -598,7 +606,7 @@
                     "type": "steps",
                     "items": [
                         "Start ReqDeck and choose Open Samples.",
-                        "In the Collection on the left, open the folder JSONPlaceholder and click \"Get a post\".",
+                        "ReqDeck opens the request \"Get a post\" from the folder JSONPlaceholder in the Collection on the left.",
                         "Look at the address in the middle: this is where the request goes.",
                         "Press Send, or Ctrl+Enter.",
                         "On the right you see the answer: a green 200 OK and the post as JSON."
@@ -658,6 +666,10 @@
                     "type": "shot",
                     "file": "body.png",
                     "caption": "A JSON body for a POST request."
+                },
+                {
+                    "type": "tip",
+                    "text": "Ctrl+K finds any request by a few words of its name or address, and any menu command. In the tree, Ctrl+click or Shift+click selects several items, F2 renames, Delete deletes, and right-click > Sort A–Z orders a folder."
                 }
             ]
         },
@@ -689,6 +701,10 @@
                 {
                     "type": "tip",
                     "text": "A field that names a variable the active environment does not have gets a red frame. Point at the field to see which variable is missing."
+                },
+                {
+                    "type": "tip",
+                    "text": "Type {{ and ReqDeck lists the variables of the active environment; Enter inserts one. If a request uses a variable the environment lacks, Send asks for its value first."
                 }
             ]
         },
@@ -803,6 +819,10 @@
                     "type": "shot",
                     "file": "history.png",
                     "caption": "History with the status of each request."
+                },
+                {
+                    "type": "tip",
+                    "text": "The search field above the history keeps the entries that contain every word you type, for example post orders."
                 }
             ]
         },
