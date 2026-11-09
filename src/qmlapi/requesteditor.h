@@ -314,6 +314,9 @@ private:
     /** Defaults requests are built with. */
     RequestBuilder::Options m_builderOptions;
 
+    /** One-time values of the last send, for Continue past a certificate; never stored. */
+    QList<KeyValue> m_lastExtraVariables;
+
     /** Variables of the running request that had no value. */
     QStringList m_unresolved;
 

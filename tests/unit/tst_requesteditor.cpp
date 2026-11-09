@@ -190,6 +190,9 @@ private slots:
     /*! Verifies that one-time values resolve the request and are not stored. */
     void sendWithValuesUsesThemOnce();
 
+    /*! Verifies that Continue past a certificate sends with the one-time values again. */
+    void trustingCertificateKeepsOneTimeValues();
+
     /*! Verifies that nothing is sent without a request. */
     void sendWithoutRequestDoesNothing();
 
@@ -879,6 +882,22 @@ void RequestEditorTest::sendWithValuesUsesThemOnce()
     QVERIFY(m_response->warningText().isEmpty());
     QCOMPARE(m_manager->workspaceData().environments, before.environments);
     QCOMPARE(m_editor->missingVariables(), QStringList({QStringLiteral("base")}));
+}
+
+void RequestEditorTest::trustingCertificateKeepsOneTimeValues()
+{
+    openRequestAtUrl(m_tlsServer.url(QStringLiteral("/status/200")));
+    m_editor->setProperty("url", m_tlsServer.url(QString()).toString() + QStringLiteral("/{{path}}"));
+    m_editor->sendWithValues({{QStringLiteral("path"), QStringLiteral("echo")}});
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_response->property("canTrustCertificate").toBool(), true);
+    const int before = m_tlsServer.requestCount();
+
+    m_editor->sendTrustingCertificate();
+
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_response->statusCode(), 200);
+    QCOMPARE(m_tlsServer.requestCount(), before + 1);
 }
 
 void RequestEditorTest::sendWithoutRequestDoesNothing()

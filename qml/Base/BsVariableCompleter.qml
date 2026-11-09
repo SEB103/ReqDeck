@@ -70,6 +70,13 @@ Popup {
         if (index < 0 || index >= completer.matches.length || !completer.target)
             return
         const text = completer.target.text
+        // The cursor may have moved since the list opened: insert only where it
+        // still follows the "{{" being completed.
+        const typed = text.slice(completer.start, completer.target.cursorPosition)
+        if (completer.start < 0 || !/^\{\{\s*[A-Za-z0-9_.\-]*$/.test(typed)) {
+            completer.close()
+            return
+        }
         const name = completer.matches[index]
         let after = text.slice(completer.target.cursorPosition)
         // Braces the user already typed are not doubled.
@@ -115,6 +122,16 @@ Popup {
     padding: 2
     focus: false
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+
+    // A cursor that moves away, by a key or a click, ends the completion.
+    Connections {
+        target: completer.target
+        enabled: completer.visible
+
+        function onCursorPositionChanged() {
+            completer.refresh()
+        }
+    }
 
     contentItem: ListView {
         objectName: "completerList"

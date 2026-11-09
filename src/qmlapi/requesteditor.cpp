@@ -406,7 +406,8 @@ void RequestEditor::sendTrustingCertificate()
 {
     if (!m_response->canTrustCertificate() || m_response->requestId() != m_requestId)
         return;
-    sendBuilt(m_response->certificateFailure());
+    // The values entered for the failed send count for its repetition too.
+    sendBuilt(m_response->certificateFailure(), m_lastExtraVariables);
 }
 
 /*!
@@ -419,8 +420,11 @@ void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue
     if (!canSend())
         return;
 
+    // Copied first: a repetition passes m_lastExtraVariables itself.
+    const QList<KeyValue> extra = extraVariables;
+    m_lastExtraVariables = extra;
     const VariableResolver variables = VariableResolver::fromKeyValues(
-        activeEnvironmentVariables(m_manager->workspaceData()) + extraVariables);
+        activeEnvironmentVariables(m_manager->workspaceData()) + extra);
     BuiltRequest built = RequestBuilder::build(m_request, variables, m_builderOptions);
     built.tlsException = tlsException;
 

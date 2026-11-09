@@ -466,6 +466,28 @@ Item {
             compare(field.text, "{{base2}}");
         }
 
+        /*! Verifies that moving the cursor away closes the list and a late choice changes nothing. */
+        function test_completerFollowsTheCursor() {
+            const field = createTemporaryObject(completerFieldComponent, root);
+            verify(field !== null);
+            field.forceActiveFocus();
+            field.text = "abc {{ba";
+            field.cursorPosition = field.text.length;
+            field.completer.refresh();
+            compare(field.completer.visible, true);
+
+            field.cursorPosition = 0;
+            tryCompare(field.completer, "visible", false);
+            field.completer.choose(0);
+            compare(field.text, "abc {{ba");
+
+            field.cursorPosition = field.text.length;
+            field.completer.refresh();
+            keyClick(Qt.Key_Home);
+            keyClick(Qt.Key_Return);
+            compare(field.text, "abc {{ba");
+        }
+
         /*! Verifies that only names missing from the known list are reported, once each. */
         function test_unknownVariablesFound() {
             compare(BsVariables.unknownIn("{{ a }}/{{b}}?x={{a}}&y={{c.d-e}}", ["b"]), ["a", "c.d-e"]);
