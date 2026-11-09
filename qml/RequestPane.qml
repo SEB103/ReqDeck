@@ -140,10 +140,10 @@ Item {
             }
 
             Base.BsSingleLineEdit {
+                id: urlField
+
                 /*! Topic of the F1 help. */
                 property string helpTopic: "request.url"
-
-                id: urlField
 
                 objectName: "urlField"
 
@@ -402,10 +402,10 @@ Item {
                 }
 
                 TextField {
+                    id: passwordField
+
                     /*! Topic of the F1 help. */
                     property string helpTopic: "request.authPassword"
-
-                    id: passwordField
 
                     /*! Variables in the field that do not resolve. */
                     readonly property var unknown: Base.BsVariables.unknownIn(text, cppEnvironments.activeVariableNames)
@@ -445,10 +445,10 @@ Item {
                 }
 
                 TextField {
+                    id: tokenField
+
                     /*! Topic of the F1 help. */
                     property string helpTopic: "request.token"
-
-                    id: tokenField
 
                     /*! Variables in the field that do not resolve. */
                     readonly property var unknown: Base.BsVariables.unknownIn(text, cppEnvironments.activeVariableNames)

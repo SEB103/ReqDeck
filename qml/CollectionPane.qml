@@ -62,6 +62,11 @@ Item {
         } else if ((modifiers & Qt.ShiftModifier) && root.selectedId.length > 0) {
             const from = tree.rowAtIndex(cppCollection.indexOfNode(root.selectedId))
             const to = tree.rowAtIndex(cppCollection.indexOfNode(id))
+            // An anchor hidden in a collapsed folder has no row: start from the clicked one.
+            if (from < 0 || to < 0) {
+                root.selectNode(id)
+                return
+            }
             const ids = []
             for (let row = Math.min(from, to); row <= Math.max(from, to); ++row)
                 ids.push(cppCollection.idAt(tree.index(row, 0)))
