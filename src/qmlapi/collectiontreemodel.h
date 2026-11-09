@@ -77,6 +77,21 @@ public:
     /** Places a copy of the node \a id after it; returns the id of the copy or "". */
     Q_INVOKABLE QString duplicate(const QString &id);
 
+    /** Removes the nodes \a ids, skipping those inside another of them; returns how many went. */
+    Q_INVOKABLE int removeItems(const QStringList &ids);
+
+    /** Places a copy after each of the nodes \a ids, skipping those inside another; returns the copies. */
+    Q_INVOKABLE QStringList duplicateItems(const QStringList &ids);
+
+    /**
+     * Sorts the children of the folder \a folderId, or the top level for an empty id:
+     * folders first, each group by name. Returns false for a request or an unknown id.
+     */
+    Q_INVOKABLE bool sortChildren(const QString &folderId);
+
+    /** Returns the id of the node at \a index; empty for an invalid index. */
+    Q_INVOKABLE QString idAt(const QModelIndex &index) const;
+
     /** Returns the index of the node \a id; invalid when it does not exist. */
     Q_INVOKABLE QModelIndex indexOfNode(const QString &id) const;
 
@@ -120,6 +135,9 @@ private:
 
     /** Creates the mirror of \a node below \a parent and registers it by id. */
     std::unique_ptr<Item> buildItem(const CollectionNode &node, Item *parent);
+
+    /** Returns \a ids without those that lie inside another of them, in the given order. */
+    QStringList outermost(const QStringList &ids) const;
 
     /** Removes \a item and everything below it from the id lookup. */
     void forget(const Item *item);

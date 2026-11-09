@@ -52,6 +52,15 @@ class CollectionTreeModelTest : public QObject
     Q_OBJECT
 
 private slots:
+    /*! Verifies that a sort puts folders first, each group by name, and keeps indexes on their nodes. */
+    void sortChildrenPutsFoldersFirst();
+
+    /*! Verifies that removing several nodes skips those inside another removed one. */
+    void removeItemsSkipsNested();
+
+    /*! Verifies that each of several nodes gets a copy after it. */
+    void duplicateItemsCopiesEach();
+
     /*! Verifies the request opened first: the one the workspace names, or else the first one. */
     void startRequestIdFollowsSettings();
 
@@ -356,6 +365,44 @@ void CollectionTreeModelTest::saveDoesNotResetModel()
     QVERIFY(m_manager->saveWorkspace());
     QVERIFY(m_manager->saveWorkspaceAs(m_dir->filePath(QStringLiteral("Copy.reqdeck"))));
     QCOMPARE(spy.count(), 0);
+}
+
+void CollectionTreeModelTest::sortChildrenPutsFoldersFirst()
+{
+    QVERIFY(m_model->rename(QStringLiteral("r3"), QStringLiteral("a request")));
+    const QPersistentModelIndex r1(m_model->indexOfNode(QStringLiteral("r1")));
+
+    QVERIFY(m_model->sortChildren(QStringLiteral("f1")));
+    QVERIFY(m_model->sortChildren(QString()));
+
+    const QList<CollectionNode> &collection = m_manager->workspaceData().collection;
+    QCOMPARE(collection.at(0).id, QStringLiteral("f1"));
+    QCOMPARE(collection.at(1).id, QStringLiteral("r3"));
+    QCOMPARE(collection.at(0).children.at(0).id, QStringLiteral("f2"));
+    QCOMPARE(collection.at(0).children.at(1).id, QStringLiteral("r1"));
+    QVERIFY(r1.isValid());
+    QCOMPARE(m_model->idAt(r1), QStringLiteral("r1"));
+    QCOMPARE(r1.row(), 1);
+    QVERIFY(!m_model->sortChildren(QStringLiteral("r1")));
+}
+
+void CollectionTreeModelTest::removeItemsSkipsNested()
+{
+    QCOMPARE(m_model->removeItems({QStringLiteral("r2"), QStringLiteral("f1"), QStringLiteral("r3"),
+                                   QStringLiteral("unknown")}),
+             2);
+    QVERIFY(m_manager->workspaceData().collection.isEmpty());
+    QCOMPARE(m_model->rowCount(), 0);
+}
+
+void CollectionTreeModelTest::duplicateItemsCopiesEach()
+{
+    const QStringList copies = m_model->duplicateItems({QStringLiteral("r1"), QStringLiteral("r3")});
+
+    QCOMPARE(copies.size(), 2);
+    const QList<CollectionNode> &collection = m_manager->workspaceData().collection;
+    QCOMPARE(collection.at(0).children.at(1).id, copies.at(0));
+    QCOMPARE(collection.at(2).id, copies.at(1));
 }
 
 void CollectionTreeModelTest::startRequestIdFollowsSettings()

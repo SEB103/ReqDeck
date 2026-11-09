@@ -285,6 +285,121 @@ QString CollectionTreeModel::duplicate(const QString &id)
 }
 
 /*!
+ * \brief Removes several nodes.
+ *
+ * A node inside another one of \a ids goes with it and is not removed twice.
+ * \param ids The nodes; unknown ids are skipped.
+ * \return The number of nodes removed, not counting what they held.
+ */
+int CollectionTreeModel::removeItems(const QStringList &ids)
+{
+    int removed = 0;
+    for (const QString &id : outermost(ids)) {
+        if (remove(id))
+            ++removed;
+    }
+    return removed;
+}
+
+/*!
+ * \brief Places a copy after each of several nodes.
+ * \param ids The nodes; unknown ids and nodes inside another one are skipped.
+ * \return The ids of the copies, in the order of \a ids.
+ */
+QStringList CollectionTreeModel::duplicateItems(const QStringList &ids)
+{
+    QStringList copies;
+    for (const QString &id : outermost(ids)) {
+        const QString copy = duplicate(id);
+        if (!copy.isEmpty())
+            copies.append(copy);
+    }
+    return copies;
+}
+
+/*!
+ * \brief Sorts the children of a folder or the top level.
+ *
+ * Folders come first, then requests, each by name without regard to case; equal
+ * names keep their order. The new order is stored; the tree keeps its expanded
+ * folders, because the change is a layout change, not a reset.
+ * \param folderId The folder, or an empty string for the top level.
+ * \return False for a request or an unknown id.
+ */
+bool CollectionTreeModel::sortChildren(const QString &folderId)
+{
+    Item *parent = folderId.isEmpty() ? m_root.get() : m_items.value(folderId);
+    if (!parent || !parent->isFolder)
+        return false;
+
+    QList<CollectionNode> collection = m_manager->workspaceData().collection;
+    QList<CollectionNode> *nodes = &collection;
+    if (!folderId.isEmpty()) {
+        CollectionNode *folder = findNode(collection, folderId);
+        if (!folder)
+            return false;
+        nodes = &folder->children;
+    }
+    const auto before = [](bool folderA, const QString &nameA, bool folderB, const QString &nameB) {
+        if (folderA != folderB)
+            return folderA;
+        return QString::compare(nameA, nameB, Qt::CaseInsensitive) < 0;
+    };
+    std::stable_sort(nodes->begin(), nodes->end(), [&before](const CollectionNode &a, const CollectionNode &b) {
+        return before(a.kind == CollectionNode::Kind::Folder, a.name, b.kind == CollectionNode::Kind::Folder, b.name);
+    });
+
+    const QPersistentModelIndex parentIndex(indexOf(parent));
+    emit layoutAboutToBeChanged({parentIndex}, QAbstractItemModel::VerticalSortHint);
+    const QModelIndexList persistent = persistentIndexList();
+    std::stable_sort(parent->children.begin(), parent->children.end(),
+                     [&before](const std::unique_ptr<Item> &a, const std::unique_ptr<Item> &b) {
+                         return before(a->isFolder, a->name, b->isFolder, b->name);
+                     });
+    for (const QModelIndex &old : persistent) {
+        const Item *item = static_cast<const Item *>(old.internalPointer());
+        if (item && item->parent == parent)
+            changePersistentIndex(old, createIndex(rowOf(item), old.column(), item));
+    }
+    commit(collection);
+    emit layoutChanged({parentIndex}, QAbstractItemModel::VerticalSortHint);
+
+    emit collectionChanged();
+    return true;
+}
+
+/*!
+ * \brief Returns the id of the node at \a index.
+ * \param index An index of this model.
+ */
+QString CollectionTreeModel::idAt(const QModelIndex &index) const
+{
+    if (!checkIndex(index, CheckIndexOption::IndexIsValid))
+        return {};
+    return static_cast<const Item *>(index.internalPointer())->id;
+}
+
+/*!
+ * \internal
+ * \brief Returns \a ids without unknown ids and those that lie inside another of them.
+ */
+QStringList CollectionTreeModel::outermost(const QStringList &ids) const
+{
+    QStringList result;
+    for (const QString &id : ids) {
+        const Item *item = m_items.value(id);
+        if (!item || result.contains(id))
+            continue;
+        bool nested = false;
+        for (const Item *above = item->parent; above && !nested; above = above->parent)
+            nested = ids.contains(above->id) && above != m_root.get();
+        if (!nested)
+            result.append(id);
+    }
+    return result;
+}
+
+/*!
  * \brief Returns the index of the node \a id.
  * \param id The node.
  */
