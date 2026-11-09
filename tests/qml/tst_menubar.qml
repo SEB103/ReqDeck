@@ -117,6 +117,16 @@ Item {
     }
 
     Component {
+        id: paletteComponent
+
+        BsCommandPalette {
+            entries: [{key: "request:a", title: "List orders", detail: "GET {{baseUrl}}/orders"},
+                      {key: "request:b", title: "Create order", detail: "POST {{baseUrl}}/orders"},
+                      {key: "command:save", title: "Save workspace", detail: "Ctrl+S"}]
+        }
+    }
+
+    Component {
         id: environmentSelectorComponent
 
         BsEnvironmentSelector {
@@ -370,6 +380,30 @@ Item {
             compare(rowChild(table, 0, "valueField").text, "*/*");
             compare(rowChild(table, 0, "enabledBox").checked, true);
             compare(rowChild(table, 1, "enabledBox").checked, false);
+        }
+
+        /*! Verifies that the palette matches all words in any order and chooses with the keyboard. */
+        function test_paletteRunsWithKeyboard() {
+            const palette = createTemporaryObject(paletteComponent, root);
+            verify(palette !== null);
+            let chosen = "";
+            palette.chosen.connect(key => chosen = key);
+
+            compare(palette.filter(palette.entries, "orders POST").length, 1);
+            compare(palette.filter(palette.entries, "").length, 3);
+            compare(palette.filter(palette.entries, "nothing").length, 0);
+
+            palette.show();
+            tryCompare(palette, "visible", true);
+            const field = findChild(palette.contentItem, "paletteSearch");
+            tryCompare(field, "activeFocus", true);
+            field.text = "orders";
+            compare(palette.matches.length, 2);
+            keyClick(Qt.Key_Down);
+            keyClick(Qt.Key_Return);
+
+            compare(chosen, "request:b");
+            tryCompare(palette, "visible", false);
         }
 
         /*! Verifies when the completer opens and which names it offers. */

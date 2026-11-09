@@ -12,6 +12,7 @@ qt_add_qml_module(Base
     URI Base
     CLASS_NAME BasePlugin
     QML_FILES
+        BsCommandPalette.qml
         BsEnvironmentSelector.qml
         BsHelpPanel.qml
         BsInlineTitle.qml

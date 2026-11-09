@@ -369,6 +369,29 @@ bool CollectionTreeModel::sortChildren(const QString &folderId)
 }
 
 /*!
+ * \brief Returns every request in tree order, for finding one by name or URL.
+ * \return Maps with \c id, \c name, \c method, and \c url, the URL with its
+ *         variables unresolved.
+ */
+QVariantList CollectionTreeModel::requestList() const
+{
+    QVariantList list;
+    const std::function<void(const QList<CollectionNode> &)> collect = [&](const QList<CollectionNode> &nodes) {
+        for (const CollectionNode &node : nodes) {
+            if (node.kind == CollectionNode::Kind::Request) {
+                list.append(QVariantMap {{QStringLiteral("id"), node.id},
+                                         {QStringLiteral("name"), node.name},
+                                         {QStringLiteral("method"), QString::fromLatin1(httpMethodVerb(node.request.method))},
+                                         {QStringLiteral("url"), node.request.url}});
+            }
+            collect(node.children);
+        }
+    };
+    collect(m_manager->workspaceData().collection);
+    return list;
+}
+
+/*!
  * \brief Returns the id of the node at \a index.
  * \param index An index of this model.
  */

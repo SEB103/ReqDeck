@@ -575,6 +575,14 @@
             "example": "{{token}} has no value: type it once and press OK.",
             "next": "Tick Keep to save the values in the active environment; otherwise they count for this send only.",
             "chapter": "variables"
+        },
+        "palette": {
+            "title": "Find a request or command",
+            "what": "Ctrl+K opens a search over all requests, by name and address, and the menu commands.",
+            "why": "To get anywhere without the mouse or the tree.",
+            "example": "list orders finds the request List orders.",
+            "next": "Arrows choose, Enter opens or runs, Escape closes.",
+            "chapter": "requests"
         }
     },
     "chapters": [

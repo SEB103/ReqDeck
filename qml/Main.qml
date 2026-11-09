@@ -116,6 +116,58 @@ ApplicationWindow {
     }
 
     /*!
+        Returns the entries of the Ctrl+K palette: every request, then the menu
+        commands that make sense from anywhere.
+    */
+    function paletteEntries() {
+        const entries = []
+        for (const request of cppCollection.requestList())
+            entries.push({key: "request:" + request.id, title: request.name, detail: request.method + " " + request.url})
+        const commands = [
+            ["newRequest", qsTr("New request"), "Ctrl+N"],
+            ["newFolder", qsTr("New folder"), ""],
+            ["duplicate", qsTr("Duplicate selected item"), ""],
+            ["save", qsTr("Save workspace"), "Ctrl+S"],
+            ["open", qsTr("Open workspace"), "Ctrl+O"],
+            ["importCurl", qsTr("Import cURL"), ""],
+            ["copyCurl", qsTr("Copy as cURL"), ""],
+            ["theme", qsTr("Switch between light and dark"), ""],
+            ["log", qsTr("Show or hide the log"), ""],
+            ["guide", qsTr("Open the guide"), ""],
+            ["settings", qsTr("Settings"), ""]
+        ]
+        for (const command of commands)
+            entries.push({key: "command:" + command[0], title: command[1], detail: command[2]})
+        return entries
+    }
+
+    /*! Runs the palette entry \a key: opens a request, or does what its menu item does. */
+    function runPaletteChoice(key) {
+        if (key.startsWith("request:")) {
+            const id = key.slice("request:".length)
+            mainScreen.collectionPane.selectNode(id)
+            mainScreen.collectionPane.revealNode(id)
+            return
+        }
+        const menu = mainScreen.menuBar
+        const actions = {
+            "command:newRequest": () => menu.newRequestRequested(),
+            "command:newFolder": () => menu.newFolderRequested(),
+            "command:duplicate": () => menu.duplicateRequested(),
+            "command:save": () => menu.saveWorkspaceRequested(),
+            "command:open": () => menu.openWorkspaceRequested(),
+            "command:importCurl": () => menu.importCurlRequested(),
+            "command:copyCurl": () => menu.copyCurlRequested(),
+            "command:theme": () => menu.themeToggleRequested(),
+            "command:log": () => menu.logPanelToggleRequested(),
+            "command:guide": () => menu.guideRequested(),
+            "command:settings": () => menu.settingsRequested()
+        }
+        if (actions[key])
+            actions[key]()
+    }
+
+    /*!
         Runs \a action immediately, or, when the open workspace has unsaved
         changes, defers it behind the unsaved-changes prompt.
     */
@@ -372,6 +424,22 @@ ApplicationWindow {
     // scope would hand the focus straight back to the field being edited.
     Item {
         id: editFocusSink
+    }
+
+    Shortcut {
+        sequence: "Ctrl+K"
+        enabled: cppWorkspaceManager.hasActiveWorkspace
+        onActivated: {
+            mainWindow.commitFocusedEdit()
+            commandPalette.entries = mainWindow.paletteEntries()
+            commandPalette.show()
+        }
+    }
+
+    Base.BsCommandPalette {
+        id: commandPalette
+
+        onChosen: (key) => mainWindow.runPaletteChoice(key)
     }
 
     Shortcut {

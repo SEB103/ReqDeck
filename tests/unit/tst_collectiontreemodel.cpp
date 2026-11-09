@@ -61,6 +61,9 @@ private slots:
     /*! Verifies that each of several nodes gets a copy after it. */
     void duplicateItemsCopiesEach();
 
+    /*! Verifies that every request is listed with its method and URL, in tree order. */
+    void requestListNamesEveryRequest();
+
     /*! Verifies the request opened first: the one the workspace names, or else the first one. */
     void startRequestIdFollowsSettings();
 
@@ -393,6 +396,20 @@ void CollectionTreeModelTest::removeItemsSkipsNested()
              2);
     QVERIFY(m_manager->workspaceData().collection.isEmpty());
     QCOMPARE(m_model->rowCount(), 0);
+}
+
+void CollectionTreeModelTest::requestListNamesEveryRequest()
+{
+    const QVariantList list = m_model->requestList();
+
+    QCOMPARE(list.size(), 3);
+    const QVariantMap first = list.at(0).toMap();
+    QCOMPARE(first.value(QStringLiteral("id")).toString(), QStringLiteral("r1"));
+    QCOMPARE(first.value(QStringLiteral("method")).toString(), QStringLiteral("POST"));
+    QCOMPARE(list.at(1).toMap().value(QStringLiteral("id")).toString(), QStringLiteral("r2"));
+    QCOMPARE(list.at(2).toMap().value(QStringLiteral("id")).toString(), QStringLiteral("r3"));
+    QVERIFY(first.contains(QStringLiteral("url")));
+    QVERIFY(first.contains(QStringLiteral("name")));
 }
 
 void CollectionTreeModelTest::duplicateItemsCopiesEach()

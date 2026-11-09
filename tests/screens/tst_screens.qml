@@ -3031,6 +3031,19 @@ Item {
             verify(cppEnvironments.activeVariableNames.indexOf("target") >= 0);
         }
 
+        /*! Verifies that Ctrl+K finds a request by its name and opens it with Enter. */
+        function test_paletteOpensRequest() {
+            const window = createMain();
+            cppTestHost.pressKey(window, Qt.Key_K, Qt.ControlModifier);
+            tryVerify(() => window.activeFocusItem !== null && window.activeFocusItem.objectName === "paletteSearch");
+
+            window.activeFocusItem.text = "list items";
+            cppTestHost.pressKey(window, Qt.Key_Return, Qt.NoModifier);
+
+            tryCompare(findChild(window.contentItem, "tree").parent, "selectedId", "r2");
+            compare(cppRequestEditor.requestId, "r2");
+        }
+
         /*! Verifies that the history search narrows the list and an entry still opens. */
         function test_historySearchFilters() {
             cppTestHost.addHistory("http://localhost:9/orders", 1, "Connection refused");

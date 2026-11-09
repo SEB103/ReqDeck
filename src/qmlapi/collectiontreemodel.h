@@ -8,6 +8,7 @@
 #include <QHash>
 #include <QList>
 #include <QString>
+#include <QVariantList>
 
 #include <memory>
 
@@ -88,6 +89,9 @@ public:
      * folders first, each group by name. Returns false for a request or an unknown id.
      */
     Q_INVOKABLE bool sortChildren(const QString &folderId);
+
+    /** Returns every request in tree order as maps with \c id, \c name, \c method, and \c url. */
+    Q_INVOKABLE QVariantList requestList() const;
 
     /** Returns the id of the node at \a index; empty for an invalid index. */
     Q_INVOKABLE QString idAt(const QModelIndex &index) const;
