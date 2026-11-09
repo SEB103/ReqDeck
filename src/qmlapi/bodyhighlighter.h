@@ -40,6 +40,9 @@ private:
     /** Colors one line of XML. */
     void highlightXml(const QString &text);
 
+    /** Colors the attributes of a tag in \a text from \a from; returns the end, or -1 if it continues. */
+    qsizetype highlightXmlAttributes(const QString &text, qsizetype from);
+
     /** Applies the colors of the active palette to the formats. */
     void updateFormats();
 

@@ -16,6 +16,18 @@ constexpr int kInsideComment = 1;
 
 /*!
  * \internal
+ * \brief Block state of a line that ends inside a CDATA section.
+ */
+constexpr int kInsideCdata = 2;
+
+/*!
+ * \internal
+ * \brief Block state of a line that ends inside a tag, before its ">".
+ */
+constexpr int kInsideTag = 3;
+
+/*!
+ * \internal
  * \brief Returns the index after the string that opens at \a start in \a text.
  *
  * A backslash escapes the next character; an unterminated string ends with the
@@ -147,25 +159,44 @@ void BodyHighlighter::highlightJson(const QString &text)
  * \internal
  * \brief Colors one line of XML.
  *
- * Comments may span lines, which the block state records. Tags are colored
- * within the line; text between tags stays plain.
+ * Comments, CDATA sections, and tags may span lines, which the block state
+ * records. CDATA content is text, colored as a string; text between tags stays
+ * plain.
  */
 void BodyHighlighter::highlightXml(const QString &text)
 {
     const qsizetype size = text.size();
     qsizetype i = 0;
 
-    if (previousBlockState() == kInsideComment) {
-        const qsizetype close = text.indexOf(QLatin1StringView("-->"));
-        const qsizetype end = close < 0 ? size : close + 3;
-        setFormat(0, int(end), m_commentFormat);
-        if (close < 0) {
-            setCurrentBlockState(kInsideComment);
-            return;
+    // Colors the rest of a section closed by \a close in \a format, from \a from;
+    // returns where it ends, or -1 when it goes on in the next line with \a state.
+    const auto section = [&](qsizetype from, QLatin1StringView close, const QTextCharFormat &format, int state) {
+        const qsizetype found = text.indexOf(close, from);
+        const qsizetype end = found < 0 ? size : found + close.size();
+        setFormat(int(from), int(end - from), format);
+        if (found < 0) {
+            setCurrentBlockState(state);
+            return qsizetype(-1);
         }
-        i = end;
-    }
+        return end;
+    };
+
     setCurrentBlockState(0);
+    switch (previousBlockState()) {
+    case kInsideComment:
+        i = section(0, QLatin1StringView("-->"), m_commentFormat, kInsideComment);
+        break;
+    case kInsideCdata:
+        i = section(0, QLatin1StringView("]]>"), m_stringFormat, kInsideCdata);
+        break;
+    case kInsideTag:
+        i = highlightXmlAttributes(text, 0);
+        break;
+    default:
+        break;
+    }
+    if (i < 0)
+        return;
 
     while (i < size) {
         if (text.at(i) != u'<') {
@@ -173,15 +204,18 @@ void BodyHighlighter::highlightXml(const QString &text)
             continue;
         }
 
-        if (QStringView(text).sliced(i).startsWith(QLatin1StringView("<!--"))) {
-            const qsizetype close = text.indexOf(QLatin1StringView("-->"), i + 4);
-            const qsizetype end = close < 0 ? size : close + 3;
-            setFormat(int(i), int(end - i), m_commentFormat);
-            if (close < 0) {
-                setCurrentBlockState(kInsideComment);
+        const QStringView rest = QStringView(text).sliced(i);
+        if (rest.startsWith(QLatin1StringView("<!--"))) {
+            i = section(i, QLatin1StringView("-->"), m_commentFormat, kInsideComment);
+            if (i < 0)
                 return;
-            }
-            i = end;
+            continue;
+        }
+        if (rest.startsWith(QLatin1StringView("<![CDATA["))) {
+            setFormat(int(i), 9, m_keywordFormat);
+            i = section(i + 9, QLatin1StringView("]]>"), m_stringFormat, kInsideCdata);
+            if (i < 0)
+                return;
             continue;
         }
 
@@ -190,32 +224,49 @@ void BodyHighlighter::highlightXml(const QString &text)
         while (end < size && !text.at(end).isSpace() && text.at(end) != u'>')
             ++end;
         setFormat(int(i), int(end - i), m_keywordFormat);
-        i = end;
+        i = highlightXmlAttributes(text, end);
+        if (i < 0)
+            return;
+    }
+}
 
-        // Attributes up to the end of the tag.
-        while (i < size && text.at(i) != u'>') {
-            const QChar c = text.at(i);
-            if (c == u'"' || c == u'\'') {
-                const qsizetype stringEnd = endOfString(text, i, c);
-                setFormat(int(i), int(stringEnd - i), m_stringFormat);
-                i = stringEnd;
-            } else if (c.isSpace() || c == u'=' || c == u'/' || c == u'?') {
-                ++i;
-            } else {
-                qsizetype nameEnd = i + 1;
-                while (nameEnd < size && !text.at(nameEnd).isSpace() && text.at(nameEnd) != u'='
-                       && text.at(nameEnd) != u'>') {
-                    ++nameEnd;
-                }
-                setFormat(int(i), int(nameEnd - i), m_keyFormat);
-                i = nameEnd;
-            }
-        }
-        if (i < size) {
-            setFormat(int(i), 1, m_keywordFormat);
+/*!
+ * \internal
+ * \brief Colors the attributes of a tag in \a text from \a from up to and with its ">".
+ *
+ * A tag that goes on in the next line sets the block state to kInsideTag.
+ * \param text The line.
+ * \param from Where the attributes start.
+ * \return The position after the ">", or -1 when the tag continues in the next line.
+ */
+qsizetype BodyHighlighter::highlightXmlAttributes(const QString &text, qsizetype from)
+{
+    const qsizetype size = text.size();
+    qsizetype i = from;
+    while (i < size && text.at(i) != u'>') {
+        const QChar c = text.at(i);
+        if (c == u'"' || c == u'\'') {
+            const qsizetype stringEnd = endOfString(text, i, c);
+            setFormat(int(i), int(stringEnd - i), m_stringFormat);
+            i = stringEnd;
+        } else if (c.isSpace() || c == u'=' || c == u'/' || c == u'?') {
             ++i;
+        } else {
+            qsizetype nameEnd = i + 1;
+            while (nameEnd < size && !text.at(nameEnd).isSpace() && text.at(nameEnd) != u'='
+                   && text.at(nameEnd) != u'>') {
+                ++nameEnd;
+            }
+            setFormat(int(i), int(nameEnd - i), m_keyFormat);
+            i = nameEnd;
         }
     }
+    if (i >= size) {
+        setCurrentBlockState(kInsideTag);
+        return -1;
+    }
+    setFormat(int(i), 1, m_keywordFormat);
+    return i + 1;
 }
 
 /*!

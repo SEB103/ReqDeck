@@ -43,6 +43,9 @@ private slots:
     /*! Verifies a comment running over several lines. */
     void colorsMultilineXmlComment();
 
+    /*! Verifies that CDATA reads as text and attributes keep their colors on the next lines of a tag. */
+    void colorsCdataAndMultilineTags();
+
     /*! Verifies that text and binary bodies stay plain. */
     void textKindHasNoFormats_data();
     /*! Runs one plain kind case. */
@@ -118,6 +121,29 @@ void BodyHighlighterTest::colorsMultilineXmlComment()
     QCOMPARE(colorAt(document, text.indexOf(QStringLiteral("two"))), comment);
     QCOMPARE(colorAt(document, text.indexOf(QStringLiteral("three"))), comment);
     QCOMPARE(colorAt(document, text.indexOf(QStringLiteral("<a")) + 1), QColor(0x56, 0x9C, 0xD6));
+}
+
+void BodyHighlighterTest::colorsCdataAndMultilineTags()
+{
+    QTextDocument document(QStringLiteral("<a\n  x=\"1\"\n  y='2'>\n<![CDATA[ <b> one\ntwo ]]><c/></a>"));
+    BodyHighlighter highlighter;
+    highlighter.setDark(true);
+    highlighter.setKind(int(BodyKind::Xml));
+    highlighter.setDocument(&document);
+    highlighter.rehighlight();
+
+    const QString text = document.toPlainText();
+    const QColor keyword(0x56, 0x9C, 0xD6);
+    const QColor key(0x9C, 0xDC, 0xFE);
+    const QColor string(0xCE, 0x91, 0x78);
+    QCOMPARE(colorAt(document, text.indexOf(u'x')), key);
+    QCOMPARE(colorAt(document, text.indexOf(u'1')), string);
+    QCOMPARE(colorAt(document, text.indexOf(u'y')), key);
+    QCOMPARE(colorAt(document, text.indexOf(QStringLiteral("'>")) + 1), keyword);
+    // Inside CDATA is text, not markup, also on the next line.
+    QCOMPARE(colorAt(document, text.indexOf(QStringLiteral("<b>")) + 1), string);
+    QCOMPARE(colorAt(document, text.indexOf(QStringLiteral("two"))), string);
+    QCOMPARE(colorAt(document, text.indexOf(QStringLiteral("<c")) + 1), keyword);
 }
 
 void BodyHighlighterTest::textKindHasNoFormats_data()
