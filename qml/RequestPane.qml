@@ -337,8 +337,21 @@ Item {
 
                             target: rawBodyArea
                             names: cppEnvironments.activeVariableNames
+                            // Only the changed part is replaced, so undo, layout, and
+                            // the scroll position of a long body stay.
                             onCompleted: (text, cursorPosition) => {
-                                rawBodyArea.text = text
+                                const old = rawBodyArea.text
+                                let start = 0
+                                while (start < old.length && start < text.length && old[start] === text[start])
+                                    ++start
+                                let oldEnd = old.length
+                                let newEnd = text.length
+                                while (oldEnd > start && newEnd > start && old[oldEnd - 1] === text[newEnd - 1]) {
+                                    --oldEnd
+                                    --newEnd
+                                }
+                                rawBodyArea.remove(start, oldEnd)
+                                rawBodyArea.insert(start, text.slice(start, newEnd))
                                 rawBodyArea.cursorPosition = cursorPosition
                             }
                         }
@@ -420,6 +433,7 @@ Item {
                     text: cppRequestEditor.authPassword
                     ToolTip.visible: hovered && passwordField.unknown.length > 0
                     ToolTip.text: passwordFieldMark.tooltip
+                    Accessible.description: passwordFieldMark.tooltip
                     Keys.onPressed: (event) => passwordFieldCompleter.handleKey(event)
                     onTextEdited: {
                         cppRequestEditor.authPassword = text
@@ -463,6 +477,7 @@ Item {
                     text: cppRequestEditor.authToken
                     ToolTip.visible: hovered && tokenField.unknown.length > 0
                     ToolTip.text: tokenFieldMark.tooltip
+                    Accessible.description: tokenFieldMark.tooltip
                     Keys.onPressed: (event) => tokenFieldCompleter.handleKey(event)
                     onTextEdited: {
                         cppRequestEditor.authToken = text
@@ -515,6 +530,7 @@ Item {
                     text: cppRequestEditor.apiKeyValue
                     ToolTip.visible: hovered && unknown.length > 0
                     ToolTip.text: apiKeyValueMark.tooltip
+                    Accessible.description: apiKeyValueMark.tooltip
                     Keys.onPressed: (event) => apiKeyValueCompleter.handleKey(event)
                     onTextEdited: {
                         cppRequestEditor.apiKeyValue = text

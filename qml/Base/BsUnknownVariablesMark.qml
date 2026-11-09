@@ -21,7 +21,8 @@ Rectangle {
 
     /*! Text for the tooltip of the field; empty when nothing is unknown. */
     readonly property string tooltip: mark.names.length > 0
-                                      ? qsTr("Unknown variable: %1").arg(mark.names.map(name => "{{" + name + "}}").join(", "))
+                                      ? qsTr("Unknown variable: %1", "", mark.names.length)
+                                            .arg(mark.names.map(name => "{{" + name + "}}").join(", "))
                                       : ""
 
     objectName: "unknownMark"

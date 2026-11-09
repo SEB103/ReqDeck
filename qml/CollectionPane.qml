@@ -191,7 +191,7 @@ Item {
     /*! Asks whether to delete the selected node, naming it as it is called now. */
     function openDelete() {
         if (root.selectedIds.length > 1) {
-            deleteLabel.text = qsTr("Delete %1 selected items and everything in them?").arg(root.selectedIds.length)
+            deleteLabel.text = qsTr("Delete %n selected items and everything in them?", "", root.selectedIds.length)
             deleteDialog.open()
             return
         }

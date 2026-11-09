@@ -156,6 +156,7 @@ ColumnLayout {
                 text: row.model.key
                 ToolTip.visible: hovered && keyField.unknown.length > 0
                 ToolTip.text: keyMark.tooltip
+                Accessible.description: keyMark.tooltip
                 Keys.onPressed: (event) => keyCompleter.handleKey(event)
                 onTextEdited: {
                     row.model.key = text
@@ -202,6 +203,7 @@ ColumnLayout {
                 text: row.model.value
                 ToolTip.visible: hovered && valueField.unknown.length > 0
                 ToolTip.text: valueMark.tooltip
+                Accessible.description: valueMark.tooltip
                 Keys.onPressed: (event) => valueCompleter.handleKey(event)
                 onTextEdited: {
                     row.model.value = text
