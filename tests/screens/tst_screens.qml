@@ -216,6 +216,8 @@ Item {
             // and shortcuts only reach an active window.
             root.Window.window.requestActivate();
             tryVerify(() => root.Window.window.active);
+            // A test that failed halfway must not leave the next one in the dark theme.
+            BsTheme.dark = false;
             verify(cppTestHost.reset());
             selectedSpy.clear();
             limitSpy.clear();
@@ -1306,6 +1308,26 @@ Item {
 
             compare(cppResponse.statusCode, 201);
             compare(area.text, "");
+        }
+
+        /*! Verifies that the shortcut sends from a header value and keeps the typed value. */
+        function test_shortcutSendsFromTable() {
+            const host = createSender(cppTestHost.serverUrl("/echo"));
+            findChild(host.request, "tabs").currentIndex = 1;
+            cppRequestEditor.headersModel.addRow();
+            waitForRendering(host);
+            const table = findChild(host.request, "headersTable");
+            const rows = findChild(table, "rows");
+            const row = rows.itemAtIndex(rows.count - 1);
+            const value = findChild(row, "valueField");
+            value.forceActiveFocus();
+            verify(value.activeFocus);
+            keyClick(Qt.Key_Y);
+
+            pressSend();
+
+            compare(cppResponse.statusCode, 200);
+            verify(value.activeFocus);
         }
 
         /*! Verifies that a name being edited is stored before sending. */

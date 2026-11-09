@@ -217,7 +217,7 @@ Item {
             BsTheme.dark = false;
         }
 
-        /*! Verifies that the table shows the rows of its model. */
+        /*! Provides the menus whose items name a shortcut. */
         function test_menuLeavesRoomForShortcut_data() {
             return [{tag: "File", title: "File"}, {tag: "Request", title: "Request"}];
         }
@@ -369,6 +369,7 @@ Item {
             compare(edit.length, 18);
         }
 
+        /*! Verifies that the table shows the rows of its model. */
         function test_keyValueTableShowsRows() {
             resetKeyValueModel();
             const table = createTemporaryObject(keyValueTableComponent, root);
@@ -512,7 +513,7 @@ Item {
             compare(value.cursorPosition, 0);
         }
 
-        /*! Verifies that typing and toggling reach the model. */
+        /*! Verifies that the secret column is hidden unless the table asks for it. */
         function test_tableHidesSecretColumnByDefault() {
             resetKeyValueModel();
             const table = createTemporaryObject(keyValueTableComponent, root);
@@ -591,6 +592,7 @@ Item {
             compare(rowChild(table, 0, "keyField").height, 34);
         }
 
+        /*! Verifies that typing and toggling reach the model. */
         function test_keyValueTableEditsWriteToModel() {
             resetKeyValueModel();
             const table = createTemporaryObject(keyValueTableComponent, root);
