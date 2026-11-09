@@ -154,7 +154,11 @@ QString ResponseView::bodyText() const
     if (m_body.kind == BodyKind::Binary)
         return tr("Binary body, %1. Not shown.").arg(sizeText());
     const QString &text = m_pretty && canPretty() ? formattedBody() : m_body.text;
-    return text.left(kMaxDisplayChars);
+    qsizetype shown = qMin(text.size(), kMaxDisplayChars);
+    // A character outside the BMP takes two QChars; the cut must not split it.
+    if (shown < text.size() && shown > 0 && text.at(shown - 1).isHighSurrogate())
+        --shown;
+    return text.left(shown);
 }
 
 /*!

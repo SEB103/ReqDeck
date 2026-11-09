@@ -91,11 +91,36 @@ bool isWideCharset(const QString &charset)
 /*!
  * \internal
  * \brief Returns whether \a text is valid JSON.
+ *
+ * QJsonDocument refuses a number beyond the range of a double, such as 1e400,
+ * which JSON itself allows. The check therefore runs on a copy in which every
+ * exponent outside strings is 0; the formatted text keeps the original.
  */
 bool isJson(const QString &text)
 {
+    static const QRegularExpression exponent(QStringLiteral(R"((?<=[0-9])([eE])[+-]?[0-9]+)"));
+    QString checked;
+    checked.reserve(text.size());
+    qsizetype start = 0;
+    bool inString = false;
+    for (qsizetype i = 0; i <= text.size(); ++i) {
+        const bool end = i == text.size();
+        if (!end && text.at(i) == u'\\' && inString) {
+            ++i;
+            continue;
+        }
+        if (end || text.at(i) == u'"') {
+            QString part = text.mid(start, i - start + (end ? 0 : 1));
+            if (!inString)
+                part.replace(exponent, QStringLiteral("\\1""0"));
+            checked += part;
+            start = i + 1;
+            inString = !inString;
+        }
+    }
+
     QJsonParseError error;
-    QJsonDocument::fromJson(text.toUtf8(), &error);
+    QJsonDocument::fromJson(checked.toUtf8(), &error);
     return error.error == QJsonParseError::NoError;
 }
 

@@ -66,6 +66,9 @@ private slots:
     /*! Verifies that brackets inside strings are not structure. */
     void prettyJsonIgnoresBracketsInStrings();
 
+    /*! Verifies that a number beyond the range of a double does not stop the formatting. */
+    void prettyJsonKeepsHugeNumbers();
+
     /*! Verifies empty objects and arrays. */
     void prettyJsonHandlesEmptyContainers();
 
@@ -268,6 +271,14 @@ void BodyFormatterTest::prettyJsonKeepsKeyOrderAndNumbers()
     QCOMPARE(text,
              QStringLiteral("{\n  \"z\": 1,\n  \"a\": 12345678901234567890,\n  \"z\": 2,\n"
                             "  \"e\": 1.50e+3,\n  \"s\": \"\\u00fc\\n\"\n}"));
+}
+
+void BodyFormatterTest::prettyJsonKeepsHugeNumbers()
+{
+    QCOMPARE(prettyJson(QStringLiteral("[1e400,-2E-999]")), QStringLiteral("[\n  1e400,\n  -2E-999\n]"));
+    // Still no JSON: a broken number, and digits inside a string are left alone.
+    QCOMPARE(prettyJson(QStringLiteral("[1e]")), QStringLiteral("[1e]"));
+    QCOMPARE(prettyJson(QStringLiteral("[\"1e400\",01]")), QStringLiteral("[\"1e400\",01]"));
 }
 
 void BodyFormatterTest::prettyJsonIgnoresBracketsInStrings()

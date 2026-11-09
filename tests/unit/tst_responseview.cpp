@@ -99,6 +99,9 @@ private slots:
     /*! Verifies that find stops at its limit. */
     void findStopsAtLimit();
 
+    /*! Verifies that the cut at the display limit does not split a character in two. */
+    void displayLimitKeepsSurrogatePairs();
+
     /*! Verifies that saving writes the body as received, not the formatted text. */
     void saveBodyWritesBytes();
     /*! Verifies that saving a body on disk copies the whole file. */
@@ -412,6 +415,18 @@ void ResponseViewTest::findIsCaseInsensitive()
     // The text view keeps one separator for CRLF, so positions count it once.
     view.setResponse(makeResponse("a\r\nb\r\nb", QStringLiteral("text/plain")), {});
     QCOMPARE(view.findInBody(QStringLiteral("b")), QVariantList({2, 4}));
+}
+
+void ResponseViewTest::displayLimitKeepsSurrogatePairs()
+{
+    const QString text = QString(kMaxDisplayChars - 1, u'x') + QStringLiteral("\U0001F600 tail");
+    ResponseView view;
+    view.setResponse(makeResponse(text.toUtf8(), QStringLiteral("text/plain")), {});
+
+    const QString shown = view.property("bodyText").toString();
+    QCOMPARE(shown.size(), kMaxDisplayChars - 1);
+    QVERIFY(!shown.back().isHighSurrogate());
+    QVERIFY(view.property("truncated").toBool());
 }
 
 void ResponseViewTest::findStopsAtLimit()
