@@ -101,7 +101,7 @@
             "what": "Your saved requests, sorted into folders.",
             "why": "You do not have to type a request again: click it and send it.",
             "example": "Right-click to add a request or a folder, rename, duplicate, or delete.",
-            "next": "Click a request to open it in the middle pane.",
+            "next": "Ctrl+click or Shift+click selects several items for Delete or Duplicate. With the keyboard: arrows move and open folders, F2 renames, Delete deletes. Right-click > Sort A–Z puts folders first, then sorts by name.",
             "chapter": "first-request"
         },
         "sidebar.tabs": {

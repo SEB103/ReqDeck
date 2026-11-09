@@ -238,12 +238,69 @@ Item {
             return host;
         }
 
-        /*! Clicks \a row of the tree in \a host, with \a button if given. */
-        function clickRow(host, row, button) {
+        /*! Clicks \a row of the tree in \a host, with \a button and \a modifiers if given. */
+        function clickRow(host, row, button, modifiers) {
             const tree = findChild(host.collection, "tree");
             const item = tree.itemAtCell(0, row);
-            mouseClick(item, item.width / 2, item.height / 2, button === undefined ? Qt.LeftButton : button);
+            mouseClick(item, item.width / 2, item.height / 2, button === undefined ? Qt.LeftButton : button,
+                       modifiers === undefined ? Qt.NoModifier : modifiers);
             wait(50);
+        }
+
+        /*! Verifies that Ctrl and Shift select several nodes and Delete removes all of them. */
+        function test_treeSelectsSeveralAndDeletes() {
+            const host = createWired();
+            const pane = host.collection;
+            clickRow(host, 0);
+            clickRow(host, 1, Qt.LeftButton, Qt.ControlModifier);
+            compare(pane.selectedIds.length, 2);
+            clickRow(host, 1, Qt.LeftButton, Qt.ControlModifier);
+            compare(pane.selectedIds.length, 1);
+            clickRow(host, 1, Qt.LeftButton, Qt.ShiftModifier);
+            compare(pane.selectedIds.length, 2);
+
+            pane.openDelete();
+            const dialog = findChild(pane, "deleteDialog");
+            tryCompare(dialog, "opened", true);
+            verify(findChild(pane, "deleteLabel").text.indexOf("2") >= 0);
+            dialog.accept();
+
+            tryCompare(findChild(pane, "tree"), "rows", 0);
+        }
+
+        /*! Verifies that the tree works with the arrow keys, F2, and Delete. */
+        function test_treeKeyboardOpensAndRenames() {
+            const host = createWired();
+            const pane = host.collection;
+            const tree = findChild(pane, "tree");
+            tree.forceActiveFocus();
+            tryCompare(tree, "activeFocus", true);
+
+            keyClick(Qt.Key_Down);
+            const first = pane.selectedId;
+            verify(first.length > 0);
+            keyClick(Qt.Key_Down);
+            verify(pane.selectedId !== first);
+            keyClick(Qt.Key_Up);
+            compare(pane.selectedId, first);
+
+            keyClick(Qt.Key_F2);
+            tryCompare(findChild(pane, "renameDialog"), "opened", true);
+            findChild(pane, "renameDialog").reject();
+            tryCompare(findChild(pane, "renameDialog"), "opened", false);
+
+            tree.forceActiveFocus();
+            keyClick(Qt.Key_Delete);
+            tryCompare(findChild(pane, "deleteDialog"), "opened", true);
+            findChild(pane, "deleteDialog").reject();
+        }
+
+        /*! Verifies that every row of the tree names itself for a screen reader. */
+        function test_treeRowsHaveAccessibleNames() {
+            const host = createWired();
+            const tree = findChild(host.collection, "tree");
+            for (let row = 0; row < tree.rows; ++row)
+                verify(tree.itemAtCell(0, row).Accessible.name.length > 0, "row " + row);
         }
 
         /*! Types one letter at the end of \a field. */

@@ -23,6 +23,9 @@ Item {
     /*! Id of the selected node; empty when nothing is selected. */
     property string selectedId: ""
 
+    /*! Ids of all selected nodes, the current one included; Ctrl and Shift add to it. */
+    property var selectedIds: []
+
     /*! Emitted when the selection changes to \a id, which is empty for none. */
     signal nodeSelected(string id)
 
@@ -31,8 +34,84 @@ Item {
 
     /*! Selects the node \a id and reports it. */
     function selectNode(id) {
+        root.selectedIds = id.length > 0 ? [id] : []
         root.selectedId = id
         root.nodeSelected(id)
+    }
+
+    /*!
+        Handles a click on the node \a id with \a modifiers: Ctrl adds or removes it,
+        Shift selects the rows from the current node to it, and a plain click
+        selects it alone.
+    */
+    function clickNode(id, modifiers) {
+        if (modifiers & Qt.ControlModifier) {
+            const ids = root.selectedIds.slice()
+            const at = ids.indexOf(id)
+            if (at >= 0)
+                ids.splice(at, 1)
+            else
+                ids.push(id)
+            root.selectedIds = ids
+            // The current node is the one added last, or the last one left.
+            const current = at < 0 ? id : (ids.length > 0 ? ids[ids.length - 1] : "")
+            if (current !== root.selectedId) {
+                root.selectedId = current
+                root.nodeSelected(current)
+            }
+        } else if ((modifiers & Qt.ShiftModifier) && root.selectedId.length > 0) {
+            const from = tree.rowAtIndex(cppCollection.indexOfNode(root.selectedId))
+            const to = tree.rowAtIndex(cppCollection.indexOfNode(id))
+            const ids = []
+            for (let row = Math.min(from, to); row <= Math.max(from, to); ++row)
+                ids.push(cppCollection.idAt(tree.index(row, 0)))
+            root.selectedIds = ids
+        } else {
+            root.selectNode(id)
+        }
+    }
+
+    /*! Selects the visible row \a row and scrolls it into view. */
+    function selectRow(row) {
+        if (row < 0 || row >= tree.rows)
+            return
+        root.selectNode(cppCollection.idAt(tree.index(row, 0)))
+        tree.positionViewAtRow(row, TableView.Contain)
+    }
+
+    /*!
+        Handles \a event for the tree: arrows move and open folders, F2 renames,
+        Delete deletes. Other keys are left to the tree.
+    */
+    function handleTreeKey(event) {
+        const row = root.selectedId.length > 0 ? tree.rowAtIndex(cppCollection.indexOfNode(root.selectedId)) : -1
+        switch (event.key) {
+        case Qt.Key_Down:
+            root.selectRow(row + 1)
+            break
+        case Qt.Key_Up:
+            root.selectRow(Math.max(0, row - 1))
+            break
+        case Qt.Key_Right:
+            if (row >= 0 && cppCollection.isFolder(root.selectedId))
+                tree.expand(row)
+            break
+        case Qt.Key_Left:
+            if (row >= 0 && tree.isExpanded(row))
+                tree.collapse(row)
+            break
+        case Qt.Key_F2:
+            if (row >= 0)
+                root.openRename()
+            break
+        case Qt.Key_Delete:
+            if (root.selectedIds.length > 0)
+                root.openDelete()
+            break
+        default:
+            return
+        }
+        event.accepted = true
     }
 
     /*! Expands the parents of the node \a id and scrolls it into view. */
@@ -63,8 +142,16 @@ Item {
         root.finishAdding(cppCollection.addFolder(cppCollection.parentForNewItem(root.selectedId)))
     }
 
-    /*! Places a copy of the selected node after it and selects the copy. */
+    /*! Places a copy of each selected node after it and selects the copies. */
     function duplicateSelected() {
+        if (root.selectedIds.length > 1) {
+            const copies = cppCollection.duplicateItems(root.selectedIds)
+            if (copies.length > 0) {
+                root.selectNode(copies[0])
+                root.selectedIds = copies
+            }
+            return
+        }
         const id = cppCollection.duplicate(root.selectedId)
         if (id.length > 0) {
             root.selectNode(id)
@@ -72,14 +159,22 @@ Item {
         }
     }
 
+    /*! Sorts the folder of the selection, or the top level: folders first, then by name. */
+    function sortSelectedFolder() {
+        cppCollection.sortChildren(cppCollection.parentForNewItem(root.selectedId))
+    }
+
     /*! Gives the selected node the name \a name. */
     function renameSelected(name) {
         cppCollection.rename(root.selectedId, name)
     }
 
-    /*! Removes the selected node and everything below it. */
+    /*! Removes the selected nodes and everything below them. */
     function deleteSelected() {
-        cppCollection.remove(root.selectedId)
+        if (root.selectedIds.length > 1)
+            cppCollection.removeItems(root.selectedIds)
+        else
+            cppCollection.remove(root.selectedId)
     }
 
     /*! Asks for a new name of the selected node. */
@@ -90,6 +185,11 @@ Item {
 
     /*! Asks whether to delete the selected node, naming it as it is called now. */
     function openDelete() {
+        if (root.selectedIds.length > 1) {
+            deleteLabel.text = qsTr("Delete %1 selected items and everything in them?").arg(root.selectedIds.length)
+            deleteDialog.open()
+            return
+        }
         const name = cppCollection.nodeName(root.selectedId)
         deleteLabel.text = cppCollection.isFolder(root.selectedId)
                            ? qsTr("Delete folder \"%1\" and everything in it?").arg(name)
@@ -103,6 +203,7 @@ Item {
         target: cppCollection
 
         function onCollectionChanged() {
+            root.selectedIds = root.selectedIds.filter(id => cppCollection.indexOfNode(id).valid)
             if (root.selectedId.length > 0 && !cppCollection.indexOfNode(root.selectedId).valid)
                 root.selectNode("")
         }
@@ -120,7 +221,10 @@ Item {
         clip: true
         alternatingRows: false
         boundsBehavior: Flickable.StopAtBounds
+        activeFocusOnTab: true
         model: cppCollection
+        Accessible.name: qsTr("Collection")
+        Keys.onPressed: (event) => root.handleTreeKey(event)
 
         ScrollBar.vertical: ScrollBar {}
 
@@ -149,7 +253,9 @@ Item {
 
             implicitWidth: tree.width
             implicitHeight: 30
-            highlighted: nodeDelegate.nodeId === root.selectedId
+            highlighted: nodeDelegate.nodeId === root.selectedId || root.selectedIds.indexOf(nodeDelegate.nodeId) >= 0
+            Accessible.name: nodeDelegate.isFolder ? qsTr("Folder %1").arg(nodeDelegate.name)
+                                                   : nodeDelegate.method + " " + nodeDelegate.name
 
             background: Rectangle {
                 color: nodeDelegate.highlighted ? Base.BsTheme.selectedRowColor
@@ -203,8 +309,14 @@ Item {
                 }
             }
 
-            onPressed: tree.forceActiveFocus(Qt.MouseFocusReason)
-            onClicked: root.selectNode(nodeDelegate.nodeId)
+            // The left button goes through a mouse area, which reports the modifier
+            // keys that the delegate's own clicked() does not.
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                onPressed: tree.forceActiveFocus(Qt.MouseFocusReason)
+                onClicked: (mouse) => root.clickNode(nodeDelegate.nodeId, mouse.modifiers)
+            }
 
             TapHandler {
                 acceptedButtons: Qt.RightButton
@@ -261,6 +373,11 @@ Item {
             icon.source: "qrc:/images/svg/content_copy.svg"
             enabled: root.selectedId.length > 0
             onTriggered: root.duplicateSelected()
+        }
+
+        Base.BsMenuItem {
+            text: qsTr("Sort A–Z")
+            onTriggered: root.sortSelectedFolder()
         }
 
         Base.BsMenuItem {
