@@ -225,14 +225,26 @@ Item {
         function createCollection() {
             const pane = createTemporaryObject(collectionComponent, root);
             verify(pane !== null);
+            activateTestWindow();
             tryCompare(findChild(pane, "tree"), "rows", 2);
             return pane;
+        }
+
+        /*!
+            Makes the window of the test the active one. A field takes the focus only
+            in the active window, and a window opened by an earlier test may still be.
+        */
+        function activateTestWindow() {
+            const window = root.Window.window;
+            window.requestActivate();
+            tryCompare(window, "active", true);
         }
 
         /*! Creates both panes wired together, with the tree laid out. */
         function createWired() {
             const host = createTemporaryObject(wiredComponent, root);
             verify(host !== null);
+            activateTestWindow();
             tryCompare(findChild(host.collection, "tree"), "rows", 2);
             waitForRendering(host);
             return host;
@@ -314,6 +326,7 @@ Item {
         function createRequest(id) {
             const pane = createTemporaryObject(requestComponent, root);
             verify(pane !== null);
+            activateTestWindow();
             cppRequestEditor.load(id);
             waitForRendering(pane);
             return pane;
@@ -933,6 +946,7 @@ Item {
         function createHistory() {
             const pane = createTemporaryObject(historyComponent, root);
             verify(pane !== null);
+            activateTestWindow();
             waitForRendering(pane);
             return pane;
         }
