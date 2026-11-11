@@ -96,6 +96,14 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 - Ctrl+K finds a request or a menu command.
 - The tree selects several items with Ctrl and Shift, works with the keyboard,
   and sorts a folder; the history can be searched.
+- Folders carry auth and variables for the requests inside them; a request's
+  auth can be Inherit from folder. Workspace files move to schema 2, with a copy
+  kept before the change.
+- File > Import Collection… reads Postman collections (v2.1) and environments,
+  Insomnia exports (v4, JSON), and OpenAPI 3 documents (JSON) into a new folder,
+  and lists what does not carry over before anything is added. Nothing in an
+  imported file is run.
+- Guide chapter "Coming from Postman".
 
 ### Fixed
 - Responses over HTTP/2 show the name of their status, for example 200 OK.
