@@ -54,8 +54,8 @@ public:
     /** Reads the file at \a pathOrUrl and recognizes its format; returns ready(). */
     Q_INVOKABLE bool preview(const QString &pathOrUrl);
 
-    /** Reads \a json as if it came from a file; returns ready(). */
-    bool previewData(const QByteArray &json);
+    /** Reads \a data, JSON or YAML, as if it came from a file; returns ready(). */
+    bool previewData(const QByteArray &data);
 
     /** Adds the previewed content to the workspace; returns the id of the new folder, or an empty string. */
     Q_INVOKABLE QString apply();

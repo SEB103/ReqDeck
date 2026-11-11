@@ -12,6 +12,7 @@
 #include "core/import/insomniaimporter.h"
 #include "core/import/openapiimporter.h"
 #include "core/import/postmanimporter.h"
+#include "core/import/yamljson.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/environmentmodel.h"
 
@@ -122,12 +123,29 @@ bool ImportController::preview(const QString &pathOrUrl)
 }
 
 /*!
- * \brief Recognizes the format of \a json and reads it.
- * \param json The content of a file.
+ * \brief Recognizes the format of \a data and reads it.
+ *
+ * JSON is read as it is. Anything that does not start like JSON is read as
+ * YAML and converted to JSON first, so every format can come in either form.
+ * \param data The content of a file.
  * \return Whether it can be imported.
  */
-bool ImportController::previewData(const QByteArray &json)
+bool ImportController::previewData(const QByteArray &data)
 {
+    QByteArray json = data;
+    const QByteArray start = data.trimmed().left(1);
+    if (start != "{" && start != "[") {
+        QString yamlError;
+        const std::optional<QJsonDocument> converted = YamlJson::toJson(data, &yamlError);
+        if (!converted) {
+            m_result = ImportResult();
+            m_result.errorString = tr("ReqDeck could not read this file as JSON or YAML. %1").arg(yamlError);
+            emit previewChanged();
+            return false;
+        }
+        json = converted->toJson(QJsonDocument::Compact);
+    }
+
     const QJsonObject root = QJsonDocument::fromJson(json).object();
     if (PostmanImporter::isCollection(root)) {
         m_result = PostmanImporter::importCollection(json);

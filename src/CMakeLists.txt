@@ -53,6 +53,8 @@ target_sources(ReqDeckCore
         core/import/insomniaimporter.h
         core/import/openapiimporter.cpp
         core/import/openapiimporter.h
+        core/import/yamljson.cpp
+        core/import/yamljson.h
         core/import/postmanimporter.cpp
         core/import/postmanimporter.h
         core/workspace/collectiontree.cpp
@@ -84,6 +86,8 @@ target_link_libraries(ReqDeckCore
     PUBLIC
         Qt6::Core
         Qt6::Network
+    PRIVATE
+        ReqDeck::yaml-cpp
 )
 
 # DPAPI, part of Windows, encrypts the secret values.

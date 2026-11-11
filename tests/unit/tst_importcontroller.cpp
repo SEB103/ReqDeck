@@ -40,6 +40,12 @@ private slots:
     /*! Verifies that an OpenAPI document is recognized and brings one environment per server. */
     void previewOpenApi();
 
+    /*! Verifies that an OpenAPI document in YAML is read like its JSON form. */
+    void previewOpenApiYaml();
+
+    /*! Verifies that a broken YAML file is refused with the reason. */
+    void brokenYamlIsRefused();
+
     /*! Verifies that an unknown file is refused with a message. */
     void unknownFileIsRefused();
 
@@ -136,6 +142,21 @@ void ImportControllerTest::previewOpenApi()
     QVERIFY(m_import->preview(QFINDTESTDATA("data/import/openapi-petshop.json")));
     QVERIFY2(m_import->summary().startsWith(QStringLiteral("OpenAPI document:")), qPrintable(m_import->summary()));
     QVERIFY(m_import->summary().contains(QStringLiteral("2 environment(s)")));
+}
+
+void ImportControllerTest::previewOpenApiYaml()
+{
+    QVERIFY2(m_import->preview(QFINDTESTDATA("data/import/openapi-petshop.yaml")), qPrintable(m_import->errorString()));
+    QVERIFY2(m_import->summary().startsWith(QStringLiteral("OpenAPI document:")), qPrintable(m_import->summary()));
+    QVERIFY(m_import->summary().contains(QStringLiteral("2 environment(s)")));
+}
+
+void ImportControllerTest::brokenYamlIsRefused()
+{
+    QVERIFY(!m_import->previewData("openapi: 3.0.0\npaths: [unclosed"));
+    QVERIFY2(m_import->errorString().contains(QStringLiteral("YAML")), qPrintable(m_import->errorString()));
+    QVERIFY(!m_import->previewData("openapi_like: true"));
+    QVERIFY2(m_import->errorString().contains(QStringLiteral("does not know")), qPrintable(m_import->errorString()));
 }
 
 void ImportControllerTest::unknownFileIsRefused()

@@ -604,7 +604,7 @@
             "title": "Импорт коллекции",
             "what": "Переносит коллекцию или окружение Postman, экспорт Insomnia или документ OpenAPI 3 в это рабочее пространство.",
             "why": "Чтобы продолжить работу с запросами, созданными в Postman или Insomnia, или начать с описания API.",
-            "example": "Экспортируйте коллекцию в Postman (Collection v2.1), данные в Insomnia (Insomnia v4, JSON) или возьмите openapi.json сервиса и выберите здесь этот файл.",
+            "example": "Экспортируйте коллекцию в Postman (Collection v2.1), данные в Insomnia (Insomnia v4, JSON) или возьмите openapi.json либо openapi.yaml сервиса и выберите здесь этот файл.",
             "next": "Прочитайте, что не перенесётся, и нажмите Import. Коллекция станет новой папкой; сохраните рабочее пространство, чтобы её оставить.",
             "chapter": "moving"
         }
@@ -875,7 +875,7 @@
                 {
                     "type": "steps",
                     "items": [
-                        "В Postman экспортируйте коллекцию в формате Collection v2.1 и нужные окружения. В Insomnia выберите Export Data в формате Insomnia v4 (JSON). Для описания API возьмите его openapi.json.",
+                        "В Postman экспортируйте коллекцию в формате Collection v2.1 и нужные окружения. В Insomnia выберите Export Data в формате Insomnia v4 (JSON). Для описания API возьмите его openapi.json или openapi.yaml.",
                         "В ReqDeck выберите File > Import Collection… и укажите файл.",
                         "Прочитайте список того, что не перенесётся, и нажмите Import.",
                         "Сохраните рабочее пространство клавишами Ctrl+S, чтобы оставить новую папку."

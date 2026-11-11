@@ -109,7 +109,7 @@ Dialog {
         id: fileDialog
 
         title: qsTr("Import a file")
-        nameFilters: [qsTr("JSON files (*.json)"), qsTr("All files (*)")]
+        nameFilters: [qsTr("JSON and YAML files (*.json *.yaml *.yml)"), qsTr("All files (*)")]
         onAccepted: cppImport.preview(selectedFile.toString())
     }
 }

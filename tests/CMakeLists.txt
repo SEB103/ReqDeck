@@ -166,6 +166,18 @@ target_link_libraries(tst_openapiimporter
 
 add_test(NAME OpenApiImporter.Unit COMMAND tst_openapiimporter)
 
+qt_add_executable(tst_yamljson
+    unit/tst_yamljson.cpp
+)
+
+target_link_libraries(tst_yamljson
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME YamlJson.Unit COMMAND tst_yamljson)
+
 # Local HTTP/1.1 server for network tests; tests never contact external hosts.
 qt_add_library(ReqDeckTestSupport STATIC
     support/mockhttpserver.cpp
