@@ -48,6 +48,9 @@ target_sources(ReqDeckCore
         core/http/responsedata.h
         core/http/variableresolver.cpp
         core/http/variableresolver.h
+        core/import/importresult.h
+        core/import/postmanimporter.cpp
+        core/import/postmanimporter.h
         core/workspace/collectiontree.cpp
         core/workspace/inheritance.cpp
         core/workspace/inheritance.h

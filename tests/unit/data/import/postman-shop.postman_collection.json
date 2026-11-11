@@ -1,0 +1,28 @@
+{
+  "info": {"name": "Shop API", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{token}}", "type": "string"}]},
+  "variable": [{"key": "baseUrl", "value": "https://shop.test"}, {"key": "off", "value": "x", "disabled": true}],
+  "event": [{"listen": "prerequest", "script": {"exec": ["pm.environment.set('a', 1);"]}}],
+  "item": [
+    {"name": "Orders", "item": [
+      {"name": "List orders", "request": {"method": "GET",
+        "header": [{"key": "Accept", "value": "application/json"}, {"key": "X-Off", "value": "1", "disabled": true}],
+        "url": {"raw": "{{baseUrl}}/orders?page=1&size=20", "host": ["{{baseUrl}}"], "path": ["orders"],
+                "query": [{"key": "page", "value": "1"}, {"key": "size", "value": "20"}]}},
+       "event": [{"listen": "test", "script": {"exec": ["pm.test('ok', () => {});"]}}],
+       "response": [{"name": "Example"}]},
+      {"name": "Create order", "request": {"method": "POST", "auth": {"type": "noauth"},
+        "url": "{{baseUrl}}/orders",
+        "body": {"mode": "raw", "raw": "{\"id\": \"{{$guid}}\"}", "options": {"raw": {"language": "json"}}}}}
+    ]},
+    {"name": "Login", "request": {"method": "POST", "url": "{{baseUrl}}/login",
+      "auth": {"type": "basic", "basic": [{"key": "username", "value": "{{user}}"}, {"key": "password", "value": "{{pass}}"}]},
+      "body": {"mode": "urlencoded", "urlencoded": [{"key": "remember", "value": "true"}]}}},
+    {"name": "Upload", "request": {"method": "POST", "url": "{{baseUrl}}/files",
+      "auth": {"type": "oauth2", "oauth2": []},
+      "body": {"mode": "formdata", "formdata": [{"key": "file", "type": "file", "src": "a.png"}]}}},
+    {"name": "Key", "request": {"method": "GET", "url": "{{baseUrl}}/k",
+      "auth": {"type": "apikey", "apikey": [{"key": "key", "value": "X-Key"}, {"key": "value", "value": "{{key}}"},
+                                           {"key": "in", "value": "query"}]}}}
+  ]
+}
