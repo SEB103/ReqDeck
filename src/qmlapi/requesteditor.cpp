@@ -457,6 +457,7 @@ void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue
     }
     m_unresolved = built.unresolvedVariables;
     m_sentRequest = m_request;
+    m_executor->setCookieStore(m_manager->cookiesEnabled() ? m_manager->cookieStore() : nullptr);
     m_executor->send(built);
 }
 

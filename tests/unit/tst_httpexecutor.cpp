@@ -212,6 +212,18 @@ private slots:
     /*! Verifies that cookies set by a server are never stored or sent again. */
     void cookiesAreNeverStored();
 
+    /*! Verifies that with a store, cookies a server set go back to it, two headers at once included. */
+    void storedCookiesGoBack();
+
+    /*! Verifies that a cookie of 127.0.0.1 is not sent to localhost, the same server under another name. */
+    void cookiesStayWithTheirHost();
+
+    /*! Verifies that a cookie set by a redirect is sent on the next hop. */
+    void redirectStoresAndSendsPerHop();
+
+    /*! Verifies that a typed Cookie header is sent as typed, without the stored cookies. */
+    void typedCookieHeaderWins();
+
     /*! Verifies that credentials are dropped when a redirect leaves the origin. */
     void crossOriginRedirectDropsCredentials();
 
@@ -900,6 +912,73 @@ void HttpExecutorTest::cookiesAreNeverStored()
     response = sendAndWait(executor, buildRequest(specFor(m_server.url(QStringLiteral("/echo")))));
     QVERIFY(response);
     QVERIFY(echoedHeader(echoOf(*response), QStringLiteral("Cookie")).isEmpty());
+}
+
+void HttpExecutorTest::storedCookiesGoBack()
+{
+    CookieStore store;
+    HttpExecutor executor;
+    executor.setCookieStore(&store);
+    auto response = sendAndWait(executor, buildRequest(specFor(m_server.url(QStringLiteral("/set-cookies")))));
+    QVERIFY(response);
+    QCOMPARE(store.cookies().size(), 2);
+
+    response = sendAndWait(executor, buildRequest(specFor(m_server.url(QStringLiteral("/echo")))));
+    QVERIFY(response);
+    QCOMPARE(echoedHeader(echoOf(*response), QStringLiteral("Cookie")), QStringList({QStringLiteral("a=1; b=2")}));
+    QVERIFY(!response->storedCookiesSkipped);
+
+    executor.setCookieStore(nullptr);
+    response = sendAndWait(executor, buildRequest(specFor(m_server.url(QStringLiteral("/echo")))));
+    QVERIFY(response);
+    QVERIFY(echoedHeader(echoOf(*response), QStringLiteral("Cookie")).isEmpty());
+}
+
+void HttpExecutorTest::cookiesStayWithTheirHost()
+{
+    CookieStore store;
+    HttpExecutor executor;
+    executor.setCookieStore(&store);
+    QVERIFY(sendAndWait(executor, buildRequest(specFor(m_server.url(QStringLiteral("/set-cookie"))))));
+
+    auto response = sendAndWait(executor, buildRequest(specFor(m_server.url(QStringLiteral("/echo"), QStringLiteral("localhost")))));
+    QVERIFY(response);
+    QCOMPARE(response->statusCode, 200);
+    QVERIFY(echoedHeader(echoOf(*response), QStringLiteral("Cookie")).isEmpty());
+
+    // A redirect from localhost back to 127.0.0.1 picks up the cookie of 127.0.0.1 there.
+    const QString target = QString::fromLatin1(QUrl::toPercentEncoding(m_server.url(QStringLiteral("/echo")).toString()));
+    response = sendAndWait(executor, buildRequest(specFor(
+        m_server.url(QStringLiteral("/redirect-to?url=") + target, QStringLiteral("localhost")))));
+    QVERIFY(response);
+    QCOMPARE(echoedHeader(echoOf(*response), QStringLiteral("Cookie")), QStringList({QStringLiteral("sid=server")}));
+}
+
+void HttpExecutorTest::redirectStoresAndSendsPerHop()
+{
+    CookieStore store;
+    HttpExecutor executor;
+    executor.setCookieStore(&store);
+    auto response = sendAndWait(executor, buildRequest(specFor(m_server.url(QStringLiteral("/login")))));
+    QVERIFY(response);
+    QCOMPARE(response->statusCode, 200);
+    QCOMPARE(echoedHeader(echoOf(*response), QStringLiteral("Cookie")), QStringList({QStringLiteral("sid=login")}));
+}
+
+void HttpExecutorTest::typedCookieHeaderWins()
+{
+    CookieStore store;
+    HttpExecutor executor;
+    executor.setCookieStore(&store);
+    QVERIFY(sendAndWait(executor, buildRequest(specFor(m_server.url(QStringLiteral("/set-cookie"))))));
+
+    RequestSpec spec = specFor(m_server.url(QStringLiteral("/echo")));
+    spec.headers.append({QStringLiteral("Cookie"), QStringLiteral("sid=user"), true});
+    auto response = sendAndWait(executor, buildRequest(spec));
+    QVERIFY(response);
+    QCOMPARE(echoedHeader(echoOf(*response), QStringLiteral("Cookie")), QStringList({QStringLiteral("sid=user")}));
+    QVERIFY(response->storedCookiesSkipped);
+    QCOMPARE(store.cookies().at(0).value(), QByteArray("server"));
 }
 
 void HttpExecutorTest::crossOriginRedirectDropsCredentials()

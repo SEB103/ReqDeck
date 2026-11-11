@@ -42,6 +42,18 @@ constexpr auto kDefaultWorkspacesDirKey = "defaultWorkspacesDir";
 
 /*!
  * \internal
+ * \brief Workspace setting that turns cookies off when false.
+ */
+constexpr QLatin1StringView kCookiesSettingKey("cookies");
+
+/*!
+ * \internal
+ * \brief Milliseconds between a change of the cookies and writing them.
+ */
+constexpr int kCookieSaveDelayMs = 500;
+
+/*!
+ * \internal
  * \brief Returns a comparable canonical form of \a path for de-duplication.
  *
  * Paths are cleaned and compared case-insensitively so the same workspace file
@@ -76,10 +88,24 @@ QString withWorkspaceSuffix(const QString &path)
  */
 WorkspaceManager::WorkspaceManager(QObject *parent)
     : QObject(parent)
+    , m_cookies(new CookieStore(this))
 {
+    m_cookieSaveTimer.setSingleShot(true);
+    m_cookieSaveTimer.setInterval(kCookieSaveDelayMs);
+    connect(&m_cookieSaveTimer, &QTimer::timeout, this, &WorkspaceManager::saveCookies);
+    connect(m_cookies, &CookieStore::changed, this, [this]() {
+        if (!m_cookiesWorkspaceId.isEmpty())
+            m_cookieSaveTimer.start();
+    });
 }
 
-WorkspaceManager::~WorkspaceManager() = default;
+/*!
+ * \brief Writes the pending cookies and destroys the workspace manager.
+ */
+WorkspaceManager::~WorkspaceManager()
+{
+    saveCookies();
+}
 
 /*!
  * \brief Rebuilds the last notification for the status bar after a language switch.
@@ -649,13 +675,107 @@ void WorkspaceManager::addOrUpdateRecent(const QString &path, const QString &dis
 }
 
 /*!
+ * \brief Returns the cookies of the active workspace, owned by the manager.
+ *
+ * The store always exists; without an active workspace it is empty.
+ */
+CookieStore *WorkspaceManager::cookieStore() const
+{
+    return m_cookies;
+}
+
+/*!
+ * \brief Returns whether requests of the active workspace send and store cookies.
+ *
+ * Stored in the workspace settings as "cookies": false when turned off.
+ */
+bool WorkspaceManager::cookiesEnabled() const
+{
+    return m_data.settings.value(kCookiesSettingKey).toBool(true);
+}
+
+/*!
+ * \brief Sets whether requests of the active workspace send and store cookies.
+ *
+ * The stored cookies stay when cookies are turned off, so turning them on
+ * again picks up the session. Ignored without an active workspace.
+ * \param enabled True to send and store cookies.
+ */
+void WorkspaceManager::setCookiesEnabled(bool enabled)
+{
+    if (!hasActiveWorkspace() || enabled == cookiesEnabled())
+        return;
+    WorkspaceData data = m_data;
+    if (enabled)
+        data.settings.remove(kCookiesSettingKey);
+    else
+        data.settings.insert(kCookiesSettingKey, false);
+    updateWorkspaceData(data);
+    emit cookiesEnabledChanged();
+}
+
+/*!
+ * \brief Writes the persistent cookies of the active workspace now.
+ *
+ * Normally they are written shortly after they change, apart from saving the
+ * workspace, since responses set them. A failure goes to the log; the cookies
+ * stay in memory.
+ */
+void WorkspaceManager::saveCookies()
+{
+    m_cookieSaveTimer.stop();
+    if (m_cookiesWorkspaceId.isEmpty())
+        return;
+    QString error;
+    if (!m_cookies->save(cookiesFilePath(m_cookiesWorkspaceId), SecretCipher(), &error))
+        notify(Diagnostics::Level::Warning, [error]() { return error; });
+}
+
+/*!
+ * \internal
+ * \brief Switches the cookie store to the workspace \a workspaceId.
+ *
+ * The cookies of the previous workspace are written first. Saving a
+ * workspace under another name keeps its id and therefore its cookies.
+ * \param workspaceId The id of the workspace now active, or empty for none.
+ */
+void WorkspaceManager::switchCookies(const QString &workspaceId)
+{
+    if (workspaceId == m_cookiesWorkspaceId)
+        return;
+    saveCookies();
+    m_cookiesWorkspaceId.clear();
+    if (!isValidWorkspaceId(workspaceId)) {
+        m_cookies->clear();
+        return;
+    }
+    QString error;
+    if (!m_cookies->load(cookiesFilePath(workspaceId), SecretCipher(), &error))
+        notify(Diagnostics::Level::Warning, [error]() { return error; });
+    m_cookiesWorkspaceId = workspaceId;
+}
+
+/*!
+ * \internal
+ * \brief Returns the cookies file of \a workspaceId beside its secret values.
+ */
+QString WorkspaceManager::cookiesFilePath(const QString &workspaceId) const
+{
+    return QDir(secretsDir()).filePath(workspaceId + QStringLiteral(".cookies.json"));
+}
+
+/*!
  * \brief Makes \a data at \a path the active workspace and clears the dirty flag.
  */
 void WorkspaceManager::setActiveWorkspace(const QString &path, const WorkspaceData &data)
 {
     setSecretsUnread(false);
     m_activePath = QDir::cleanPath(QFileInfo(path).absoluteFilePath());
+    const bool cookiesWereEnabled = cookiesEnabled();
     m_data = data;
+    switchCookies(data.id);
+    if (cookiesEnabled() != cookiesWereEnabled)
+        emit cookiesEnabledChanged();
     m_storedSecrets = SecretStore::valuesOf(data);
     m_secretsUnavailable = false;
     setDirty(false);
@@ -674,8 +794,12 @@ void WorkspaceManager::clearActiveWorkspace()
         return;
     }
     m_activePath.clear();
+    const bool cookiesWereEnabled = cookiesEnabled();
     m_data = WorkspaceData();
     m_storedSecrets = {};
+    switchCookies(QString());
+    if (cookiesEnabled() != cookiesWereEnabled)
+        emit cookiesEnabledChanged();
     setDirty(false);
     emit activeWorkspaceChanged();
     emit previousCopyChanged();

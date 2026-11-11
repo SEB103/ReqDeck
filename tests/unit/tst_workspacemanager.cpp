@@ -241,6 +241,12 @@ private slots:
     /*! Verifies that a file of another computer is copied before the first value replaces it. */
     void unavailableFileCopiedBeforeReplaced();
 
+    /*! Verifies that each workspace has its own cookies, kept encrypted and out of the workspace file. */
+    void cookiesFollowTheWorkspace();
+
+    /*! Verifies that the cookie setting is stored in the workspace and survives a reopen. */
+    void cookieSettingIsStored();
+
 private:
     /*! Builds a settings store inside \a dir for one test. */
     static QSettings *makeSettings(QTemporaryDir &dir, QObject *parent);
@@ -1238,6 +1244,60 @@ void WorkspaceManagerTest::unavailableFileCopiedBeforeReplaced()
     QVERIFY(copy && copy->secrets);
     QCOMPARE(*copy->secrets, foreign);
     QVERIFY(manager.hasPreviousCopy());
+}
+
+void WorkspaceManagerTest::cookiesFollowTheWorkspace()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.createWorkspace(QStringLiteral("One"), dir.path()));
+    const QString one = manager.activeWorkspacePath();
+    QVERIFY(manager.cookiesEnabled());
+    manager.cookieStore()->storeFromResponse({"sid=one-secret; Max-Age=86400; Path=/"},
+                                             QUrl(QStringLiteral("https://api.test/")));
+    QVERIFY(manager.saveWorkspace());
+
+    QVERIFY(manager.createWorkspace(QStringLiteral("Two"), dir.path()));
+    QVERIFY(manager.cookieStore()->cookies().isEmpty());
+
+    QVERIFY(manager.openWorkspace(one));
+    QCOMPARE(manager.cookieStore()->cookies().size(), 1);
+    QVERIFY(!readFile(one).contains("one-secret"));
+    const QString workspaceId = manager.workspaceData().id;
+    const QByteArray cookiesFile = readFile(QDir(dir.filePath(QStringLiteral("secrets")))
+                                                .filePath(workspaceId + QStringLiteral(".cookies.json")));
+    QVERIFY(!cookiesFile.isEmpty());
+    QVERIFY(!cookiesFile.contains("one-secret"));
+
+    manager.closeWorkspace();
+    QVERIFY(manager.cookieStore()->cookies().isEmpty());
+}
+
+void WorkspaceManagerTest::cookieSettingIsStored()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.createWorkspace(QStringLiteral("One"), dir.path()));
+    QSignalSpy changed(&manager, &WorkspaceManager::cookiesEnabledChanged);
+
+    manager.setCookiesEnabled(false);
+
+    QCOMPARE(changed.count(), 1);
+    QVERIFY(manager.dirty());
+    QVERIFY(manager.saveWorkspace());
+    const QString path = manager.activeWorkspacePath();
+    manager.closeWorkspace();
+    QVERIFY(manager.cookiesEnabled());
+    QVERIFY(manager.openWorkspace(path));
+    QVERIFY(!manager.cookiesEnabled());
+    manager.setCookiesEnabled(true);
+    QVERIFY(manager.cookiesEnabled());
 }
 
 void WorkspaceManagerTest::backupBeforeSchemaChange()

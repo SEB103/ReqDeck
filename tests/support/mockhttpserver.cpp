@@ -335,6 +335,16 @@ void MockHttpServer::route(QTcpSocket *socket, const Request &request)
         return;
     }
 
+    if (path == "/set-cookies") {
+        writeResponse(socket, 200, {{"Set-Cookie", "a=1; Path=/"}, {"Set-Cookie", "b=2; Path=/"}}, "ok", head);
+        return;
+    }
+
+    if (path == "/login") {
+        writeResponse(socket, 302, {{"Location", "/echo"}, {"Set-Cookie", "sid=login; Path=/"}}, {}, head);
+        return;
+    }
+
     if (path == "/set-cookie") {
         writeResponse(socket, 200, {{"Set-Cookie", "sid=server; Path=/"}, {"Content-Type", "text/plain"}},
                       "ok", head);

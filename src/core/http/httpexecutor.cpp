@@ -261,6 +261,30 @@ void HttpExecutor::setIgnoreTlsErrors(bool ignore)
 }
 
 /*!
+ * \brief Returns the store cookies are sent from and stored in, or null.
+ */
+CookieStore *HttpExecutor::cookieStore() const
+{
+    return m_cookies;
+}
+
+/*!
+ * \brief Sends and stores cookies with \a store from the next request on.
+ *
+ * Before each hop the cookies of the store that match its URL replace any
+ * Cookie header the hop had from the store; after each response, redirects
+ * included, its Set-Cookie headers go into the store. A request that has a
+ * Cookie header of its own sends just that one until a redirect leaves its
+ * origin; ResponseData::storedCookiesSkipped says when the store had cookies
+ * for it. Null turns cookies off. The store is not owned.
+ * \param store The cookies of the open workspace, or null.
+ */
+void HttpExecutor::setCookieStore(CookieStore *store)
+{
+    m_cookies = store;
+}
+
+/*!
  * \brief Starts \a request asynchronously.
  *
  * Redirects are followed by the executor according to
@@ -280,6 +304,8 @@ bool HttpExecutor::send(const BuiltRequest &request)
         return false;
 
     m_current = request;
+    m_typedCookie = m_current.request.headers().contains(QHttpHeaders::WellKnownHeader::Cookie);
+    m_storedCookiesSkipped = m_typedCookie && m_cookies && !m_cookies->cookieHeader(m_current.request.url()).isEmpty();
     m_redirectCount = 0;
     m_abortRequested = false;
     m_tlsChecks.clear();
@@ -341,6 +367,16 @@ ResponseError HttpExecutor::classifyError(QNetworkReply::NetworkError error, boo
  */
 void HttpExecutor::startReply()
 {
+    // Stored cookies are chosen per hop, so each server gets only its own.
+    if (m_cookies && !m_typedCookie) {
+        QHttpHeaders headers = m_current.request.headers();
+        headers.removeAll(QHttpHeaders::WellKnownHeader::Cookie);
+        const QByteArray cookies = m_cookies->cookieHeader(m_current.request.url());
+        if (!cookies.isEmpty())
+            headers.append(QHttpHeaders::WellKnownHeader::Cookie, cookies);
+        m_current.request.setHeaders(std::move(headers));
+    }
+
     if (m_current.verb == "HEAD")
         m_reply = m_network->head(m_current.request);
     else
@@ -426,6 +462,8 @@ void HttpExecutor::prepareRedirect(const QUrl &target, int status)
     if (!isSameOrigin(next.url(), target)) {
         for (const QByteArray &name : std::as_const(m_current.credentialHeaders))
             headers.removeAll(QLatin1StringView(name));
+        // The typed Cookie header is gone; the new server gets its stored cookies.
+        m_typedCookie = false;
     }
 
     const bool toGet = m_current.verb != "HEAD"
@@ -483,6 +521,12 @@ void HttpExecutor::handleFinished()
     response.bodyFile = std::exchange(m_bodyFile, {});
     response.sizeBytes = std::exchange(m_bodySize, 0);
     response.finalUrl = reply->url();
+    response.storedCookiesSkipped = m_storedCookiesSkipped;
+    if (m_cookies) {
+        const auto cookies = reply->header(QNetworkRequest::SetCookieHeader).value<QList<QNetworkCookie>>();
+        if (!cookies.isEmpty())
+            m_cookies->storeCookies(cookies, reply->url());
+    }
 
     const QNetworkReply::NetworkError error = reply->error();
     // Codes below ContentAccessDenied are connection and proxy failures; the

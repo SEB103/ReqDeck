@@ -8,10 +8,12 @@
 #include <QList>
 #include <QObject>
 #include <QString>
+#include <QTimer>
 #include <QVariantList>
 
 #include <functional>
 
+#include "core/http/cookiestore.h"
 #include "core/workspace/workspacedata.h"
 #include "framework/diagnosticslevel.h"
 #include "framework/retranslatablestatus.h"
@@ -63,6 +65,9 @@ class WorkspaceManager : public QObject
     /** Default directory new workspaces are created in; user-configurable. */
     Q_PROPERTY(QString defaultWorkspacesDir READ defaultWorkspacesDir WRITE setDefaultWorkspacesDir
                    NOTIFY defaultWorkspacesDirChanged)
+
+    /** Whether requests of the active workspace send and store cookies; a workspace setting. */
+    Q_PROPERTY(bool cookiesEnabled READ cookiesEnabled WRITE setCookiesEnabled NOTIFY cookiesEnabledChanged)
 
 public:
     /** Creates a workspace manager with no active workspace and an empty recent list. */
@@ -130,6 +135,18 @@ public:
 
     /** Returns the directory of the copies: "backups" beside the secrets directory. */
     QString backupsDir() const;
+
+    /** Returns the cookies of the active workspace; empty without one; owned by the manager. */
+    CookieStore *cookieStore() const;
+
+    /** Returns whether requests of the active workspace send and store cookies; true by default. */
+    bool cookiesEnabled() const;
+
+    /** Sets whether requests of the active workspace send and store cookies; marks the workspace dirty. */
+    void setCookiesEnabled(bool enabled);
+
+    /** Writes the cookies of the active workspace now instead of after the short delay. */
+    void saveCookies();
 
     /** Returns the in-memory data of the active workspace (empty when none is active). */
     const WorkspaceData &workspaceData() const;
@@ -216,6 +233,9 @@ signals:
     /** Emitted when the default workspaces directory changes. */
     void defaultWorkspacesDirChanged();
 
+    /** Emitted when cookiesEnabled() changes. */
+    void cookiesEnabledChanged();
+
     /** Emitted with a user-facing \a message when a workspace operation fails. */
     void workspaceError(const QString &message);
 
@@ -292,6 +312,21 @@ protected:
 
     /** Configured file of the samples workspace; empty means the seeded one. */
     QString m_samplesPath;
+
+    /** Cookies of the active workspace; owned through QObject. */
+    CookieStore *m_cookies {nullptr};
+
+    /** Id of the workspace whose cookies m_cookies holds; empty for none. */
+    QString m_cookiesWorkspaceId;
+
+    /** Delays writing the cookies so a burst of responses writes once. */
+    QTimer m_cookieSaveTimer;
+
+    /** Switches m_cookies to the workspace \a workspaceId, saving those of the previous one. */
+    void switchCookies(const QString &workspaceId);
+
+    /** Returns the cookies file of \a workspaceId beside its secret values. */
+    QString cookiesFilePath(const QString &workspaceId) const;
 
     /** Absolute .reqdeck path of the active workspace; empty when none is active. */
     QString m_activePath;

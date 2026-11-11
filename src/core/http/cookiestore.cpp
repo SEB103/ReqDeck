@@ -87,11 +87,22 @@ int CookieStore::storeFromResponse(const QList<QByteArray> &values, const QUrl &
     QList<QNetworkCookie> parsed;
     for (const QByteArray &value : values)
         parsed += QNetworkCookie::parseCookies(value);
-    if (parsed.isEmpty())
-        return 0;
+    return storeCookies(parsed, url);
+}
 
+/*!
+ * \brief Stores \a cookies that a response from \a url set.
+ *
+ * Each cookie is checked on its own, so one refused cookie does not drop the
+ * others; see storeFromResponse().
+ * \param cookies The parsed Set-Cookie values, in the order received.
+ * \param url The URL the response came from.
+ * \return How many cookies were stored or removed.
+ */
+int CookieStore::storeCookies(const QList<QNetworkCookie> &cookies, const QUrl &url)
+{
     int taken = 0;
-    for (const QNetworkCookie &cookie : std::as_const(parsed)) {
+    for (const QNetworkCookie &cookie : cookies) {
         if (setCookiesFromUrl({cookie}, url))
             ++taken;
     }

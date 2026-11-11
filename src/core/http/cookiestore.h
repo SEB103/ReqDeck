@@ -38,6 +38,9 @@ public:
     /** Stores the cookies of the Set-Cookie \a values of a response from \a url; returns how many were taken. */
     int storeFromResponse(const QList<QByteArray> &values, const QUrl &url);
 
+    /** Stores \a cookies a response from \a url set; returns how many were taken. */
+    int storeCookies(const QList<QNetworkCookie> &cookies, const QUrl &url);
+
     /** Returns the Cookie header value for a request to \a url, or an empty array. */
     QByteArray cookieHeader(const QUrl &url) const;
 

@@ -83,6 +83,8 @@ struct TlsCheck
 /** Result of one executed request. */
 struct ResponseData
 {
+    /** Whether stored cookies for the request were left out because it had a Cookie header of its own. */
+    bool storedCookiesSkipped {false};
     /** HTTP status code; 0 when no response was received. */
     int statusCode {0};
     /** HTTP reason phrase, for example "Not Found". */

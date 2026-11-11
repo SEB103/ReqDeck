@@ -193,6 +193,9 @@ private slots:
     /*! Verifies that a request takes the auth and variables of its folder. */
     void sendUsesFolderAuthAndVariables();
 
+    /*! Verifies that a send stores and sends the cookies of the workspace, and none when they are off. */
+    void sendUsesWorkspaceCookies();
+
     /*! Verifies that Continue past a certificate sends with the one-time values again. */
     void trustingCertificateKeepsOneTimeValues();
 
@@ -902,6 +905,24 @@ void RequestEditorTest::sendUsesFolderAuthAndVariables()
 
     QVERIFY(waitForResponse(*m_response));
     QVERIFY2(m_response->bodyText().contains(QStringLiteral("Bearer from-folder")), qPrintable(m_response->bodyText()));
+}
+
+void RequestEditorTest::sendUsesWorkspaceCookies()
+{
+    openRequestAt(QStringLiteral("/set-cookie"));
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_manager->cookieStore()->cookies().size(), 1);
+
+    m_editor->setProperty("url", m_server.url(QStringLiteral("/echo")).toString());
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY2(m_response->bodyText().contains(QStringLiteral("sid=server")), qPrintable(m_response->bodyText()));
+
+    m_manager->setCookiesEnabled(false);
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY2(!m_response->bodyText().contains(QStringLiteral("sid=server")), qPrintable(m_response->bodyText()));
 }
 
 void RequestEditorTest::trustingCertificateKeepsOneTimeValues()

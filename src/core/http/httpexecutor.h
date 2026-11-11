@@ -8,11 +8,13 @@
 #include <QNetworkProxy>
 #include <QNetworkReply>
 #include <QObject>
+#include <QPointer>
 #include <QStringList>
 #include <QTemporaryFile>
 
 #include <memory>
 
+#include "core/http/cookiestore.h"
 #include "core/http/requestbuilder.h"
 #include "core/http/responsedata.h"
 
@@ -28,7 +30,9 @@ QT_END_NAMESPACE
  * after abort() or a timeout; destroying a busy executor cancels the request
  * without emitting anything. Redirects are followed here rather than by Qt,
  * so credentials can be dropped when a redirect leaves the origin. Cookies are
- * never stored. Requests use the proxy of the system, except to this computer.
+ * sent and stored only with a CookieStore, on every hop; a Cookie header in the
+ * request wins over it. Requests use the proxy of the system, except to this
+ * computer.
  */
 class HttpExecutor : public QObject
 {
@@ -50,6 +54,12 @@ public:
 
     /** Sets whether TLS certificate errors are ignored; off by default. */
     void setIgnoreTlsErrors(bool ignore);
+
+    /** Returns the store that cookies are sent from and stored in, or null for none. */
+    CookieStore *cookieStore() const;
+
+    /** Sends and stores cookies with \a store from the next request on; null for none; not owned. */
+    void setCookieStore(CookieStore *store);
 
     /** Starts \a request; returns false without effect when busy or the request is not ok. */
     bool send(const BuiltRequest &request);
@@ -100,6 +110,15 @@ private:
 
     /** Converts the finished reply into ResponseData, follows a redirect, or emits finished(). */
     void handleFinished();
+
+    /** Store of the cookies, or null; not owned. */
+    QPointer<CookieStore> m_cookies;
+
+    /** Whether the running request has a Cookie header of its own, which wins over the store. */
+    bool m_typedCookie {false};
+
+    /** Whether the store had cookies for the first hop that the typed header replaced. */
+    bool m_storedCookiesSkipped {false};
 
     /** Network manager owned through the QObject tree; it has no cookie jar. */
     QNetworkAccessManager *m_network {nullptr};
