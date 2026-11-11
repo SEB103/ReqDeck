@@ -71,4 +71,5 @@ qt_add_resources(appReqDeck "license_resources"
         "${CMAKE_SOURCE_DIR}/LICENSES/GPL-3.0-or-later.txt"
         "${CMAKE_SOURCE_DIR}/LICENSES/LGPL-3.0-only.txt"
         "${CMAKE_SOURCE_DIR}/LICENSES/Apache-2.0.txt"
+        "${CMAKE_SOURCE_DIR}/LICENSES/MIT.txt"
 )

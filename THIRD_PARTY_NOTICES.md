@@ -54,6 +54,42 @@ The screenshots in `packaging/help/shots/` and the beginner guide PDF files in
 embed subsets of the Segoe UI and Consolas fonts of Windows, as written by the
 Microsoft Edge PDF printer.
 
+## yaml-cpp
+
+The import reads YAML files with yaml-cpp 0.9.0, built from the sources in
+`third_party/yaml-cpp/` and linked statically into the application.
+
+- **License:** MIT (`LICENSES/MIT.txt`; the original text is kept at
+  `third_party/yaml-cpp/LICENSE`).
+- **Copyright:** Copyright (c) 2008-2015 Jesse Beder.
+- **Bundled code:** `src/contrib/dragonbox.h`, Copyright (c) 2020-2024 Junekey
+  Jeon, offered under Apache-2.0 WITH LLVM-exception, BSL-1.0, or MIT; used here
+  under MIT.
+- **Source:** <https://github.com/jbeder/yaml-cpp>. See
+  `third_party/yaml-cpp/VENDORED.md` for the exact archive and what was kept.
+
+MIT License
+
+Copyright (c) 2008-2015 Jesse Beder.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
 ## Country flag (UI-language selector)
 
 The SVG flag `resources/images/flags/gb.svg` is used by the UI-language selector.
@@ -65,5 +101,5 @@ It carries a Creative Commons Public Domain dedication in its source markup.
 ## Before distributing binaries
 
 Verify that the license texts and notices for every component you actually ship
-(Qt and the icon set) are included with the distribution and that the LGPLv3
+(Qt, the icon set, and yaml-cpp) are included with the distribution and that the LGPLv3
 relinking obligation for Qt is satisfied.

@@ -22,6 +22,7 @@ path = [
     "qml/**",
     "tests/**",
     "cmake/**",
+    "third_party/CMakeLists.txt",
     "translations/**",
     "packaging/**",
     "installer/**",
@@ -64,6 +65,14 @@ path = [
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Copyright (C) Google LLC"
 SPDX-License-Identifier = "Apache-2.0"
+
+# Third-party library: yaml-cpp 0.9.0, vendored unmodified (MIT). The in-file
+# SPDX header of src/contrib/dragonbox.h adds its own notice.
+[[annotations]]
+path = "third_party/yaml-cpp/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Copyright (c) 2008-2015 Jesse Beder"
+SPDX-License-Identifier = "MIT"
 
 # Screenshots of the application and the beginner guide made from them show the
 # Material Symbols icons above, so both licenses apply.

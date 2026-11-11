@@ -50,7 +50,9 @@ include(cmake/WindowsVersionInfo.cmake)
 # Keep all generated QML module metadata under one predictable build-tree root.
 set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml")
 
-# Build the reusable C++ layers and both QML modules.
+# Build the vendored third-party libraries, the reusable C++ layers, and both
+# QML modules.
+add_subdirectory(third_party)
 add_subdirectory(src)
 add_subdirectory(qml)
 

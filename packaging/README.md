@@ -200,7 +200,9 @@ so the `QtTest` import of `tests/qml` also deploys `Qt6Test.dll`,
 `Qt6QuickTest.dll`, and `qml/QtTest` (about 0.7 MB). This is harmless and accepted.
 
 **Licensing.** The app ships Qt as LGPL-3.0 shared libraries (see
-`THIRD_PARTY_NOTICES.md`). The installer and Maintenance Tool are Qt Installer
+`THIRD_PARTY_NOTICES.md`). yaml-cpp (MIT) is built from `third_party/` and linked
+statically, so it adds no DLL; its license reaches the deployment with
+`LICENSES/` and `THIRD_PARTY_NOTICES.md`. The installer and Maintenance Tool are Qt Installer
 Framework programs by The Qt Company; add the IFW/Qt attribution before a public
 release. Local pipeline runs produce unsigned artifacts.
 
