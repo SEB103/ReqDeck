@@ -28,6 +28,7 @@
 #include "mockhttpserver.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/environmentmodel.h"
+#include "qmlapi/foldereditor.h"
 #include "qmlapi/environmentvariablesmodel.h"
 #include "qmlapi/helplibrary.h"
 #include "qmlapi/helplocator.h"
@@ -130,6 +131,7 @@ public:
         context->setContextProperty(QStringLiteral("cppHelp"), &m_help);
         context->setContextProperty(QStringLiteral("cppHelpLocator"), &m_helpLocator);
         context->setContextProperty(QStringLiteral("cppRequestEditor"), &m_editor);
+        context->setContextProperty(QStringLiteral("cppFolderEditor"), &m_folderEditor);
         context->setContextProperty(QStringLiteral("cppResponse"), &m_response);
         context->setContextProperty(QStringLiteral("cppTestHost"), this);
         publishMainStubs(context);
@@ -515,6 +517,9 @@ private:
 
     /*! Real request editor. */
     RequestEditor m_editor {&m_manager, &m_collection, &m_response};
+
+    /*! Real folder editor. */
+    FolderEditor m_folderEditor {&m_collection};
 };
 
 /*! Quick Test setup that installs the facades on the test engine. */

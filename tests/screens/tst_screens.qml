@@ -3157,6 +3157,26 @@ Item {
             compare(mark.visible, false);
         }
 
+        /*! Verifies that the folder settings dialog edits the folder and a request can inherit from it. */
+        function test_folderSettingsEditTheFolder() {
+            const pane = createCollection();
+            const dialog = findChild(pane, "folderSettingsDialog");
+
+            dialog.openFor("f1");
+
+            tryCompare(dialog, "opened", true);
+            compare(cppFolderEditor.folderId, "f1");
+            cppFolderEditor.authType = 2; // AuthType::Bearer
+            cppFolderEditor.authToken = "{{token}}";
+            compare(cppWorkspaceManager.dirty, true);
+            dialog.close();
+
+            const request = createRequest("r2");
+            findChild(request, "tabs").currentIndex = 3;
+            cppRequestEditor.authType = 4; // AuthType::Inherit
+            compare(cppRequestEditor.authType, 4);
+        }
+
         /*! Verifies that a typed token is offered to move into a secret, and moves there on a click. */
         function test_typedTokenMovesToSecret() {
             const pane = createRequest("r1");

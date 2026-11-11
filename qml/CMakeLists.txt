@@ -13,6 +13,7 @@ qt_add_qml_module(MainQml
         CollectionPane.qml
         CurlImportDialog.qml
         EnvironmentDialog.qml
+        FolderSettingsDialog.qml
         HistoryPane.qml
         LauncherScreen.qml
         Main.qml

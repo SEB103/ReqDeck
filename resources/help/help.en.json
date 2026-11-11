@@ -591,6 +591,14 @@
             "example": "list orders finds the request List orders.",
             "next": "Arrows choose, Enter opens or runs, Escape closes.",
             "chapter": "requests"
+        },
+        "dialog.folderSettings": {
+            "title": "Folder settings",
+            "what": "Authorization and variables that the requests of a folder share.",
+            "why": "Set a token once for a whole API instead of in every request; imported Postman collections need this.",
+            "example": "A folder with Bearer {{token}}; its requests set to Inherit from folder send that token.",
+            "next": "Right-click a folder > Folder Settings…. Inherit from parent folder passes the question up; No authentication stops it.",
+            "chapter": "auth"
         }
     },
     "chapters": [

@@ -591,6 +591,14 @@
             "example": "list orders находит запрос List orders.",
             "next": "Стрелки выбирают, Enter открывает или выполняет, Escape закрывает.",
             "chapter": "requests"
+        },
+        "dialog.folderSettings": {
+            "title": "Настройки папки",
+            "what": "Авторизация и переменные, общие для запросов папки.",
+            "why": "Токен задаётся один раз для всего API, а не в каждом запросе; это нужно и для коллекций, импортированных из Postman.",
+            "example": "Папка с Bearer {{token}}; её запросы с Inherit from folder отправляют этот токен.",
+            "next": "Правый клик по папке > Folder Settings…. Inherit from parent folder передаёт вопрос выше; No authentication его останавливает.",
+            "chapter": "auth"
         }
     },
     "chapters": [

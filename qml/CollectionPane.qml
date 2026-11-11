@@ -346,6 +346,10 @@ Item {
         text: qsTr("No requests yet. Use Request > New Request to add one.")
     }
 
+    FolderSettingsDialog {
+        id: folderSettingsDialog
+    }
+
     Menu {
         id: nodeMenu
 
@@ -378,6 +382,12 @@ Item {
             icon.source: "qrc:/images/svg/content_copy.svg"
             enabled: root.selectedId.length > 0
             onTriggered: root.duplicateSelected()
+        }
+
+        Base.BsMenuItem {
+            text: qsTr("Folder Settings…")
+            enabled: root.selectedId.length > 0 && cppCollection.isFolder(root.selectedId)
+            onTriggered: folderSettingsDialog.openFor(root.selectedId)
         }
 
         Base.BsMenuItem {

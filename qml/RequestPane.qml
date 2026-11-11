@@ -397,7 +397,9 @@ Item {
                     property string helpTopic: "request.authType"
 
                     Layout.preferredWidth: 180
-                    model: [qsTr("No authentication"), qsTr("Basic"), qsTr("Bearer token"), qsTr("API key")]
+                    // The order follows AuthType, so the index is the value.
+                    model: [qsTr("No authentication"), qsTr("Basic"), qsTr("Bearer token"), qsTr("API key"),
+                            qsTr("Inherit from folder")]
                     currentIndex: cppRequestEditor.authType
                     onActivated: (index) => cppRequestEditor.authType = index
                 }

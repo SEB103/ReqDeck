@@ -17,6 +17,7 @@ class HistoryModel;
 class LicenseModel;
 class LocaleController;
 class LogModel;
+class FolderEditor;
 class RequestEditor;
 class ResponseView;
 class UpdateController;
@@ -107,6 +108,9 @@ private:
 
     /** Open request exposed to QML as \c cppRequestEditor; owned by this engine. */
     RequestEditor* m_requestEditor = nullptr;
+
+    /** Folder settings exposed to QML as \c cppFolderEditor; owned by this engine. */
+    FolderEditor* m_folderEditor = nullptr;
 
     /** Application/build metadata exposed to QML as \c cppAppInfo; owned by this engine. */
     AppInfo* m_appInfo = nullptr;
