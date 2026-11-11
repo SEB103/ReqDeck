@@ -602,9 +602,9 @@
         },
         "dialog.import": {
             "title": "Import a collection",
-            "what": "Brings a Postman collection or environment, or an Insomnia export, into this workspace.",
-            "why": "To carry on with the requests you made in Postman or Insomnia.",
-            "example": "Export a collection in Postman (Collection v2.1), or export data in Insomnia (Insomnia v4, JSON), and choose the file here.",
+            "what": "Brings a Postman collection or environment, an Insomnia export, or an OpenAPI 3 document into this workspace.",
+            "why": "To carry on with the requests you made in Postman or Insomnia, or to start from an API description.",
+            "example": "Export a collection in Postman (Collection v2.1), export data in Insomnia (Insomnia v4, JSON), or take the openapi.json of a service, and choose the file here.",
             "next": "Read what will not carry over, then press Import. The collection becomes a new folder; save the workspace to keep it.",
             "chapter": "requests"
         }

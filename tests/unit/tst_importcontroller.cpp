@@ -37,6 +37,9 @@ private slots:
     /*! Verifies that an Insomnia export is recognized and brings its environments. */
     void previewInsomnia();
 
+    /*! Verifies that an OpenAPI document is recognized and brings one environment per server. */
+    void previewOpenApi();
+
     /*! Verifies that an unknown file is refused with a message. */
     void unknownFileIsRefused();
 
@@ -126,6 +129,13 @@ void ImportControllerTest::previewInsomnia()
     QVERIFY(m_import->preview(QFINDTESTDATA("data/import/insomnia-shop.json")));
     QVERIFY2(m_import->summary().startsWith(QStringLiteral("Insomnia export:")), qPrintable(m_import->summary()));
     QVERIFY(m_import->summary().contains(QStringLiteral("1 environment(s)")));
+}
+
+void ImportControllerTest::previewOpenApi()
+{
+    QVERIFY(m_import->preview(QFINDTESTDATA("data/import/openapi-petshop.json")));
+    QVERIFY2(m_import->summary().startsWith(QStringLiteral("OpenAPI document:")), qPrintable(m_import->summary()));
+    QVERIFY(m_import->summary().contains(QStringLiteral("2 environment(s)")));
 }
 
 void ImportControllerTest::unknownFileIsRefused()

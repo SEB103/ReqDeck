@@ -154,6 +154,18 @@ target_link_libraries(tst_insomniaimporter
 
 add_test(NAME InsomniaImporter.Unit COMMAND tst_insomniaimporter)
 
+qt_add_executable(tst_openapiimporter
+    unit/tst_openapiimporter.cpp
+)
+
+target_link_libraries(tst_openapiimporter
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME OpenApiImporter.Unit COMMAND tst_openapiimporter)
+
 # Local HTTP/1.1 server for network tests; tests never contact external hosts.
 qt_add_library(ReqDeckTestSupport STATIC
     support/mockhttpserver.cpp

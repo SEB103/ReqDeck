@@ -71,7 +71,7 @@ Dialog {
             font.bold: cppImport.ready
             text: cppImport.ready ? cppImport.summary
                                   : cppImport.errorString.length > 0 ? cppImport.errorString
-                                                                     : qsTr("Choose a Postman collection or environment, or an Insomnia export.")
+                                                                     : qsTr("Choose a Postman collection or environment, an Insomnia export, or an OpenAPI 3 document.")
         }
 
         Label {
@@ -109,7 +109,7 @@ Dialog {
         id: fileDialog
 
         title: qsTr("Import a file")
-        nameFilters: [qsTr("Postman and Insomnia files (*.json)"), qsTr("All files (*)")]
+        nameFilters: [qsTr("JSON files (*.json)"), qsTr("All files (*)")]
         onAccepted: cppImport.preview(selectedFile.toString())
     }
 }

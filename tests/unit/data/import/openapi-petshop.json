@@ -1,0 +1,108 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Pet Shop", "version": "1.0" },
+  "servers": [
+    {
+      "url": "https://{region}.pets.example.com/v1",
+      "description": "Production",
+      "variables": { "region": { "default": "eu" } }
+    },
+    { "url": "http://localhost:8080/v1", "description": "Local" }
+  ],
+  "tags": [ { "name": "pets" }, { "name": "store" } ],
+  "security": [ { "bearerAuth": [] } ],
+  "paths": {
+    "/health": {
+      "get": { "summary": "Health", "security": [] }
+    },
+    "/pets": {
+      "parameters": [ { "$ref": "#/components/parameters/Trace" } ],
+      "get": {
+        "tags": [ "pets" ],
+        "summary": "List pets",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "status", "in": "query", "required": true, "example": "available", "schema": { "type": "string" } }
+        ]
+      },
+      "post": {
+        "tags": [ "pets" ],
+        "operationId": "createPet",
+        "requestBody": {
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/NewPet" } }
+          }
+        }
+      }
+    },
+    "/pets/{petId}": {
+      "get": {
+        "tags": [ "pets" ],
+        "summary": "Get a pet",
+        "parameters": [
+          { "name": "petId", "in": "path", "required": true, "schema": { "type": "integer", "example": 7 } },
+          { "name": "session", "in": "cookie", "schema": { "type": "string" } }
+        ]
+      },
+      "delete": {
+        "tags": [ "pets" ],
+        "summary": "Delete a pet",
+        "security": [ { "apiKey": [] } ],
+        "parameters": [
+          { "name": "petId", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/store/orders": {
+      "post": {
+        "tags": [ "store" ],
+        "summary": "Place an order",
+        "security": [ { "oauth": [ "write" ] } ],
+        "requestBody": {
+          "content": {
+            "application/json": { "example": { "petId": 7, "quantity": 1 } }
+          }
+        }
+      }
+    },
+    "/store/upload": {
+      "put": {
+        "tags": [ "store" ],
+        "summary": "Upload a photo",
+        "requestBody": {
+          "content": { "multipart/form-data": { "schema": { "type": "object" } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "Trace": { "name": "X-Trace", "in": "header", "schema": { "type": "string", "example": "abc" } }
+    },
+    "schemas": {
+      "NewPet": {
+        "type": "object",
+        "required": [ "name" ],
+        "properties": {
+          "name": { "type": "string", "example": "Rex" },
+          "age": { "type": "integer" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "owner": { "$ref": "#/components/schemas/Owner" }
+        }
+      },
+      "Owner": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "vip": { "type": "boolean", "default": false },
+          "friend": { "$ref": "#/components/schemas/Owner" }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer" },
+      "apiKey": { "type": "apiKey", "in": "header", "name": "X-API-Key" },
+      "oauth": { "type": "oauth2", "flows": {} }
+    }
+  }
+}

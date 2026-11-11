@@ -10,6 +10,7 @@
 #include <QUrl>
 
 #include "core/import/insomniaimporter.h"
+#include "core/import/openapiimporter.h"
 #include "core/import/postmanimporter.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/environmentmodel.h"
@@ -134,9 +135,11 @@ bool ImportController::previewData(const QByteArray &json)
         m_result = PostmanImporter::importEnvironment(json);
     } else if (InsomniaImporter::isExport(root)) {
         m_result = InsomniaImporter::importExport(json);
+    } else if (OpenApiImporter::isDocument(root)) {
+        m_result = OpenApiImporter::importDocument(json);
     } else {
         m_result = ImportResult();
-        m_result.errorString = tr("ReqDeck does not know this file. It reads Postman collections and environments and Insomnia exports.");
+        m_result.errorString = tr("ReqDeck does not know this file. It reads Postman collections and environments, Insomnia exports, and OpenAPI 3 documents.");
     }
     emit previewChanged();
     return m_result.ok;
