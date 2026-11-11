@@ -120,6 +120,12 @@ public:
     /** Replaces the request of the node \a id and marks the workspace dirty. */
     bool updateRequest(const QString &id, const RequestSpec &request);
 
+    /** Returns the settings of the folder \a id; null for requests and unknown ids. */
+    const FolderSettings *folderSettings(const QString &id) const;
+
+    /** Replaces the settings of the folder \a id and marks the workspace dirty. */
+    bool setFolderSettings(const QString &id, const FolderSettings &settings);
+
 signals:
     /** Emitted after a node was added, removed, or renamed, and after a reset. */
     void collectionChanged();

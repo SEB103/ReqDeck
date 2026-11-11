@@ -362,6 +362,19 @@ target_link_libraries(tst_environmentmodel
 
 add_test(NAME EnvironmentModel.Unit COMMAND tst_environmentmodel)
 
+qt_add_executable(tst_foldereditor
+    unit/tst_foldereditor.cpp
+)
+
+target_link_libraries(tst_foldereditor
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Gui
+        Qt6::Test
+)
+
+add_test(NAME FolderEditor.Unit COMMAND tst_foldereditor)
+
 qt_add_executable(tst_historymodel
     unit/tst_historymodel.cpp
 )

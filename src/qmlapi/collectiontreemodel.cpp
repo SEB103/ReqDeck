@@ -534,6 +534,38 @@ bool CollectionTreeModel::updateRequest(const QString &id, const RequestSpec &re
 }
 
 /*!
+ * \brief Returns the settings of the folder \a id.
+ * \param id The node.
+ * \return The settings, or null for a request or an unknown id.
+ */
+const FolderSettings *CollectionTreeModel::folderSettings(const QString &id) const
+{
+    const CollectionNode *node = findNode(m_manager->workspaceData().collection, id);
+    return node && node->kind == CollectionNode::Kind::Folder ? &node->folder : nullptr;
+}
+
+/*!
+ * \brief Replaces the settings of the folder \a id.
+ *
+ * The tree shows nothing of them, so no row changes.
+ * \param id The folder.
+ * \param settings The new settings.
+ * \return False for a request or an unknown id.
+ */
+bool CollectionTreeModel::setFolderSettings(const QString &id, const FolderSettings &settings)
+{
+    QList<CollectionNode> collection = m_manager->workspaceData().collection;
+    CollectionNode *node = findNode(collection, id);
+    if (!node || node->kind != CollectionNode::Kind::Folder)
+        return false;
+    if (node->folder == settings)
+        return true;
+    node->folder = settings;
+    commit(collection);
+    return true;
+}
+
+/*!
  * \internal
  * \brief Stores \a collection in the workspace, which marks it dirty.
  */
