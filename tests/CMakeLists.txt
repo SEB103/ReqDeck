@@ -118,6 +118,18 @@ target_link_libraries(tst_requestbuilder
 
 add_test(NAME RequestBuilder.Unit COMMAND tst_requestbuilder)
 
+qt_add_executable(tst_inheritance
+    unit/tst_inheritance.cpp
+)
+
+target_link_libraries(tst_inheritance
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME Inheritance.Unit COMMAND tst_inheritance)
+
 # Local HTTP/1.1 server for network tests; tests never contact external hosts.
 qt_add_library(ReqDeckTestSupport STATIC
     support/mockhttpserver.cpp

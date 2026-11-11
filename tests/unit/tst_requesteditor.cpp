@@ -190,6 +190,9 @@ private slots:
     /*! Verifies that one-time values resolve the request and are not stored. */
     void sendWithValuesUsesThemOnce();
 
+    /*! Verifies that a request takes the auth and variables of its folder. */
+    void sendUsesFolderAuthAndVariables();
+
     /*! Verifies that Continue past a certificate sends with the one-time values again. */
     void trustingCertificateKeepsOneTimeValues();
 
@@ -440,7 +443,7 @@ void RequestEditorTest::invalidValuesAreIgnored()
     m_editor->setProperty("method", QStringLiteral("FETCH"));
     m_editor->setProperty("bodyMode", 3);
     m_editor->setProperty("rawBodyType", -1);
-    m_editor->setProperty("authType", 4);
+    m_editor->setProperty("authType", 5); // 4 is AuthType::Inherit
     m_editor->setProperty("timeoutMs", -1);
 
     QCOMPARE(m_editor->property("method").toString(), QStringLiteral("POST"));
@@ -882,6 +885,23 @@ void RequestEditorTest::sendWithValuesUsesThemOnce()
     QVERIFY(m_response->warningText().isEmpty());
     QCOMPARE(m_manager->workspaceData().environments, before.environments);
     QCOMPARE(m_editor->missingVariables(), QStringList({QStringLiteral("base")}));
+}
+
+void RequestEditorTest::sendUsesFolderAuthAndVariables()
+{
+    openRequestAt(QStringLiteral("/echo"));
+    WorkspaceData data = m_manager->workspaceData();
+    data.collection[0].folder.auth.type = AuthType::Bearer;
+    data.collection[0].folder.auth.token = QStringLiteral("{{token}}");
+    data.collection[0].folder.variables = {{QStringLiteral("token"), QStringLiteral("from-folder"), true}};
+    m_manager->updateWorkspaceData(data);
+    m_editor->setAuthType(int(AuthType::Inherit));
+
+    QCOMPARE(m_editor->missingVariables(), QStringList());
+    m_editor->send();
+
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY2(m_response->bodyText().contains(QStringLiteral("Bearer from-folder")), qPrintable(m_response->bodyText()));
 }
 
 void RequestEditorTest::trustingCertificateKeepsOneTimeValues()

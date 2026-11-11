@@ -290,6 +290,9 @@ private:
     /** Shows the working copy in the table models and notifies QML. */
     void showRequest();
 
+    /** Returns the open request with inherited auth, and in \a variables the rows to resolve with. */
+    RequestSpec effectiveRequest(QList<KeyValue> &variables) const;
+
     /** Builds and sends the open request; \a tlsException is a failed check it accepts. */
     void sendBuilt(const TlsCheck &tlsException, const QList<KeyValue> &extraVariables = {});
 

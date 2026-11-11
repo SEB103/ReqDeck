@@ -11,6 +11,7 @@
 #include "core/http/httpexecutor.h"
 #include "core/http/variableresolver.h"
 #include "core/workspace/collectiontree.h"
+#include "core/workspace/inheritance.h"
 #include "core/workspace/workspacedata.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/keyvaluemodel.h"
@@ -158,7 +159,7 @@ int RequestEditor::authType() const
 
 void RequestEditor::setAuthType(int type)
 {
-    if (type >= int(AuthType::None) && type <= int(AuthType::ApiKey))
+    if (type >= int(AuthType::None) && type <= int(AuthType::Inherit))
         updateField(m_request.auth.type, AuthType(type));
 }
 
@@ -182,9 +183,28 @@ QString RequestEditor::literalCredential() const
     case AuthType::ApiKey:
         return literal(m_request.auth.apiKeyValue) ? QStringLiteral("apiKey") : QString();
     case AuthType::None:
+    case AuthType::Inherit:
         break;
     }
     return {};
+}
+
+/*!
+ * \internal
+ * \brief Returns the open request as it is sent: with the auth its folders give it.
+ *
+ * The history keeps the request as edited, so an inherited token never reaches it.
+ * \param variables Receives the variables to resolve with: those of the folders
+ *        above, then the active environment, which wins.
+ */
+RequestSpec RequestEditor::effectiveRequest(QList<KeyValue> &variables) const
+{
+    const WorkspaceData &data = m_manager->workspaceData();
+    const InheritedSettings inherited = inheritedSettings(data.collection, m_requestId, m_request.auth);
+    RequestSpec request = m_request;
+    request.auth = inherited.auth;
+    variables = inherited.variables + activeEnvironmentVariables(data);
+    return request;
 }
 
 /*!
@@ -364,14 +384,15 @@ QStringList RequestEditor::missingVariables() const
 {
     if (!hasRequest())
         return {};
-    const VariableResolver variables =
-        VariableResolver::fromKeyValues(activeEnvironmentVariables(m_manager->workspaceData()));
-    const BuiltRequest built = RequestBuilder::build(m_request, variables, m_builderOptions);
+    QList<KeyValue> rows;
+    const RequestSpec request = effectiveRequest(rows);
+    const VariableResolver variables = VariableResolver::fromKeyValues(rows);
+    const BuiltRequest built = RequestBuilder::build(request, variables, m_builderOptions);
     QStringList names = built.unresolvedVariables;
     if (!built.ok) {
         // The builder stops at a URL it cannot use; the other fields are checked
         // with a stand-in address, so all names are asked for at once.
-        RequestSpec rest = m_request;
+        RequestSpec rest = request;
         rest.url = QStringLiteral("http://placeholder.invalid/");
         names += RequestBuilder::build(rest, variables, m_builderOptions).unresolvedVariables;
     }
@@ -423,9 +444,10 @@ void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue
     // Copied first: a repetition passes m_lastExtraVariables itself.
     const QList<KeyValue> extra = extraVariables;
     m_lastExtraVariables = extra;
-    const VariableResolver variables = VariableResolver::fromKeyValues(
-        activeEnvironmentVariables(m_manager->workspaceData()) + extra);
-    BuiltRequest built = RequestBuilder::build(m_request, variables, m_builderOptions);
+    QList<KeyValue> rows;
+    const RequestSpec request = effectiveRequest(rows);
+    const VariableResolver variables = VariableResolver::fromKeyValues(rows + extra);
+    BuiltRequest built = RequestBuilder::build(request, variables, m_builderOptions);
     built.tlsException = tlsException;
 
     m_response->setBusy(m_name, m_requestId);
@@ -456,7 +478,8 @@ void RequestEditor::copyAsCurl()
 {
     if (!hasRequest())
         return;
-    QGuiApplication::clipboard()->setText(CurlConverter::toCurl(m_request, m_builderOptions.followRedirects,
+    QList<KeyValue> rows;
+    QGuiApplication::clipboard()->setText(CurlConverter::toCurl(effectiveRequest(rows), m_builderOptions.followRedirects,
                                                                  m_builderOptions.defaultTimeoutMs));
     emit copiedToClipboard();
 }

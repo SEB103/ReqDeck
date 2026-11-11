@@ -208,6 +208,7 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
     QString authError;
     switch (spec.auth.type) {
     case AuthType::None:
+    case AuthType::Inherit: // Resolved from the folders before building; none is left here.
         break;
     case AuthType::Basic: {
         const QByteArray credentials =
