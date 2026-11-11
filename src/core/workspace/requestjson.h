@@ -18,6 +18,12 @@ QJsonObject keyValueToJson(const KeyValue &row);
 /** Parses one key/value row; nullopt when \a value is not a valid row. */
 std::optional<KeyValue> keyValueFromJson(const QJsonValue &value);
 
+/** Returns the JSON form of \a auth; only non-default members are written. */
+QJsonObject authToJson(const RequestAuth &auth);
+
+/** Parses authentication settings; nullopt with a message in \a errorString when a member is invalid. */
+std::optional<RequestAuth> authFromJson(const QJsonObject &object, QString *errorString = nullptr);
+
 /** Returns the JSON form of \a request; only non-default members are written. */
 QJsonObject requestToJson(const RequestSpec &request);
 

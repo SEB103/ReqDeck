@@ -78,7 +78,9 @@ enum class AuthType {
     None,
     Basic,
     Bearer,
-    ApiKey
+    ApiKey,
+    /** Takes the auth of the nearest folder above that sets one. */
+    Inherit
 };
 
 /** Where an API key is sent. */

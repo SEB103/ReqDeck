@@ -229,6 +229,9 @@ private slots:
     /*! Verifies that the backup store refuses an id that is not a UUID. */
     void backupRejectsInvalidId();
 
+    /*! Verifies that the first save of a schema 1 workspace keeps a copy of the old file. */
+    void backupBeforeSchemaChange();
+
     /*! Verifies that a secret value kept in the workspace file survives a save without changes. */
     void inlineSecretSurvivesUnchangedSave();
 
@@ -1235,6 +1238,38 @@ void WorkspaceManagerTest::unavailableFileCopiedBeforeReplaced()
     QVERIFY(copy && copy->secrets);
     QCOMPARE(*copy->secrets, foreign);
     QVERIFY(manager.hasPreviousCopy());
+}
+
+void WorkspaceManagerTest::backupBeforeSchemaChange()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("Old.reqdeck"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("{\"schema\": 1, \"id\": \"5d2b8c1e-7a44-4a8e-9a55-0c1d2e3f4a5b\", \"displayName\": \"Old\", "
+               "\"collection\": [{\"kind\": \"folder\", \"id\": \"f\", \"name\": \"F\"}]}");
+    file.close();
+    const QByteArray before = readFile(path);
+
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.openWorkspace(path));
+    QVERIFY(!manager.hasPreviousCopy());
+    QVERIFY(manager.saveWorkspace());
+
+    QVERIFY(manager.hasPreviousCopy());
+    const std::optional<WorkspaceBackup::Copy> copy =
+        WorkspaceBackup(dir.filePath(QStringLiteral("backups"))).load(manager.workspaceData().id);
+    QVERIFY(copy);
+    QCOMPARE(copy->workspace, before);
+    QCOMPARE(QJsonDocument::fromJson(readFile(path)).object().value(QStringLiteral("schema")).toInt(), 2);
+
+    // Saved once in the new format, the next save makes no new copy.
+    const QDateTime made = WorkspaceBackup(dir.filePath(QStringLiteral("backups"))).created(manager.workspaceData().id);
+    QVERIFY(manager.saveWorkspace());
+    QCOMPARE(WorkspaceBackup(dir.filePath(QStringLiteral("backups"))).created(manager.workspaceData().id), made);
 }
 
 void WorkspaceManagerTest::backupRejectsInvalidId()

@@ -44,11 +44,12 @@ constexpr std::array<Token<RawBodyType>, 3> kRawTypeTokens {{
  * \internal
  * \brief Tokens of AuthType.
  */
-constexpr std::array<Token<AuthType>, 4> kAuthTypeTokens {{
+constexpr std::array<Token<AuthType>, 5> kAuthTypeTokens {{
     {AuthType::None, QLatin1StringView("none")},
     {AuthType::Basic, QLatin1StringView("basic")},
     {AuthType::Bearer, QLatin1StringView("bearer")},
     {AuthType::ApiKey, QLatin1StringView("apiKey")},
+    {AuthType::Inherit, QLatin1StringView("inherit")},
 }};
 
 /*!
@@ -197,7 +198,7 @@ QJsonObject bodyToJson(const RequestBody &body)
  * \internal
  * \brief Returns the JSON form of \a auth; empty when every member is at its default.
  */
-QJsonObject authToJson(const RequestAuth &auth)
+QJsonObject authObject(const RequestAuth &auth)
 {
     QJsonObject object;
     if (auth.type != AuthType::None)
@@ -284,7 +285,7 @@ QJsonObject requestToJson(const RequestSpec &request)
     insertRows(object, QLatin1StringView("headers"), request.headers);
     if (const QJsonObject body = bodyToJson(request.body); !body.isEmpty())
         object.insert(QLatin1StringView("body"), body);
-    if (const QJsonObject auth = authToJson(request.auth); !auth.isEmpty())
+    if (const QJsonObject auth = authObject(request.auth); !auth.isEmpty())
         object.insert(QLatin1StringView("auth"), auth);
     if (request.timeoutMs != 0)
         object.insert(QLatin1StringView("timeoutMs"), request.timeoutMs);
@@ -343,20 +344,45 @@ std::optional<RequestSpec> requestFromJson(const QJsonObject &object, QString *e
     const QJsonValue authValue = object.value(QLatin1StringView("auth"));
     if (!authValue.isUndefined() && !authValue.isObject())
         return invalidMember(errorString, QStringLiteral("auth"));
-    const QJsonObject auth = authValue.toObject();
-    if (!readToken(auth, QLatin1StringView("type"), kAuthTypeTokens, request.auth.type))
-        return invalidMember(errorString, QStringLiteral("auth.type"));
-    if (!readToken(auth, QLatin1StringView("apiKeyLocation"), kKeyLocationTokens,
-                   request.auth.apiKeyLocation)) {
-        return invalidMember(errorString, QStringLiteral("auth.apiKeyLocation"));
-    }
-    if (!readText(auth, QLatin1StringView("username"), request.auth.username)
-        || !readText(auth, QLatin1StringView("password"), request.auth.password)
-        || !readText(auth, QLatin1StringView("token"), request.auth.token)
-        || !readText(auth, QLatin1StringView("apiKeyName"), request.auth.apiKeyName)
-        || !readText(auth, QLatin1StringView("apiKeyValue"), request.auth.apiKeyValue)) {
-        return invalidMember(errorString, QStringLiteral("auth"));
-    }
+    std::optional<RequestAuth> auth = authFromJson(authValue.toObject(), errorString);
+    if (!auth)
+        return std::nullopt;
+    request.auth = std::move(*auth);
 
     return request;
+}
+
+/*!
+ * \brief Returns the JSON form of \a auth; only non-default members are written.
+ * \param auth The authentication settings of a request or folder.
+ */
+QJsonObject authToJson(const RequestAuth &auth)
+{
+    return authObject(auth);
+}
+
+/*!
+ * \brief Parses authentication settings.
+ *
+ * Absent members take the defaults of RequestAuth; a member of the wrong type
+ * or with an unknown value fails.
+ * \param object The JSON object.
+ * \param errorString Receives the reason on failure when it is not null.
+ * \return The settings, or std::nullopt.
+ */
+std::optional<RequestAuth> authFromJson(const QJsonObject &object, QString *errorString)
+{
+    RequestAuth auth;
+    if (!readToken(object, QLatin1StringView("type"), kAuthTypeTokens, auth.type))
+        return invalidMember(errorString, QStringLiteral("auth.type"));
+    if (!readToken(object, QLatin1StringView("apiKeyLocation"), kKeyLocationTokens, auth.apiKeyLocation))
+        return invalidMember(errorString, QStringLiteral("auth.apiKeyLocation"));
+    if (!readText(object, QLatin1StringView("username"), auth.username)
+        || !readText(object, QLatin1StringView("password"), auth.password)
+        || !readText(object, QLatin1StringView("token"), auth.token)
+        || !readText(object, QLatin1StringView("apiKeyName"), auth.apiKeyName)
+        || !readText(object, QLatin1StringView("apiKeyValue"), auth.apiKeyValue)) {
+        return invalidMember(errorString, QStringLiteral("auth"));
+    }
+    return auth;
 }

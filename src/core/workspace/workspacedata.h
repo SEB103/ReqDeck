@@ -12,7 +12,7 @@
 #include "core/http/requestspec.h"
 
 /** Current .reqdeck JSON schema version written by this build. */
-inline constexpr int kWorkspaceSchemaVersion = 1;
+inline constexpr int kWorkspaceSchemaVersion = 2;
 
 /** File-name suffix of workspace files, including the leading dot. */
 inline constexpr QLatin1StringView kWorkspaceFileSuffix(".reqdeck");
@@ -49,6 +49,17 @@ struct Environment
 };
 
 /** Folder or request in the collection tree. */
+/** Settings of a folder that the requests and folders inside it inherit. */
+struct FolderSettings
+{
+    /** Auth for requests inside that inherit it; Inherit passes the question further up. */
+    RequestAuth auth {AuthType::Inherit};
+    /** Variables for requests inside; environment variables win over them. */
+    QList<KeyValue> variables;
+
+    bool operator==(const FolderSettings &) const = default;
+};
+
 struct CollectionNode
 {
     /** Kind of tree node. */
@@ -65,6 +76,8 @@ struct CollectionNode
     QString name;
     /** The request; used by Kind::Request only. */
     RequestSpec request;
+    /** Settings inherited by what the folder holds; used by Kind::Folder only. */
+    FolderSettings folder;
     /** Child nodes in display order; used by Kind::Folder only. */
     QList<CollectionNode> children;
 

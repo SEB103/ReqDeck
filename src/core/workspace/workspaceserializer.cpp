@@ -60,6 +60,37 @@ WorkspaceSerializer::LoadResult failure(WorkspaceSerializer::Error error,
 
 /*!
  * \internal
+ * \brief Reads the settings of a folder from \a object into \a settings.
+ * \return An empty string, or the reason the settings are invalid.
+ */
+QString folderSettingsFromJson(const QJsonObject &object, FolderSettings &settings)
+{
+    const QJsonValue auth = object.value(QLatin1StringView("auth"));
+    if (!auth.isUndefined()) {
+        if (!auth.isObject())
+            return QStringLiteral("Invalid folder settings: auth");
+        QString error;
+        std::optional<RequestAuth> parsed = authFromJson(auth.toObject(), &error);
+        if (!parsed)
+            return error;
+        settings.auth = std::move(*parsed);
+    }
+    const QJsonValue variables = object.value(QLatin1StringView("variables"));
+    if (!variables.isUndefined()) {
+        if (!variables.isArray())
+            return QStringLiteral("Invalid folder settings: variables");
+        for (const QJsonValue &row : variables.toArray()) {
+            std::optional<KeyValue> parsed = keyValueFromJson(row);
+            if (!parsed)
+                return QStringLiteral("Invalid folder settings: variables");
+            settings.variables.append(std::move(*parsed));
+        }
+    }
+    return {};
+}
+
+/*!
+ * \internal
  * \brief Returns the JSON form of the tree rooted at \a node.
  */
 QJsonObject nodeToJson(const CollectionNode &node)
@@ -74,6 +105,17 @@ QJsonObject nodeToJson(const CollectionNode &node)
     }
 
     object.insert(QLatin1StringView("kind"), QLatin1StringView("folder"));
+    if (node.folder != FolderSettings()) {
+        QJsonObject settings;
+        settings.insert(QLatin1StringView("auth"), authToJson(node.folder.auth));
+        if (!node.folder.variables.isEmpty()) {
+            QJsonArray variables;
+            for (const KeyValue &row : node.folder.variables)
+                variables.append(keyValueToJson(row));
+            settings.insert(QLatin1StringView("variables"), variables);
+        }
+        object.insert(QLatin1StringView("settings"), settings);
+    }
     if (!node.children.isEmpty()) {
         QJsonArray children;
         for (const CollectionNode &child : node.children)
@@ -179,8 +221,15 @@ QString nodesFromJson(const QJsonArray &items, QSet<QString> &seenIds, QList<Col
             node.kind = CollectionNode::Kind::Request;
             node.request = std::move(*spec);
         } else if (kind == QLatin1StringView("folder")) {
-            if (!hasOptionalType(object, QLatin1StringView("children"), QJsonValue::Array))
+            if (!hasOptionalType(object, QLatin1StringView("children"), QJsonValue::Array)
+                || !hasOptionalType(object, QLatin1StringView("settings"), QJsonValue::Object)) {
                 return invalid;
+            }
+            if (const QString error = folderSettingsFromJson(object.value(QLatin1StringView("settings")).toObject(),
+                                                             node.folder);
+                !error.isEmpty()) {
+                return QStringLiteral("Item %1: %2").arg(node.id, error);
+            }
             const QJsonArray children = object.value(QLatin1StringView("children")).toArray();
             if (const QString error = nodesFromJson(children, seenIds, node.children, depth + 1);
                 !error.isEmpty()) {
@@ -262,7 +311,8 @@ QJsonObject WorkspaceSerializer::toJson(const WorkspaceData &data)
         environments.append(environmentToJson(environment));
 
     QJsonObject root;
-    root.insert(kSchemaKey, data.schemaVersion);
+    // The file is written in the current format, whatever format it was read from.
+    root.insert(kSchemaKey, kWorkspaceSchemaVersion);
     if (!data.id.isEmpty())
         root.insert(QLatin1StringView("id"), data.id);
     root.insert(QLatin1StringView("displayName"), data.displayName);

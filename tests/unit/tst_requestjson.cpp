@@ -115,6 +115,7 @@ void RequestJsonTest::roundTripPreservesBodyAndAuthModes_data()
     QTest::newRow("form-basic") << BodyMode::FormUrlEncoded << RawBodyType::Json << AuthType::Basic;
     QTest::newRow("text-bearer") << BodyMode::Raw << RawBodyType::Text << AuthType::Bearer;
     QTest::newRow("json-none") << BodyMode::Raw << RawBodyType::Json << AuthType::None;
+    QTest::newRow("xml-inherit") << BodyMode::Raw << RawBodyType::Xml << AuthType::Inherit;
 }
 
 void RequestJsonTest::roundTripPreservesBodyAndAuthModes()

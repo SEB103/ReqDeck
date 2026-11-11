@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
@@ -113,6 +114,15 @@ private slots:
 
     /*! Verifies that a secret value present in a file is kept in memory. */
     void secretValueInFileIsKept();
+
+    /*! Verifies that the auth and variables of a folder survive a save and a load. */
+    void folderSettingsRoundTrip();
+
+    /*! Verifies that a folder of a schema 1 file inherits and has no variables. */
+    void schemaOneFolderInherits();
+
+    /*! Verifies that malformed folder settings fail the load. */
+    void rejectsInvalidFolderSettings();
 
     /*! Verifies that an absent name or variable key reads as an empty string, not as an error. */
     void absentNameAndKeyReadAsEmpty();
@@ -422,6 +432,69 @@ void WorkspaceSerializerTest::secretValueInFileIsKept()
     const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
     QVERIFY2(result.ok, qPrintable(result.errorString));
     QCOMPARE(result.data.environments.at(0).variables.at(0).value, QStringLiteral("v"));
+}
+
+void WorkspaceSerializerTest::folderSettingsRoundTrip()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("folders.reqdeck"));
+    WorkspaceData data;
+    data.id = newItemId();
+    CollectionNode folder;
+    folder.id = QStringLiteral("f1");
+    folder.name = QStringLiteral("API");
+    folder.folder.auth.type = AuthType::Bearer;
+    folder.folder.auth.token = QStringLiteral("{{token}}");
+    folder.folder.variables = {{QStringLiteral("base"), QStringLiteral("https://h"), true}};
+    CollectionNode plain;
+    plain.id = QStringLiteral("f2");
+    plain.name = QStringLiteral("Plain");
+    data.collection = {folder, plain};
+
+    QVERIFY(WorkspaceSerializer::save(path, data));
+    const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
+
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QCOMPARE(result.data.collection.at(0).folder, folder.folder);
+    QCOMPARE(result.data.collection.at(1).folder.auth.type, AuthType::Inherit);
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    const QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
+    QCOMPARE(root.value(QStringLiteral("schema")).toInt(), 2);
+    const QJsonArray folders = root.value(QStringLiteral("collection")).toArray();
+    QVERIFY(folders.at(0).toObject().contains(QStringLiteral("settings")));
+    // A folder with the default settings writes none.
+    QVERIFY(!folders.at(1).toObject().contains(QStringLiteral("settings")));
+}
+
+void WorkspaceSerializerTest::schemaOneFolderInherits()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("old.reqdeck"));
+    QVERIFY(writeFile(path, R"({"schema": 1, "collection": [{"kind": "folder", "id": "f", "name": "F"}]})"));
+
+    const WorkspaceSerializer::LoadResult result = WorkspaceSerializer::load(path);
+
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QCOMPARE(result.data.schemaVersion, 1);
+    QCOMPARE(result.data.collection.at(0).folder.auth.type, AuthType::Inherit);
+    QVERIFY(result.data.collection.at(0).folder.variables.isEmpty());
+}
+
+void WorkspaceSerializerTest::rejectsInvalidFolderSettings()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("bad.reqdeck"));
+    for (const QByteArray &settings : {QByteArray("5"), QByteArray(R"({"auth": 5})"),
+                                       QByteArray(R"({"auth": {"type": "oauth"}})"),
+                                       QByteArray(R"({"variables": {}})")}) {
+        QVERIFY(writeFile(path, R"({"schema": 2, "collection": [{"kind": "folder", "id": "f", "name": "F", "settings": )"
+                                    + settings + "}]}"));
+        QVERIFY2(!WorkspaceSerializer::load(path).ok, settings.constData());
+    }
 }
 
 void WorkspaceSerializerTest::absentNameAndKeyReadAsEmpty()
