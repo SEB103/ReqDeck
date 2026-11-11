@@ -1,0 +1,124 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QtTest>
+
+#include "core/import/insomniaimporter.h"
+
+/*!
+ * \internal
+ * \brief Returns the Insomnia export of the test data.
+ */
+static QByteArray sampleExport()
+{
+    QFile file(QFINDTESTDATA("data/import/insomnia-shop.json"));
+    return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
+}
+
+/*! Verifies the import of Insomnia exports. */
+class InsomniaImporterTest : public QObject
+{
+    Q_OBJECT
+
+private slots:
+    /*! Verifies that the format is recognized. */
+    void recognizesFormat();
+
+    /*! Verifies folders, requests, parameters, headers, bodies, and references. */
+    void importsStructureAndRequests();
+
+    /*! Verifies auth, the base environment as folder variables, and environments. */
+    void importsAuthAndEnvironments();
+
+    /*! Verifies that scripts, template tags, and unsupported parts are reported. */
+    void reportsWhatIsDropped();
+
+    /*! Verifies that other files are refused. */
+    void rejectsOtherFiles();
+};
+
+void InsomniaImporterTest::recognizesFormat()
+{
+    QVERIFY(InsomniaImporter::isExport(QJsonDocument::fromJson(sampleExport()).object()));
+    QVERIFY(!InsomniaImporter::isExport(QJsonDocument::fromJson("{\"_type\": \"export\"}").object()));
+}
+
+void InsomniaImporterTest::importsStructureAndRequests()
+{
+    const ImportResult result = InsomniaImporter::importExport(sampleExport());
+
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QVERIFY(result.hasCollection);
+    QCOMPARE(result.folder.name, QStringLiteral("Shop"));
+    QCOMPARE(result.folder.children.size(), 4);
+    const CollectionNode &orders = result.folder.children.at(0);
+    QCOMPARE(orders.kind, CollectionNode::Kind::Folder);
+    QCOMPARE(orders.name, QStringLiteral("Orders"));
+    QCOMPARE(orders.children.size(), 2);
+
+    const RequestSpec &list = orders.children.at(0).request;
+    QCOMPARE(list.url, QStringLiteral("{{baseUrl}}/orders"));
+    QCOMPARE(list.queryParams.size(), 2);
+    QVERIFY(!list.queryParams.at(1).enabled);
+    QCOMPARE(list.headers.at(0).key, QStringLiteral("Accept"));
+    QCOMPARE(list.auth.type, AuthType::Inherit);
+
+    const RequestSpec &create = orders.children.at(1).request;
+    QCOMPARE(create.body.mode, BodyMode::Raw);
+    QCOMPARE(create.body.rawType, RawBodyType::Json);
+    QCOMPARE(create.auth.type, AuthType::None);
+
+    const RequestSpec &login = result.folder.children.at(1).request;
+    QCOMPARE(login.body.mode, BodyMode::FormUrlEncoded);
+    QCOMPARE(login.body.form.at(0).value, QStringLiteral("{{user}}"));
+}
+
+void InsomniaImporterTest::importsAuthAndEnvironments()
+{
+    const ImportResult result = InsomniaImporter::importExport(sampleExport());
+
+    QCOMPARE(result.folder.children.at(0).folder.auth.type, AuthType::Bearer);
+    QCOMPARE(result.folder.children.at(0).folder.auth.token, QStringLiteral("{{token}}"));
+    const RequestAuth &basic = result.folder.children.at(1).request.auth;
+    QCOMPARE(basic.type, AuthType::Basic);
+    QCOMPARE(basic.password, QStringLiteral("{{pass}}"));
+    const RequestAuth &key = result.folder.children.at(3).request.auth;
+    QCOMPARE(key.type, AuthType::ApiKey);
+    QCOMPARE(key.apiKeyLocation, ApiKeyLocation::Query);
+
+    QCOMPARE(result.folder.folder.variables.size(), 1);
+    QCOMPARE(result.folder.folder.variables.at(0).key, QStringLiteral("baseUrl"));
+    QCOMPARE(result.environments.size(), 1);
+    const Environment &dev = result.environments.at(0);
+    QCOMPARE(dev.name, QStringLiteral("Dev"));
+    QCOMPARE(dev.variables.size(), 2);
+    // QJsonObject keeps keys sorted, so "limits" comes before "token".
+    QCOMPARE(dev.variables.at(0).key, QStringLiteral("limits"));
+    QCOMPARE(dev.variables.at(0).value, QStringLiteral("{\"page\":10}"));
+    QCOMPARE(dev.variables.at(1).value, QStringLiteral("dev-token"));
+}
+
+void InsomniaImporterTest::reportsWhatIsDropped()
+{
+    const ImportResult result = InsomniaImporter::importExport(sampleExport());
+    const QString report = result.report.join(u'\n');
+
+    QVERIFY2(report.contains(QStringLiteral("Shop / Orders / Create order: scripts")), qPrintable(report));
+    QVERIFY2(report.contains(QStringLiteral("Create order: template tag {% uuid 'v4' %}")), qPrintable(report));
+    QVERIFY2(report.contains(QStringLiteral("Upload: oauth2 authorization")), qPrintable(report));
+    QVERIFY2(report.contains(QStringLiteral("Upload: multipart/form-data body")), qPrintable(report));
+    QCOMPARE(result.folder.children.at(2).request.auth.type, AuthType::None);
+}
+
+void InsomniaImporterTest::rejectsOtherFiles()
+{
+    QVERIFY(!InsomniaImporter::importExport("{oops").ok);
+    QVERIFY(!InsomniaImporter::importExport("{\"_type\": \"export\", \"resources\": []}").ok);
+}
+
+QTEST_GUILESS_MAIN(InsomniaImporterTest)
+
+#include "tst_insomniaimporter.moc"

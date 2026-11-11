@@ -142,6 +142,18 @@ target_link_libraries(tst_postmanimporter
 
 add_test(NAME PostmanImporter.Unit COMMAND tst_postmanimporter)
 
+qt_add_executable(tst_insomniaimporter
+    unit/tst_insomniaimporter.cpp
+)
+
+target_link_libraries(tst_insomniaimporter
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME InsomniaImporter.Unit COMMAND tst_insomniaimporter)
+
 # Local HTTP/1.1 server for network tests; tests never contact external hosts.
 qt_add_library(ReqDeckTestSupport STATIC
     support/mockhttpserver.cpp

@@ -49,6 +49,8 @@ target_sources(ReqDeckCore
         core/http/variableresolver.cpp
         core/http/variableresolver.h
         core/import/importresult.h
+        core/import/insomniaimporter.cpp
+        core/import/insomniaimporter.h
         core/import/postmanimporter.cpp
         core/import/postmanimporter.h
         core/workspace/collectiontree.cpp

@@ -34,6 +34,9 @@ private slots:
     /*! Verifies that an environment whose name is taken gets another name. */
     void environmentNameIsKeptApart();
 
+    /*! Verifies that an Insomnia export is recognized and brings its environments. */
+    void previewInsomnia();
+
     /*! Verifies that an unknown file is refused with a message. */
     void unknownFileIsRefused();
 
@@ -116,6 +119,13 @@ void ImportControllerTest::environmentNameIsKeptApart()
 
     QCOMPARE(m_environments->names(), QStringList({QStringLiteral("Staging"), QStringLiteral("Staging (imported)")}));
     QVERIFY(m_manager->workspaceData().environments.at(1).variables.at(1).secret);
+}
+
+void ImportControllerTest::previewInsomnia()
+{
+    QVERIFY(m_import->preview(QFINDTESTDATA("data/import/insomnia-shop.json")));
+    QVERIFY2(m_import->summary().startsWith(QStringLiteral("Insomnia export:")), qPrintable(m_import->summary()));
+    QVERIFY(m_import->summary().contains(QStringLiteral("1 environment(s)")));
 }
 
 void ImportControllerTest::unknownFileIsRefused()

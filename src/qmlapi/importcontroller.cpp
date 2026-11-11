@@ -9,6 +9,7 @@
 #include <QJsonObject>
 #include <QUrl>
 
+#include "core/import/insomniaimporter.h"
 #include "core/import/postmanimporter.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/environmentmodel.h"
@@ -131,9 +132,11 @@ bool ImportController::previewData(const QByteArray &json)
         m_result = PostmanImporter::importCollection(json);
     } else if (PostmanImporter::isEnvironment(root)) {
         m_result = PostmanImporter::importEnvironment(json);
+    } else if (InsomniaImporter::isExport(root)) {
+        m_result = InsomniaImporter::importExport(json);
     } else {
         m_result = ImportResult();
-        m_result.errorString = tr("ReqDeck does not know this file. It reads Postman collections and environments.");
+        m_result.errorString = tr("ReqDeck does not know this file. It reads Postman collections and environments and Insomnia exports.");
     }
     emit previewChanged();
     return m_result.ok;
