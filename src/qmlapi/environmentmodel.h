@@ -129,6 +129,9 @@ public:
      */
     Q_INVOKABLE void setVariable(const QString &key, const QString &value, bool secret = false);
 
+    /** Appends the imported \a environment; returns its row, or -1 without a workspace. */
+    int importEnvironment(const Environment &environment);
+
     /** Colors the URL held by \a document. */
     Q_INVOKABLE void attachUrlHighlighter(QQuickTextDocument *document);
 

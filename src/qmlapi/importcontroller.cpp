@@ -1,0 +1,166 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "qmlapi/importcontroller.h"
+
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QUrl>
+
+#include "core/import/postmanimporter.h"
+#include "qmlapi/collectiontreemodel.h"
+#include "qmlapi/environmentmodel.h"
+
+namespace {
+/*!
+ * \internal
+ * \brief Largest file an import reads; a collection of thousands of requests stays far below.
+ */
+constexpr qint64 kMaxImportBytes = 64 * 1024 * 1024;
+
+/*!
+ * \internal
+ * \brief Counts the requests and folders below \a node into \a requests and \a folders.
+ */
+void count(const CollectionNode &node, int &requests, int &folders)
+{
+    for (const CollectionNode &child : node.children) {
+        if (child.kind == CollectionNode::Kind::Request) {
+            ++requests;
+        } else {
+            ++folders;
+            count(child, requests, folders);
+        }
+    }
+}
+} // namespace
+
+/*!
+    \class ImportController
+    \brief Brings collections and environments of other tools into the workspace.
+
+    \internal
+*/
+
+/*!
+ * \brief Creates a controller that adds to \a collection and \a environments.
+ * \param collection The collection model of the active workspace.
+ * \param environments The environment model of the active workspace.
+ * \param parent The QObject parent.
+ */
+ImportController::ImportController(CollectionTreeModel *collection, EnvironmentModel *environments, QObject *parent)
+    : QObject(parent)
+    , m_collection(collection)
+    , m_environments(environments)
+{
+}
+
+bool ImportController::ready() const
+{
+    return m_result.ok;
+}
+
+QString ImportController::errorString() const
+{
+    return m_result.errorString;
+}
+
+/*!
+ * \brief Returns one line on what the previewed file holds.
+ */
+QString ImportController::summary() const
+{
+    if (!m_result.ok)
+        return {};
+    QStringList parts;
+    if (m_result.hasCollection) {
+        int requests = 0;
+        int folders = 0;
+        count(m_result.folder, requests, folders);
+        parts.append(tr("%n request(s)", "", requests) + tr(" in %n folder(s)", "", folders + 1));
+    }
+    if (!m_result.environments.isEmpty())
+        parts.append(tr("%n environment(s)", "", int(m_result.environments.size())));
+    return tr("%1: %2").arg(m_result.format, parts.join(QStringLiteral(", ")));
+}
+
+QStringList ImportController::report() const
+{
+    return m_result.report;
+}
+
+/*!
+ * \brief Reads the file at \a pathOrUrl.
+ *
+ * The file is only read; nothing in it runs, and nothing changes in the
+ * workspace until apply().
+ * \param pathOrUrl A local path or file URL, as a file dialog gives it.
+ * \return Whether the file can be imported.
+ */
+bool ImportController::preview(const QString &pathOrUrl)
+{
+    const QUrl url(pathOrUrl);
+    const QString path = url.isLocalFile() ? url.toLocalFile() : pathOrUrl;
+    QFile file(path);
+    if (QFileInfo(path).size() > kMaxImportBytes) {
+        m_result = ImportResult();
+        m_result.errorString = tr("The file is too large to import.");
+        emit previewChanged();
+        return false;
+    }
+    if (!file.open(QIODevice::ReadOnly)) {
+        m_result = ImportResult();
+        m_result.errorString = tr("The file could not be read: %1").arg(file.errorString());
+        emit previewChanged();
+        return false;
+    }
+    return previewData(file.readAll());
+}
+
+/*!
+ * \brief Recognizes the format of \a json and reads it.
+ * \param json The content of a file.
+ * \return Whether it can be imported.
+ */
+bool ImportController::previewData(const QByteArray &json)
+{
+    const QJsonObject root = QJsonDocument::fromJson(json).object();
+    if (PostmanImporter::isCollection(root)) {
+        m_result = PostmanImporter::importCollection(json);
+    } else if (PostmanImporter::isEnvironment(root)) {
+        m_result = PostmanImporter::importEnvironment(json);
+    } else {
+        m_result = ImportResult();
+        m_result.errorString = tr("ReqDeck does not know this file. It reads Postman collections and environments.");
+    }
+    emit previewChanged();
+    return m_result.ok;
+}
+
+/*!
+ * \brief Adds the previewed content to the workspace.
+ *
+ * Nothing is replaced: the collection becomes a new folder at the end of the
+ * tree, and an environment whose name is taken gets " (imported)". The
+ * workspace becomes dirty and is saved only when the user saves it.
+ * \return The id of the new folder, or an empty string when the file held no collection.
+ */
+QString ImportController::apply()
+{
+    if (!m_result.ok)
+        return {};
+    QString folderId;
+    if (m_result.hasCollection)
+        folderId = m_collection->addImportedFolder(m_result.folder);
+    for (Environment environment : std::as_const(m_result.environments)) {
+        const QStringList names = m_environments->names();
+        if (names.contains(environment.name))
+            environment.name = tr("%1 (imported)").arg(environment.name);
+        m_environments->importEnvironment(environment);
+    }
+    m_result = ImportResult();
+    emit previewChanged();
+    return folderId;
+}

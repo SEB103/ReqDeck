@@ -98,6 +98,8 @@ target_sources(ReqDeckQmlApi
         qmlapi/collectiontreemodel.h
         qmlapi/environmentmodel.cpp
         qmlapi/foldereditor.cpp
+        qmlapi/importcontroller.cpp
+        qmlapi/importcontroller.h
         qmlapi/foldereditor.h
         qmlapi/environmentmodel.h
         qmlapi/environmentvariablesmodel.cpp

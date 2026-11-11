@@ -323,6 +323,16 @@ QString EnvironmentModel::addSecretVariable(const QString &baseKey, const QStrin
 }
 
 /*!
+ * \brief Appends the imported \a environment and shows it in the editor.
+ * \param environment The environment with its id already assigned.
+ * \return Its row, or -1 without a workspace.
+ */
+int EnvironmentModel::importEnvironment(const Environment &environment)
+{
+    return appendEnvironment(environment);
+}
+
+/*!
  * \brief Sets the variable \a key of the active environment to \a value.
  *
  * Used to keep a value the user entered for a missing variable. The first row

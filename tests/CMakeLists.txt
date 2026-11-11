@@ -387,6 +387,19 @@ target_link_libraries(tst_foldereditor
 
 add_test(NAME FolderEditor.Unit COMMAND tst_foldereditor)
 
+qt_add_executable(tst_importcontroller
+    unit/tst_importcontroller.cpp
+)
+
+target_link_libraries(tst_importcontroller
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Gui
+        Qt6::Test
+)
+
+add_test(NAME ImportController.Unit COMMAND tst_importcontroller)
+
 qt_add_executable(tst_historymodel
     unit/tst_historymodel.cpp
 )
