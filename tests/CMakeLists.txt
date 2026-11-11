@@ -178,6 +178,18 @@ target_link_libraries(tst_yamljson
 
 add_test(NAME YamlJson.Unit COMMAND tst_yamljson)
 
+qt_add_executable(tst_cookiestore
+    unit/tst_cookiestore.cpp
+)
+
+target_link_libraries(tst_cookiestore
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME CookieStore.Unit COMMAND tst_cookiestore)
+
 # Local HTTP/1.1 server for network tests; tests never contact external hosts.
 qt_add_library(ReqDeckTestSupport STATIC
     support/mockhttpserver.cpp
