@@ -52,6 +52,9 @@ private slots:
 
     /*! Verifies that what ReqDeck cannot carry over is reported. */
     void reportsWhatIsDropped();
+
+    /*! Verifies that an example of wide nested schemas stays small and is reported. */
+    void limitsExampleSize();
 };
 
 void OpenApiImporterTest::recognizesFormat()
@@ -135,8 +138,9 @@ void OpenApiImporterTest::importsServersAndSecurity()
     QCOMPARE(variables.at(0).key, QStringLiteral("baseUrl"));
     QCOMPARE(variables.at(0).value, QStringLiteral("https://eu.pets.example.com/v1"));
     QCOMPARE(valueOf(variables, QStringLiteral("petId")), QStringLiteral("7"));
-    QCOMPARE(valueOf(variables, QStringLiteral("token")), QString());
-    QCOMPARE(valueOf(variables, QStringLiteral("apiKey")), QString());
+    // Placeholders stay undefined, so Send asks for them.
+    QCOMPARE(valueOf(variables, QStringLiteral("token")), QStringLiteral("<missing>"));
+    QCOMPARE(valueOf(variables, QStringLiteral("apiKey")), QStringLiteral("<missing>"));
 
     QCOMPARE(result.environments.size(), 2);
     QCOMPARE(result.environments.at(0).name, QStringLiteral("Production"));
@@ -166,6 +170,39 @@ void OpenApiImporterTest::reportsWhatIsDropped()
     QVERIFY2(report.contains(QStringLiteral("Pet Shop / store / Place an order: oauth2 authorization")), qPrintable(report));
     QVERIFY2(report.contains(QStringLiteral("Pet Shop / store / Upload a photo: multipart/form-data body")), qPrintable(report));
     QCOMPARE(result.folder.children.at(1).children.at(0).request.auth.type, AuthType::None);
+}
+
+void OpenApiImporterTest::limitsExampleSize()
+{
+    // Six schemas, each with 40 properties referring to the next: 40^6 values without a limit.
+    QJsonObject schemas;
+    for (int level = 0; level < 6; ++level) {
+        QJsonObject properties;
+        for (int i = 0; i < 40; ++i) {
+            properties.insert(QStringLiteral("p%1").arg(i),
+                              level < 5 ? QJsonObject {{QStringLiteral("$ref"), QStringLiteral("#/components/schemas/S%1").arg(level + 1)}}
+                                        : QJsonObject {{QStringLiteral("type"), QStringLiteral("string")}});
+        }
+        schemas.insert(QStringLiteral("S%1").arg(level), QJsonObject {{QStringLiteral("type"), QStringLiteral("object")},
+                                                                      {QStringLiteral("properties"), properties}});
+    }
+    const QJsonObject media {{QStringLiteral("schema"), QJsonObject {{QStringLiteral("$ref"), QStringLiteral("#/components/schemas/S0")}}}};
+    const QJsonObject operation {{QStringLiteral("summary"), QStringLiteral("Big")},
+                                 {QStringLiteral("requestBody"), QJsonObject {{QStringLiteral("content"),
+                                     QJsonObject {{QStringLiteral("application/json"), media}}}}}};
+    const QJsonObject document {{QStringLiteral("openapi"), QStringLiteral("3.0.0")},
+                                {QStringLiteral("info"), QJsonObject {{QStringLiteral("title"), QStringLiteral("Wide")}}},
+                                {QStringLiteral("paths"), QJsonObject {{QStringLiteral("/big"), QJsonObject {{QStringLiteral("post"), operation}}}}},
+                                {QStringLiteral("components"), QJsonObject {{QStringLiteral("schemas"), schemas}}}};
+
+    QElapsedTimer timer;
+    timer.start();
+    const ImportResult result = OpenApiImporter::importDocument(QJsonDocument(document).toJson());
+    QVERIFY(timer.elapsed() < 5000);
+    QVERIFY(result.ok);
+    QVERIFY(result.folder.children.at(0).request.body.raw.size() < 200000);
+    QVERIFY2(result.report.join(u'\n').contains(QStringLiteral("example cut short")), qPrintable(result.report.join(u'\n')));
+    QVERIFY2(result.report.join(u'\n').contains(QStringLiteral("no servers")), qPrintable(result.report.join(u'\n')));
 }
 
 QTEST_GUILESS_MAIN(OpenApiImporterTest)

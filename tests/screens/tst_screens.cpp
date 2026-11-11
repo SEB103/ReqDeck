@@ -124,6 +124,9 @@ public:
         m_tlsServer.startTls();
         QObject::connect(&m_editor, &RequestEditor::requestFinished, &m_history,
                          &HistoryModel::record);
+        const auto followScope = [this]() { m_environments.setVariableScope(m_editor.requestId()); };
+        QObject::connect(&m_editor, &RequestEditor::requestChanged, &m_environments, followScope);
+        QObject::connect(&m_collection, &CollectionTreeModel::collectionChanged, &m_environments, followScope);
         m_manager.setSecretsDir(m_dir.filePath(QStringLiteral("secrets")));
         context->setContextProperty(QStringLiteral("cppWorkspaceManager"), &m_manager);
         context->setContextProperty(QStringLiteral("cppCollection"), &m_collection);

@@ -18,7 +18,7 @@ QT_END_NAMESPACE
  * Operations are grouped into folders by their first tag. The first server
  * becomes the folder variable baseUrl, and each server an environment when
  * there are several. Security schemes become folder or request auth with
- * {{token}}-style variables to fill in.
+ * {{token}}-style variables that Send asks for.
  */
 class OpenApiImporter
 {

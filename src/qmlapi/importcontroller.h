@@ -57,6 +57,9 @@ public:
     /** Reads \a data, JSON or YAML, as if it came from a file; returns ready(). */
     bool previewData(const QByteArray &data);
 
+    /** Forgets the preview, so that a reopened dialog starts empty. */
+    Q_INVOKABLE void reset();
+
     /** Adds the previewed content to the workspace; returns the id of the new folder, or an empty string. */
     Q_INVOKABLE QString apply();
 

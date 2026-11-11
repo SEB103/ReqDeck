@@ -7,6 +7,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSet>
 #include <QRegularExpression>
 
 namespace {
@@ -64,7 +65,10 @@ QList<KeyValue> environmentRows(const QJsonObject &data)
 class Builder
 {
 public:
-    /*! Indexes \a resources by their parent. */
+    /*!
+     * \internal
+     * \brief Indexes \a resources by their parent.
+     */
     explicit Builder(const QJsonArray &resources)
     {
         for (const QJsonValue &value : resources) {
@@ -73,7 +77,10 @@ public:
         }
     }
 
-    /*! Reads the Insomnia auth \a value at \a where; empty inherits, as in Insomnia. */
+    /*!
+     * \internal
+     * \brief Reads the Insomnia auth \a value at \a where; empty inherits, as in Insomnia.
+     */
     RequestAuth auth(const QJsonValue &value, const QString &where)
     {
         RequestAuth result;
@@ -104,7 +111,10 @@ public:
         return result;
     }
 
-    /*! Reports template tags such as {% uuid %} in \a text at \a where, once each. */
+    /*!
+     * \internal
+     * \brief Reports template tags such as {% uuid %} in \a text at \a where, once each.
+     */
     void reportTags(const QString &text, const QString &where)
     {
         static const QRegularExpression tag(QStringLiteral(R"(\{%.*?%\})"));
@@ -115,7 +125,10 @@ public:
         }
     }
 
-    /*! Reads the request \a resource at \a where. */
+    /*!
+     * \internal
+     * \brief Reads the request \a resource at \a where.
+     */
     RequestSpec request(const QJsonObject &resource, const QString &where)
     {
         RequestSpec spec;
@@ -161,22 +174,54 @@ public:
         return spec;
     }
 
-    /*! Reads the children of \a parentId at \a where into \a children. */
-    void children(const QString &parentId, const QString &where, QList<CollectionNode> &children)
+    /*!
+     * \internal
+     * \brief Reads the children of \a parentId at \a where into \a children.
+     *
+     * The nodes made are at \a depth in the tree. A group met again, as a
+     * file whose parentId links loop would make, and anything deeper than
+     * kMaxCollectionDepth are left out and reported. \a visited holds the ids
+     * of the groups being read.
+     */
+    void children(const QString &parentId, const QString &where, QList<CollectionNode> &children, int depth,
+                  QSet<QString> &visited)
     {
         for (const QJsonObject &resource : byParent.value(parentId)) {
             const QString type = resource.value(QLatin1StringView("_type")).toString();
+            const QString name = resource.value(QLatin1StringView("name")).toString();
+            const QString path = where + QStringLiteral(" / ") + name;
+            if (type == QLatin1StringView("grpc_request") || type == QLatin1StringView("websocket_request")) {
+                report.append(QStringLiteral("%1: %2").arg(path, type == QLatin1StringView("grpc_request")
+                                                                     ? QStringLiteral("gRPC request")
+                                                                     : QStringLiteral("WebSocket request")));
+                continue;
+            }
             if (type != QLatin1StringView("request_group") && type != QLatin1StringView("request"))
                 continue;
+            if (depth > kMaxCollectionDepth) {
+                report.append(QStringLiteral("%1: nested deeper than %2 levels, left out").arg(path).arg(kMaxCollectionDepth));
+                continue;
+            }
+            const QString id = resource.value(QLatin1StringView("_id")).toString();
+            if (type == QLatin1StringView("request_group") && visited.contains(id)) {
+                report.append(QStringLiteral("%1: folder inside itself, left out").arg(path));
+                continue;
+            }
             CollectionNode node;
             node.id = newItemId();
-            node.name = resource.value(QLatin1StringView("name")).toString();
-            const QString path = where + QStringLiteral(" / ") + node.name;
+            node.name = name;
             if (type == QLatin1StringView("request_group")) {
                 node.kind = CollectionNode::Kind::Folder;
                 node.folder.auth = auth(resource.value(QLatin1StringView("authentication")), path);
                 node.folder.variables = environmentRows(resource.value(QLatin1StringView("environment")).toObject());
-                this->children(resource.value(QLatin1StringView("_id")).toString(), path, node.children);
+                for (const KeyValue &row : std::as_const(node.folder.variables)) {
+                    if (environmentKeys.contains(row.key))
+                        report.append(QStringLiteral("%1: variable %2 is also set by an environment, which wins in ReqDeck")
+                                          .arg(path, row.key));
+                }
+                visited.insert(id);
+                this->children(id, path, node.children, depth + 1, visited);
+                visited.remove(id);
             } else {
                 node.kind = CollectionNode::Kind::Request;
                 node.request = request(resource, path);
@@ -185,10 +230,22 @@ public:
         }
     }
 
-    /*! Resources by the id of their parent, in file order. */
+    /*!
+     * \internal
+     * \brief Resources by the id of their parent, in file order.
+     */
     QHash<QString, QList<QJsonObject>> byParent;
 
-    /*! What did not carry over. */
+    /*!
+     * \internal
+     * \brief Names of the variables the environments set.
+     */
+    QSet<QString> environmentKeys;
+
+    /*!
+     * \internal
+     * \brief What did not carry over.
+     */
     QStringList report;
 };
 } // namespace
@@ -242,7 +299,6 @@ ImportResult InsomniaImporter::importExport(const QByteArray &json)
     const QString workspaceId = workspace.value(QLatin1StringView("_id")).toString();
     result.folder.id = newItemId();
     result.folder.name = workspace.value(QLatin1StringView("name")).toString(QStringLiteral("Insomnia workspace"));
-    builder.children(workspaceId, result.folder.name, result.folder.children);
 
     for (const QJsonObject &base : builder.byParent.value(workspaceId)) {
         if (base.value(QLatin1StringView("_type")).toString() != QLatin1StringView("environment"))
@@ -254,10 +310,23 @@ ImportResult InsomniaImporter::importExport(const QByteArray &json)
             Environment environment;
             environment.id = newItemId();
             environment.name = sub.value(QLatin1StringView("name")).toString();
-            for (const KeyValue &row : environmentRows(sub.value(QLatin1StringView("data")).toObject()))
+            for (const KeyValue &row : environmentRows(sub.value(QLatin1StringView("data")).toObject())) {
                 environment.variables.append({row.key, row.value, row.enabled, false});
+                builder.environmentKeys.insert(row.key);
+            }
             result.environments.append(environment);
         }
+    }
+
+    // Groups and requests sit below the top folder, which is at depth 1.
+    QSet<QString> visited {workspaceId};
+    builder.children(workspaceId, result.folder.name, result.folder.children, 2, visited);
+    for (const QJsonValue &value : resources) {
+        const QJsonObject other = value.toObject();
+        if (other.value(QLatin1StringView("_type")).toString() == QLatin1StringView("workspace")
+            && other.value(QLatin1StringView("_id")).toString() != workspaceId)
+            builder.report.append(QStringLiteral("%1: workspace left out; only the first one is imported")
+                                      .arg(other.value(QLatin1StringView("name")).toString()));
     }
 
     result.report = builder.report;

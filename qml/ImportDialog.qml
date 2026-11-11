@@ -56,7 +56,9 @@ Dialog {
         }
     }
 
+    onAboutToShow: cppImport.reset()
     onAccepted: dialog.imported(cppImport.apply())
+    onRejected: cppImport.reset()
 
     ColumnLayout {
         anchors.fill: parent
@@ -91,6 +93,7 @@ Dialog {
             visible: cppImport.ready && cppImport.report.length > 0
             clip: true
             model: cppImport.report
+            Accessible.name: qsTr("Parts that will not carry over")
 
             ScrollBar.vertical: ScrollBar {}
 

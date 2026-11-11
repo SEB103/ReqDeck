@@ -3,6 +3,7 @@
 
 #include <QFile>
 #include <QTemporaryDir>
+#include <QSignalSpy>
 #include <QtTest>
 
 #include <memory>
@@ -45,6 +46,9 @@ private slots:
 
     /*! Verifies that a broken YAML file is refused with the reason. */
     void brokenYamlIsRefused();
+
+    /*! Verifies that reset() forgets a preview. */
+    void resetForgetsPreview();
 
     /*! Verifies that an unknown file is refused with a message. */
     void unknownFileIsRefused();
@@ -157,6 +161,19 @@ void ImportControllerTest::brokenYamlIsRefused()
     QVERIFY2(m_import->errorString().contains(QStringLiteral("YAML")), qPrintable(m_import->errorString()));
     QVERIFY(!m_import->previewData("openapi_like: true"));
     QVERIFY2(m_import->errorString().contains(QStringLiteral("does not know")), qPrintable(m_import->errorString()));
+}
+
+void ImportControllerTest::resetForgetsPreview()
+{
+    QVERIFY(m_import->preview(QFINDTESTDATA("data/import/insomnia-shop.json")));
+    QSignalSpy changed(m_import.get(), &ImportController::previewChanged);
+
+    m_import->reset();
+
+    QCOMPARE(changed.count(), 1);
+    QVERIFY(!m_import->ready());
+    QVERIFY(m_import->apply().isEmpty());
+    QVERIFY(!m_manager->dirty());
 }
 
 void ImportControllerTest::unknownFileIsRefused()

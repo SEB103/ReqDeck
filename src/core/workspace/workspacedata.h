@@ -48,7 +48,6 @@ struct Environment
     bool operator==(const Environment &) const = default;
 };
 
-/** Folder or request in the collection tree. */
 /** Settings of a folder that the requests and folders inside it inherit. */
 struct FolderSettings
 {
@@ -60,6 +59,7 @@ struct FolderSettings
     bool operator==(const FolderSettings &) const = default;
 };
 
+/** Folder or request in the collection tree. */
 struct CollectionNode
 {
     /** Kind of tree node. */

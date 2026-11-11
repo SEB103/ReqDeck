@@ -177,11 +177,6 @@ QString CollectionTreeModel::addFolder(const QString &parentId)
 }
 
 /*!
- * \internal
- * \brief Adds \a node below \a parentId as the last child.
- * \return The id of the node, or an empty string when insertNode() refused it.
- */
-/*!
  * \brief Adds an imported \a folder at the end of the top level.
  * \param folder The folder with its ids already assigned.
  * \return Its id, or an empty string without a workspace or when the tree refuses it.
@@ -191,6 +186,11 @@ QString CollectionTreeModel::addImportedFolder(const CollectionNode &folder)
     return addNode(QString(), folder);
 }
 
+/*!
+ * \internal
+ * \brief Adds \a node below \a parentId as the last child.
+ * \return The id of the node, or an empty string when insertNode() refused it.
+ */
 QString CollectionTreeModel::addNode(const QString &parentId, CollectionNode node)
 {
     if (!m_manager->hasActiveWorkspace())

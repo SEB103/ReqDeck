@@ -57,6 +57,12 @@ private slots:
 
     /*! Verifies that a file that is no collection fails with a message. */
     void rejectsOtherFiles();
+
+    /*! Verifies that Collection v2.0 auth, attributes as one object, is read. */
+    void readsVersion20Auth();
+
+    /*! Verifies that folders nested deeper than ReqDeck allows are left out and reported. */
+    void leavesOutTooDeepFolders();
 };
 
 void PostmanImporterTest::recognizesFormats()
@@ -167,6 +173,39 @@ void PostmanImporterTest::rejectsOtherFiles()
         QVERIFY(!result.errorString.isEmpty());
     }
     QVERIFY(!PostmanImporter::importEnvironment("{}").ok);
+}
+
+void PostmanImporterTest::readsVersion20Auth()
+{
+    const QByteArray json = "{\"info\": {\"name\": \"Old\", \"schema\": "
+                            "\"https://schema.getpostman.com/json/collection/v2.0.0/collection.json\"},"
+                            "\"auth\": {\"type\": \"bearer\", \"bearer\": {\"token\": \"{{tok}}\"}},"
+                            "\"item\": [{\"name\": \"Get\", \"request\": {\"method\": \"GET\", \"url\": \"https://h/\","
+                            "\"auth\": {\"type\": \"basic\", \"basic\": {\"username\": \"u\", \"password\": \"p\"}}}}]}";
+    const ImportResult result = PostmanImporter::importCollection(json);
+
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QCOMPARE(result.folder.folder.auth.token, QStringLiteral("{{tok}}"));
+    QCOMPARE(result.folder.children.at(0).request.auth.username, QStringLiteral("u"));
+    QCOMPARE(result.folder.children.at(0).request.auth.password, QStringLiteral("p"));
+}
+
+void PostmanImporterTest::leavesOutTooDeepFolders()
+{
+    QByteArray items = "{\"name\": \"Leaf\", \"request\": {\"method\": \"GET\", \"url\": \"https://h/\"}}";
+    for (int i = 0; i < kMaxCollectionDepth + 5; ++i)
+        items = "{\"name\": \"F\", \"item\": [" + items + "]}";
+    const QByteArray json = "{\"info\": {\"name\": \"Deep\", \"schema\": "
+                            "\"https://schema.getpostman.com/json/collection/v2.1.0/collection.json\"}, \"item\": ["
+                            + items + "]}";
+    const ImportResult result = PostmanImporter::importCollection(json);
+
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QVERIFY(result.report.join(u'\n').contains(QStringLiteral("nested deeper than")));
+    int height = 1;
+    for (const CollectionNode *node = &result.folder; !node->children.isEmpty(); node = &node->children.first())
+        ++height;
+    QVERIFY(height <= kMaxCollectionDepth);
 }
 
 QTEST_GUILESS_MAIN(PostmanImporterTest)

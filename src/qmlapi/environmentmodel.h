@@ -87,8 +87,11 @@ public:
     /** Returns the name of the environment shown in the editor. */
     QString editedName() const;
 
-    /** Returns the names of the variables that resolve in the active environment. */
+    /** Returns the names of the variables that resolve for the open request: its folders' and the active environment's. */
     QStringList activeVariableNames() const;
+
+    /** Makes the variables of the folders above \a requestId count for the highlight and the names; empty for none. */
+    void setVariableScope(const QString &requestId);
 
     /** Returns the variables of the environment shown in the editor. */
     EnvironmentVariablesModel *variablesModel() const;
@@ -170,8 +173,11 @@ private:
     /** Loads \a row into the editor, also when it is the row already shown. */
     void showInEditor(int row);
 
-    /** Passes the active variables to the URL highlight. */
+    /** Passes the variables in scope to the URL highlight. */
     void refreshHighlighter();
+
+    /** Returns the variables of the folders above the scope request, then those of the active environment. */
+    QList<KeyValue> scopeVariables() const;
 
     /** Returns the row of the active environment, making "Default" active when none is; -1 without a workspace. */
     int activeRowForNewVariable();
@@ -187,6 +193,9 @@ private:
 
     /** Row shown in the editor, or -1. */
     int m_editedRow {-1};
+
+    /** Request whose folders give variables, or an empty string. */
+    QString m_scopeRequestId;
 
     /** Whether the dark palette is selected. */
     bool m_darkTheme {false};

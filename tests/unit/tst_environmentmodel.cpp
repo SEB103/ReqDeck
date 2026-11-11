@@ -132,6 +132,9 @@ private slots:
     /*! Verifies the names that resolve in the active environment, and their signal. */
     void activeVariableNamesFollowActive();
 
+    /*! Verifies that the variables of the folders above the scope request are known. */
+    void folderVariablesJoinTheScope();
+
     /*! Verifies that setVariable() replaces a value or adds a plain variable. */
     void setVariableAddsOrReplaces();
 
@@ -190,6 +193,35 @@ void EnvironmentModelTest::cleanup()
     m_model.reset();
     m_manager.reset();
     m_dir.reset();
+}
+
+void EnvironmentModelTest::folderVariablesJoinTheScope()
+{
+    WorkspaceData data = m_manager->workspaceData();
+    CollectionNode request;
+    request.id = newItemId();
+    request.kind = CollectionNode::Kind::Request;
+    request.name = QStringLiteral("List");
+    CollectionNode folder;
+    folder.id = newItemId();
+    folder.kind = CollectionNode::Kind::Folder;
+    folder.name = QStringLiteral("Api");
+    folder.folder.variables = {{QStringLiteral("apiRoot"), QStringLiteral("https://api.test"), true},
+                               {QStringLiteral("off"), QStringLiteral("x"), false}};
+    folder.children = {request};
+    data.collection = {folder};
+    QVERIFY(openWith(data, QStringLiteral("folders.reqdeck")));
+    QSignalSpy changed(m_model.get(), &EnvironmentModel::activeVariablesChanged);
+
+    m_model->setVariableScope(request.id);
+
+    QVERIFY(changed.count() > 0);
+    const QStringList names = m_model->property("activeVariableNames").toStringList();
+    QVERIFY2(names.contains(QStringLiteral("apiRoot")), qPrintable(names.join(u',')));
+    QVERIFY(!names.contains(QStringLiteral("off")));
+
+    m_model->setVariableScope(QString());
+    QVERIFY(!m_model->property("activeVariableNames").toStringList().contains(QStringLiteral("apiRoot")));
 }
 
 void EnvironmentModelTest::activeVariableNamesFollowActive()

@@ -38,7 +38,21 @@ private slots:
 
     /*! Verifies that other files are refused. */
     void rejectsOtherFiles();
+
+    /*! Verifies that a folder inside itself and a very long chain of folders end with a report line. */
+    void stopsLoopsAndDeepChains();
 };
+
+/*!
+ * \internal
+ * \brief Returns an export of workspace wrk with \a resources after it.
+ */
+static QByteArray exportWith(const QByteArray &resources)
+{
+    return "{\"_type\": \"export\", \"__export_format\": 4, \"resources\": ["
+           "{\"_id\": \"wrk\", \"_type\": \"workspace\", \"name\": \"W\"}"
+           + resources + "]}";
+}
 
 void InsomniaImporterTest::recognizesFormat()
 {
@@ -117,6 +131,34 @@ void InsomniaImporterTest::rejectsOtherFiles()
 {
     QVERIFY(!InsomniaImporter::importExport("{oops").ok);
     QVERIFY(!InsomniaImporter::importExport("{\"_type\": \"export\", \"resources\": []}").ok);
+}
+
+void InsomniaImporterTest::stopsLoopsAndDeepChains()
+{
+    // fld_a and fld_b are each other's parent, below a group that names the workspace as itself.
+    const ImportResult loop = InsomniaImporter::importExport(exportWith(
+        ",{\"_id\": \"wrk\", \"_type\": \"request_group\", \"parentId\": \"wrk\", \"name\": \"Self\"}"
+        ",{\"_id\": \"fld_a\", \"_type\": \"request_group\", \"parentId\": \"wrk\", \"name\": \"A\"}"
+        ",{\"_id\": \"fld_b\", \"_type\": \"request_group\", \"parentId\": \"fld_a\", \"name\": \"B\"}"
+        ",{\"_id\": \"fld_a\", \"_type\": \"request_group\", \"parentId\": \"fld_b\", \"name\": \"A again\"}"));
+    QVERIFY(loop.ok);
+    QVERIFY2(loop.report.join(u'\n').contains(QStringLiteral("folder inside itself")), qPrintable(loop.report.join(u'\n')));
+
+    QByteArray chain;
+    QByteArray parent = "wrk";
+    for (int i = 0; i < 5000; ++i) {
+        const QByteArray id = "fld_" + QByteArray::number(i);
+        chain += ",{\"_id\": \"" + id + "\", \"_type\": \"request_group\", \"parentId\": \"" + parent
+                 + "\", \"name\": \"F\"}";
+        parent = id;
+    }
+    const ImportResult deep = InsomniaImporter::importExport(exportWith(chain));
+    QVERIFY(deep.ok);
+    QVERIFY2(deep.report.join(u'\n').contains(QStringLiteral("nested deeper than")), "no report line");
+    int height = 1;
+    for (const CollectionNode *node = &deep.folder; !node->children.isEmpty(); node = &node->children.first())
+        ++height;
+    QVERIFY(height <= kMaxCollectionDepth);
 }
 
 QTEST_GUILESS_MAIN(InsomniaImporterTest)

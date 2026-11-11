@@ -19,6 +19,15 @@ constexpr int kMaxSchemaDepth = 6;
 
 /*!
  * \internal
+ * \brief Most values one example built from a schema may hold.
+ *
+ * Depth alone does not bound an example: schemas with many properties that
+ * refer to further such schemas grow with the power of the depth.
+ */
+constexpr int kMaxExampleValues = 2000;
+
+/*!
+ * \internal
  * \brief Returns \a value as text: strings as they are, other values as compact JSON.
  */
 QString text(const QJsonValue &value)
@@ -51,7 +60,10 @@ QString pathTemplate(QString path)
 class Reader
 {
 public:
-    /*! Prepares reading of the document \a root. */
+    /*!
+     * \internal
+     * \brief Prepares reading of the document \a root.
+     */
     explicit Reader(const QJsonObject &root)
         : m_root(root)
         , m_schemes(root.value(QLatin1StringView("components")).toObject().value(QLatin1StringView("securitySchemes")).toObject())
@@ -59,7 +71,8 @@ public:
     }
 
     /*!
-     * Follows local "#/..." references in \a value at \a where; external or
+     * \internal
+     * \brief Follows local "#/..." references in \a value at \a where; external or
      * broken references are reported and give an empty object.
      */
     QJsonValue resolve(QJsonValue value, const QString &where)
@@ -86,7 +99,10 @@ public:
         return QJsonObject();
     }
 
-    /*! Returns an example value for \a schema, from its example, default, or type. */
+    /*!
+     * \internal
+     * \brief Returns an example value for \a schema, from its example, default, or type.
+     */
     QJsonValue example(const QJsonValue &schemaValue, const QString &where, int depth = 0)
     {
         // A schema met again inside itself ends as null instead of nesting on.
@@ -101,9 +117,14 @@ public:
         return value;
     }
 
-    /*! Returns an example value for the resolved \a schema. */
+    /*!
+     * \internal
+     * \brief Returns an example value for the resolved \a schema.
+     */
     QJsonValue exampleOfSchema(const QJsonObject &schema, const QString &where, int depth)
     {
+        if (--m_exampleBudget < 0)
+            return QJsonValue();
         for (const char *key : {"example", "default"}) {
             if (schema.contains(QLatin1StringView(key)))
                 return schema.value(QLatin1StringView(key));
@@ -154,7 +175,10 @@ public:
         return QJsonValue();
     }
 
-    /*! Returns the example of the parameter or media object \a object, falling back to its schema. */
+    /*!
+     * \internal
+     * \brief Returns the example of the parameter or media object \a object, falling back to its schema.
+     */
     QJsonValue exampleOf(const QJsonObject &object, const QString &where)
     {
         if (object.contains(QLatin1StringView("example")))
@@ -162,13 +186,19 @@ public:
         const QJsonObject examples = object.value(QLatin1StringView("examples")).toObject();
         if (!examples.isEmpty())
             return resolve(examples.begin().value(), where).toObject().value(QLatin1StringView("value"));
-        return example(object.value(QLatin1StringView("schema")), where);
+        m_exampleBudget = kMaxExampleValues;
+        const QJsonValue value = example(object.value(QLatin1StringView("schema")), where);
+        if (m_exampleBudget < 0)
+            note(where, QStringLiteral("example cut short at %1 values").arg(kMaxExampleValues));
+        return value;
     }
 
     /*!
-     * Returns the auth of the security requirement list \a requirements at
-     * \a where. An empty list means no auth. Variables the auth refers to are
-     * added to the top folder.
+     * \internal
+     * \brief Returns the auth of the security requirement list \a requirements at
+     * \a where. An empty list means no auth. The auth refers to {{token}},
+     * {{username}}, {{password}}, or {{apiKey}}; they are not defined, so Send
+     * asks for their values.
      */
     RequestAuth auth(const QJsonArray &requirements, const QString &where)
     {
@@ -187,19 +217,15 @@ public:
         if (type == QLatin1StringView("http") && httpScheme == QLatin1StringView("bearer")) {
             result.type = AuthType::Bearer;
             result.token = QStringLiteral("{{token}}");
-            addVariable(QStringLiteral("token"), QString());
         } else if (type == QLatin1StringView("http") && httpScheme == QLatin1StringView("basic")) {
             result.type = AuthType::Basic;
             result.username = QStringLiteral("{{username}}");
             result.password = QStringLiteral("{{password}}");
-            addVariable(QStringLiteral("username"), QString());
-            addVariable(QStringLiteral("password"), QString());
         } else if (type == QLatin1StringView("apiKey") && (in == QLatin1StringView("header") || in == QLatin1StringView("query"))) {
             result.type = AuthType::ApiKey;
             result.apiKeyName = scheme.value(QLatin1StringView("name")).toString();
             result.apiKeyValue = QStringLiteral("{{apiKey}}");
             result.apiKeyLocation = in == QLatin1StringView("query") ? ApiKeyLocation::Query : ApiKeyLocation::Header;
-            addVariable(QStringLiteral("apiKey"), QString());
         } else if (type == QLatin1StringView("apiKey")) {
             note(where, QStringLiteral("API key in %1").arg(in));
         } else {
@@ -208,7 +234,10 @@ public:
         return result;
     }
 
-    /*! Reads the operation \a operation of \a path with the path-level \a shared parameters. */
+    /*!
+     * \internal
+     * \brief Reads the operation \a operation of \a path with the path-level \a shared parameters.
+     */
     RequestSpec request(const QString &path, HttpMethod method, const QJsonObject &operation,
                         const QJsonArray &shared, const QString &where)
     {
@@ -241,9 +270,9 @@ public:
                 spec.queryParams.append({name, value, required});
             else if (in == QLatin1StringView("header"))
                 spec.headers.append({name, value, required});
-            else if (in == QLatin1StringView("path"))
-                addVariable(name, value);
-            else
+            else if (in == QLatin1StringView("path") && !value.isEmpty())
+                addVariable(name, value); // Without an example, Send asks for the value.
+            else if (in != QLatin1StringView("path"))
                 note(where, QStringLiteral("%1 parameter %2").arg(in, name));
         }
 
@@ -290,7 +319,10 @@ public:
         return spec;
     }
 
-    /*! Adds the top folder variable \a key with \a value unless it is there already. */
+    /*!
+     * \internal
+     * \brief Adds the top folder variable \a key with \a value unless it is there already.
+     */
     void addVariable(const QString &key, const QString &value)
     {
         for (const KeyValue &row : std::as_const(variables)) {
@@ -300,7 +332,10 @@ public:
         variables.append({key, value, true});
     }
 
-    /*! Adds "\a where: \a what" to the report once. */
+    /*!
+     * \internal
+     * \brief Adds "\a where: \a what" to the report once.
+     */
     void note(const QString &where, const QString &what)
     {
         const QString line = where + QStringLiteral(": ") + what;
@@ -308,16 +343,42 @@ public:
             report.append(line);
     }
 
-    /*! Variables of the top folder, in the order they were met. */
+    /*!
+     * \internal
+     * \brief Variables of the top folder, in the order they were met.
+     */
     QList<KeyValue> variables;
 
-    /*! What did not carry over. */
+    /*!
+     * \internal
+     * \brief What did not carry over.
+     */
     QStringList report;
 
 private:
+    /*!
+     * \internal
+     * \brief The whole document, for resolving references.
+     */
     QJsonObject m_root;
+
+    /*!
+     * \internal
+     * \brief components.securitySchemes of the document.
+     */
     QJsonObject m_schemes;
+
+    /*!
+     * \internal
+     * \brief References of the schemas being turned into an example, outermost first.
+     */
     QStringList m_schemaChain;
+
+    /*!
+     * \internal
+     * \brief Values the example being built may still hold.
+     */
+    int m_exampleBudget {kMaxExampleValues};
 };
 
 /*!
@@ -385,7 +446,10 @@ ImportResult OpenApiImporter::importDocument(const QByteArray &json)
     result.folder.name = title;
 
     const QJsonArray servers = root.value(QLatin1StringView("servers")).toArray();
-    reader.addVariable(QStringLiteral("baseUrl"), servers.isEmpty() ? QString() : serverUrl(servers.first().toObject()));
+    if (servers.isEmpty())
+        reader.note(title, QStringLiteral("no servers; Send asks for {{baseUrl}}"));
+    else
+        reader.addVariable(QStringLiteral("baseUrl"), serverUrl(servers.first().toObject()));
     if (servers.size() > 1) {
         for (const QJsonValue &value : servers) {
             const QJsonObject server = value.toObject();

@@ -164,6 +164,18 @@ bool ImportController::previewData(const QByteArray &data)
 }
 
 /*!
+ * \brief Forgets the preview and its error.
+ *
+ * The import dialog calls it when it opens and when it is cancelled, so that
+ * Import never adds a file chosen for another workspace.
+ */
+void ImportController::reset()
+{
+    m_result = ImportResult();
+    emit previewChanged();
+}
+
+/*!
  * \brief Adds the previewed content to the workspace.
  *
  * Nothing is replaced: the collection becomes a new folder at the end of the
@@ -176,8 +188,15 @@ QString ImportController::apply()
     if (!m_result.ok)
         return {};
     QString folderId;
-    if (m_result.hasCollection)
+    if (m_result.hasCollection) {
         folderId = m_collection->addImportedFolder(m_result.folder);
+        if (folderId.isEmpty()) {
+            m_result.ok = false;
+            m_result.errorString = tr("The collection could not be added to the workspace.");
+            emit previewChanged();
+            return {};
+        }
+    }
     for (Environment environment : std::as_const(m_result.environments)) {
         const QStringList names = m_environments->names();
         if (names.contains(environment.name))

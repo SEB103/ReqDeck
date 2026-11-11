@@ -33,9 +33,17 @@ QString authName(const QString &type)
 class Reader
 {
 public:
-    /*! Returns the value of the entry \a key in a Postman list of {key, value} objects. */
+    /*!
+     * \internal
+     * \brief Returns the value of the entry \a key of Postman auth attributes \a list.
+     *
+     * Collection v2.1 lists {key, value} objects; v2.0 has one object with the
+     * keys as members.
+     */
     static QString valueOf(const QJsonValue &list, QLatin1StringView key)
     {
+        if (list.isObject())
+            return list.toObject().value(key).toVariant().toString();
         for (const QJsonValue &entry : list.toArray()) {
             const QJsonObject object = entry.toObject();
             if (object.value(QLatin1StringView("key")).toString() == key)
@@ -44,7 +52,10 @@ public:
         return {};
     }
 
-    /*! Returns Postman rows {key, value, disabled} as key/value rows. */
+    /*!
+     * \internal
+     * \brief Returns Postman rows {key, value, disabled} as key/value rows.
+     */
     static QList<KeyValue> rows(const QJsonValue &list)
     {
         QList<KeyValue> result;
@@ -57,7 +68,10 @@ public:
         return result;
     }
 
-    /*! Reads the Postman auth \a value at \a where; absent or "inherit" inherits. */
+    /*!
+     * \internal
+     * \brief Reads the Postman auth \a value at \a where; absent or "inherit" inherits.
+     */
     RequestAuth auth(const QJsonValue &value, const QString &where)
     {
         RequestAuth result;
@@ -90,7 +104,10 @@ public:
         return result;
     }
 
-    /*! Reports the scripts and examples of \a item at \a where. */
+    /*!
+     * \internal
+     * \brief Reports the scripts and examples of \a item at \a where.
+     */
     void reportExtras(const QJsonObject &item, const QString &where)
     {
         for (const QJsonValue &event : item.value(QLatin1StringView("event")).toArray()) {
@@ -105,7 +122,10 @@ public:
             report.append(QStringLiteral("%1: saved example responses").arg(where));
     }
 
-    /*! Reports dynamic variables such as {{$guid}} in \a text at \a where, once each. */
+    /*!
+     * \internal
+     * \brief Reports dynamic variables such as {{$guid}} in \a text at \a where, once each.
+     */
     void reportDynamic(const QString &text, const QString &where)
     {
         static const QRegularExpression dynamic(QStringLiteral(R"(\{\{\s*(\$[A-Za-z0-9_.\-]+)\s*\}\})"));
@@ -116,7 +136,10 @@ public:
         }
     }
 
-    /*! Reads the request of \a item at \a where. */
+    /*!
+     * \internal
+     * \brief Reads the request of \a item at \a where.
+     */
     RequestSpec request(const QJsonObject &item, const QString &where)
     {
         RequestSpec spec;
@@ -175,8 +198,14 @@ public:
         return spec;
     }
 
-    /*! Reads the items of a folder at \a where into \a children; false beyond the nesting ReqDeck allows. */
-    void items(const QJsonArray &list, const QString &where, QList<CollectionNode> &children)
+    /*!
+     * \internal
+     * \brief Reads the items of a folder at \a where into \a children.
+     *
+     * The nodes made are at \a depth in the tree; anything deeper than
+     * kMaxCollectionDepth is left out and reported.
+     */
+    void items(const QJsonArray &list, const QString &where, QList<CollectionNode> &children, int depth)
     {
         for (const QJsonValue &value : list) {
             const QJsonObject item = value.toObject();
@@ -184,11 +213,15 @@ public:
             node.id = newItemId();
             node.name = item.value(QLatin1StringView("name")).toString();
             const QString path = where + QStringLiteral(" / ") + node.name;
+            if (depth > kMaxCollectionDepth) {
+                report.append(QStringLiteral("%1: nested deeper than %2 levels, left out").arg(path).arg(kMaxCollectionDepth));
+                continue;
+            }
             reportExtras(item, path);
             if (item.contains(QLatin1StringView("item"))) {
                 node.kind = CollectionNode::Kind::Folder;
                 node.folder.auth = auth(item.value(QLatin1StringView("auth")), path);
-                items(item.value(QLatin1StringView("item")).toArray(), path, node.children);
+                items(item.value(QLatin1StringView("item")).toArray(), path, node.children, depth + 1);
             } else {
                 node.kind = CollectionNode::Kind::Request;
                 node.request = request(item, path);
@@ -197,7 +230,10 @@ public:
         }
     }
 
-    /*! What did not carry over. */
+    /*!
+     * \internal
+     * \brief What did not carry over.
+     */
     QStringList report;
 };
 
@@ -269,7 +305,8 @@ ImportResult PostmanImporter::importCollection(const QByteArray &json)
     result.folder.folder.auth = reader.auth(root->value(QLatin1StringView("auth")), result.folder.name);
     result.folder.folder.variables = Reader::rows(root->value(QLatin1StringView("variable")));
     reader.reportExtras(*root, result.folder.name);
-    reader.items(root->value(QLatin1StringView("item")).toArray(), result.folder.name, result.folder.children);
+    // Items sit below the top folder, which is at depth 1.
+    reader.items(root->value(QLatin1StringView("item")).toArray(), result.folder.name, result.folder.children, 2);
 
     result.report = reader.report;
     result.hasCollection = true;

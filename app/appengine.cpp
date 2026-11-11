@@ -318,6 +318,10 @@ AppEngine::AppEngine(QObject* parent)
         qWarning().noquote() << message;
     });
     connect(m_requestEditor, &RequestEditor::requestFinished, m_history, &HistoryModel::record);
+    // Folder variables of the open request count for highlight and completion.
+    const auto followScope = [this]() { m_environments->setVariableScope(m_requestEditor->requestId()); };
+    connect(m_requestEditor, &RequestEditor::requestChanged, this, followScope);
+    connect(m_collection, &CollectionTreeModel::collectionChanged, this, followScope);
     m_history->load();
     qmlRegisterUncreatableType<ResponseView>("Cpp.WorkspaceManager", 1, 0, "ResponseView", QStringLiteral("ResponseView should not be created in QML."));
     rootContext()->setContextProperty("cppRequestEditor", m_requestEditor);

@@ -8,6 +8,7 @@
 #include <algorithm>
 
 #include "core/http/variableresolver.h"
+#include "core/workspace/inheritance.h"
 #include "qmlapi/environmentvariablesmodel.h"
 #include "qmlapi/variablehighlighter.h"
 #include "qmlapi/workspacemanager.h"
@@ -491,17 +492,49 @@ void EnvironmentModel::showInEditor(int row)
 
 /*!
  * \internal
- * \brief Passes the active variables to the URL highlight.
+ * \brief Passes the variables in scope to the URL highlight.
  */
 void EnvironmentModel::refreshHighlighter()
 {
-    m_highlighter->setVariables(
-        VariableResolver::fromKeyValues(activeEnvironmentVariables(m_manager->workspaceData())));
+    m_highlighter->setVariables(VariableResolver::fromKeyValues(scopeVariables()));
     emit activeVariablesChanged();
 }
 
 /*!
- * \brief Returns the names of the variables that resolve in the active environment.
+ * \internal
+ * \brief Returns the variables a send of the scope request resolves with.
+ *
+ * Folder rows come first, outer before inner, and the active environment
+ * last, so later rows win as in RequestEditor::effectiveRequest().
+ */
+QList<KeyValue> EnvironmentModel::scopeVariables() const
+{
+    const WorkspaceData &data = m_manager->workspaceData();
+    QList<KeyValue> variables;
+    if (!m_scopeRequestId.isEmpty())
+        variables = inheritedSettings(data.collection, m_scopeRequestId, RequestAuth()).variables;
+    return variables + activeEnvironmentVariables(data);
+}
+
+/*!
+ * \brief Sets the request whose folders give variables to \a requestId.
+ *
+ * Called when another request opens and when the collection changes, since
+ * folder settings may have changed; the highlight and activeVariableNames()
+ * follow.
+ * \param requestId The open request, or an empty string for none.
+ */
+void EnvironmentModel::setVariableScope(const QString &requestId)
+{
+    m_scopeRequestId = requestId;
+    refreshHighlighter();
+}
+
+/*!
+ * \brief Returns the names of the variables that resolve for the open request.
+ *
+ * These are the variables of the folders above the request set by
+ * setVariableScope() and those of the active environment.
  *
  * Fields that cannot be highlighted per character compare their references with
  * these names. The rules are those of VariableResolver::fromKeyValues(): enabled
@@ -510,7 +543,7 @@ void EnvironmentModel::refreshHighlighter()
 QStringList EnvironmentModel::activeVariableNames() const
 {
     QStringList names;
-    for (const KeyValue &row : activeEnvironmentVariables(m_manager->workspaceData())) {
+    for (const KeyValue &row : scopeVariables()) {
         const QString key = row.key.trimmed();
         if (row.enabled && !key.isEmpty() && !names.contains(key))
             names.append(key);

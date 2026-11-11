@@ -236,7 +236,7 @@
             "title": "Authentication",
             "what": "Chooses how the request proves who you are.",
             "why": "Many APIs answer only to known users and refuse others with 401.",
-            "example": "Basic for a user name and password, Bearer for a token, API key for a key.",
+            "example": "Basic for a user name and password, Bearer for a token, API key for a key, Inherit from folder to use the auth set in Folder Settings… of a folder above.",
             "next": "The API documentation says which one it uses.",
             "chapter": "auth"
         },
@@ -912,7 +912,7 @@
                 },
                 {
                     "type": "tip",
-                    "text": "Fill in the variables the import left empty, such as {{token}}, in Folder Settings… or in an environment."
+                    "text": "When you send, ReqDeck asks for the values the import could not fill in, such as {{token}}, and can keep them in the active environment."
                 }
             ]
         },

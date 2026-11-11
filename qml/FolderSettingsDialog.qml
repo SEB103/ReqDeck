@@ -58,6 +58,7 @@ Dialog {
             model: [qsTr("Inherit from parent folder"), qsTr("No authentication"), qsTr("Basic"), qsTr("Bearer token"),
                     qsTr("API key")]
             currentIndex: dialog.authTypes.indexOf(cppFolderEditor.authType)
+            Accessible.name: qsTr("Folder authentication")
             onActivated: (index) => cppFolderEditor.authType = dialog.authTypes[index]
         }
 
@@ -67,6 +68,7 @@ Dialog {
             placeholderText: qsTr("User name")
             selectByMouse: true
             text: cppFolderEditor.authUsername
+            Accessible.name: qsTr("User name")
             onTextEdited: cppFolderEditor.authUsername = text
         }
 
@@ -77,6 +79,7 @@ Dialog {
             placeholderText: qsTr("Password")
             selectByMouse: true
             text: cppFolderEditor.authPassword
+            Accessible.name: qsTr("Password")
             onTextEdited: cppFolderEditor.authPassword = text
         }
 
@@ -89,6 +92,7 @@ Dialog {
             placeholderText: qsTr("Token, for example {{token}}")
             selectByMouse: true
             text: cppFolderEditor.authToken
+            Accessible.name: qsTr("Token")
             onTextEdited: cppFolderEditor.authToken = text
         }
 
@@ -102,6 +106,7 @@ Dialog {
                 placeholderText: qsTr("Key name")
                 selectByMouse: true
                 text: cppFolderEditor.apiKeyName
+                Accessible.name: qsTr("Key name")
                 onTextEdited: cppFolderEditor.apiKeyName = text
             }
 
@@ -111,12 +116,14 @@ Dialog {
                 placeholderText: qsTr("Key value")
                 selectByMouse: true
                 text: cppFolderEditor.apiKeyValue
+                Accessible.name: qsTr("Key value")
                 onTextEdited: cppFolderEditor.apiKeyValue = text
             }
 
             ComboBox {
                 model: [qsTr("Send as header"), qsTr("Send as query parameter")]
                 currentIndex: cppFolderEditor.apiKeyInQuery ? 1 : 0
+                Accessible.name: qsTr("Where to send the key")
                 onActivated: (index) => cppFolderEditor.apiKeyInQuery = index === 1
             }
         }

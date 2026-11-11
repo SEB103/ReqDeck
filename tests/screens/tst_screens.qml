@@ -95,6 +95,23 @@ Item {
     }
 
     Component {
+        id: importComponent
+
+        Item {
+            property alias dialog: importDialog
+
+            anchors.fill: parent
+
+            ImportDialog {
+                id: importDialog
+
+                width: 640
+                height: 420
+            }
+        }
+    }
+
+    Component {
         id: historyComponent
 
         HistoryPane {
@@ -202,6 +219,12 @@ Item {
         id: limitSpy
 
         signalName: "depthLimitReached"
+    }
+
+    SignalSpy {
+        id: importedSpy
+
+        signalName: "imported"
     }
 
     TestCase {
@@ -3159,17 +3182,40 @@ Item {
 
         /*! Verifies that the import dialog shows what a collection holds and adds it as a new folder. */
         function test_importDialogAddsCollection() {
-            const window = createMain();
-            const dialog = findChild(window.contentItem, "importDialog") || window.importDialogForTests;
+            const host = createTemporaryObject(importComponent, root);
+            const dialog = host.dialog;
+            importedSpy.target = dialog;
+            importedSpy.clear();
+            const rows = cppCollection.rowCount();
+            dialog.open();
+            tryCompare(dialog, "opened", true);
             verify(cppImport.preview(cppTestHost.importSample()));
             verify(cppImport.summary.indexOf("Postman collection") === 0, cppImport.summary);
             verify(cppImport.report.length > 0);
-            const rows = cppCollection.rowCount();
 
-            verify(cppImport.apply().length > 0);
+            dialog.accept();
 
+            tryCompare(importedSpy, "count", 1);
+            verify(importedSpy.signalArguments[0][0].length > 0);
             compare(cppCollection.rowCount(), rows + 1);
             compare(cppWorkspaceManager.dirty, true);
+        }
+
+        /*! Verifies that a cancelled preview is gone when the import dialog opens again. */
+        function test_importDialogForgetsCancelledPreview() {
+            const host = createTemporaryObject(importComponent, root);
+            const dialog = host.dialog;
+            dialog.open();
+            tryCompare(dialog, "opened", true);
+            verify(cppImport.preview(cppTestHost.importSample()));
+            dialog.reject();
+            tryCompare(dialog, "visible", false);
+
+            dialog.open();
+            tryCompare(dialog, "opened", true);
+
+            compare(cppImport.ready, false);
+            compare(cppImport.errorString, "");
         }
 
         /*! Verifies that the folder settings dialog edits the folder and a request can inherit from it. */
