@@ -606,7 +606,7 @@
             "why": "To carry on with the requests you made in Postman or Insomnia, or to start from an API description.",
             "example": "Export a collection in Postman (Collection v2.1), export data in Insomnia (Insomnia v4, JSON), or take the openapi.json of a service, and choose the file here.",
             "next": "Read what will not carry over, then press Import. The collection becomes a new folder; save the workspace to keep it.",
-            "chapter": "requests"
+            "chapter": "moving"
         }
     },
     "chapters": [
@@ -861,6 +861,58 @@
                 {
                     "type": "tip",
                     "text": "Two ReqDeck windows can run at once: both add to the same history."
+                }
+            ]
+        },
+        {
+            "id": "moving",
+            "title": "Coming from Postman",
+            "blocks": [
+                {
+                    "type": "p",
+                    "text": "You do not have to start again. ReqDeck reads the files Postman, Insomnia, and API descriptions give you, and turns them into a folder of requests."
+                },
+                {
+                    "type": "steps",
+                    "items": [
+                        "In Postman, export the collection as Collection v2.1, and each environment you need. In Insomnia, use Export Data with the Insomnia v4 (JSON) format. For an API description, take its openapi.json.",
+                        "In ReqDeck, choose File > Import Collection… and pick the file.",
+                        "Read the list of what does not carry over, then press Import.",
+                        "Save the workspace with Ctrl+S to keep the new folder."
+                    ]
+                },
+                {
+                    "type": "table",
+                    "rows": [
+                        [
+                            "Postman collection",
+                            "Folders, requests, headers, bodies, auth, and collection variables. The variables become settings of the new folder."
+                        ],
+                        [
+                            "Postman environment",
+                            "A new environment. Secret values come over empty: enter them again."
+                        ],
+                        [
+                            "Insomnia export",
+                            "The first workspace with its folders and requests. The base environment becomes folder variables, the other environments ReqDeck environments."
+                        ],
+                        [
+                            "OpenAPI 3 document",
+                            "One request per operation, in folders by tag, with example values. The server address becomes the variable {{baseUrl}}; with several servers, each one becomes an environment."
+                        ]
+                    ]
+                },
+                {
+                    "type": "p",
+                    "text": "Auth set on a folder is used by every request in it whose auth is Inherit from folder. Right-click a folder and choose Folder Settings… to see or change it."
+                },
+                {
+                    "type": "warn",
+                    "text": "Scripts, tests, OAuth 2.0, file uploads, and generated values such as {{$guid}} do not carry over. ReqDeck never runs code from an imported file; the list before the import names each one, so you can redo it by hand."
+                },
+                {
+                    "type": "tip",
+                    "text": "Fill in the variables the import left empty, such as {{token}}, in Folder Settings… or in an environment."
                 }
             ]
         },
