@@ -599,6 +599,14 @@
             "example": "A folder with Bearer {{token}}; its requests set to Inherit from folder send that token.",
             "next": "Right-click a folder > Folder Settings…. Inherit from parent folder passes the question up; No authentication stops it.",
             "chapter": "auth"
+        },
+        "dialog.import": {
+            "title": "Import a collection",
+            "what": "Brings a Postman collection or environment into this workspace.",
+            "why": "To carry on with the requests you made in Postman.",
+            "example": "Export a collection in Postman (Collection v2.1) and choose the file here.",
+            "next": "Read what will not carry over, then press Import. The collection becomes a new folder; save the workspace to keep it.",
+            "chapter": "requests"
         }
     },
     "chapters": [

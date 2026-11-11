@@ -324,6 +324,10 @@ ApplicationWindow {
             cppRequestEditor.copyAsCurl()
         }
 
+        function onImportFileRequested() {
+            importDialog.open()
+        }
+
         function onImportCurlRequested() {
             curlImportDialog.parentId = cppCollection.parentForNewItem(mainScreen.collectionPane.selectedId)
             curlImportDialog.open()
@@ -874,6 +878,17 @@ ApplicationWindow {
 
         width: Math.min(mainWindow.width - 80, 760)
         height: Math.min(mainWindow.height - 80, 520)
+    }
+
+    ImportDialog {
+        id: importDialog
+
+        onImported: (id) => {
+            if (id.length > 0) {
+                mainScreen.collectionPane.selectNode(id)
+                mainScreen.collectionPane.revealNode(id)
+            }
+        }
     }
 
     CurlImportDialog {

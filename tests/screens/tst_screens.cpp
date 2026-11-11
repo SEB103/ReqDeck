@@ -29,6 +29,7 @@
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/environmentmodel.h"
 #include "qmlapi/foldereditor.h"
+#include "qmlapi/importcontroller.h"
 #include "qmlapi/environmentvariablesmodel.h"
 #include "qmlapi/helplibrary.h"
 #include "qmlapi/helplocator.h"
@@ -132,6 +133,7 @@ public:
         context->setContextProperty(QStringLiteral("cppHelpLocator"), &m_helpLocator);
         context->setContextProperty(QStringLiteral("cppRequestEditor"), &m_editor);
         context->setContextProperty(QStringLiteral("cppFolderEditor"), &m_folderEditor);
+        context->setContextProperty(QStringLiteral("cppImport"), &m_import);
         context->setContextProperty(QStringLiteral("cppResponse"), &m_response);
         context->setContextProperty(QStringLiteral("cppTestHost"), this);
         publishMainStubs(context);
@@ -388,6 +390,12 @@ public:
         return guide.write("%PDF-1.7\n") > 0;
     }
 
+    /*! Returns the path of the Postman sample collection of the unit tests. */
+    Q_INVOKABLE QString importSample() const
+    {
+        return QStringLiteral(REQDECK_IMPORT_SAMPLE);
+    }
+
     /*! Returns whether the active environment has a secret variable \a key. */
     Q_INVOKABLE bool isSecretVariable(const QString &key) const
     {
@@ -520,6 +528,9 @@ private:
 
     /*! Real folder editor. */
     FolderEditor m_folderEditor {&m_collection};
+
+    /*! Real import controller. */
+    ImportController m_import {&m_collection, &m_environments};
 };
 
 /*! Quick Test setup that installs the facades on the test engine. */

@@ -475,6 +475,7 @@ target_sources(tst_screens
 target_compile_definitions(tst_screens
     PRIVATE REQDECK_HELP_DIR="${CMAKE_SOURCE_DIR}/resources/help"
     PRIVATE REQDECK_SAMPLES_FILE="${CMAKE_SOURCE_DIR}/resources/samples/Samples.reqdeck"
+    PRIVATE REQDECK_IMPORT_SAMPLE="${CMAKE_CURRENT_SOURCE_DIR}/unit/data/import/postman-shop.postman_collection.json"
     PRIVATE QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/screens"
 )
 

@@ -15,6 +15,7 @@ qt_add_qml_module(MainQml
         EnvironmentDialog.qml
         FolderSettingsDialog.qml
         HistoryPane.qml
+        ImportDialog.qml
         LauncherScreen.qml
         Main.qml
         MainScreen.ui.qml

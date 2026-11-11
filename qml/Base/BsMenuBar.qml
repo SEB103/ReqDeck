@@ -93,6 +93,9 @@ MenuBar {
     /*! Emitted to import a cURL command. */
     signal importCurlRequested()
 
+    /*! Emitted to import a file of another tool, such as a Postman collection. */
+    signal importFileRequested()
+
     /*! Emitted when the user selects Quit. */
     signal quitRequested()
 
@@ -251,6 +254,13 @@ MenuBar {
         }
 
         MenuSeparator {}
+
+        BsMenuItem {
+            text: qsTr("Import &Collection…")
+            icon.source: "qrc:/images/svg/folder_open.svg"
+            enabled: appMenuBar.hasWorkspace
+            onTriggered: appMenuBar.importFileRequested()
+        }
 
         BsMenuItem {
             text: qsTr("&Import cURL…")

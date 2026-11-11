@@ -36,6 +36,7 @@
 #include "qmlapi/environmentmodel.h"
 #include "qmlapi/environmentvariablesmodel.h"
 #include "qmlapi/foldereditor.h"
+#include "qmlapi/importcontroller.h"
 #include "qmlapi/helplibrary.h"
 #include "qmlapi/helplocator.h"
 #include "qmlapi/historymodel.h"
@@ -280,6 +281,7 @@ AppEngine::AppEngine(QObject* parent)
     , m_response(new ResponseView(this))
     , m_requestEditor(new RequestEditor(m_workspaceManager, m_collection, m_response, this))
     , m_folderEditor(new FolderEditor(m_collection, this))
+    , m_import(new ImportController(m_collection, m_environments, this))
     , m_appInfo(new AppInfo(this))
     , m_licenseModel(new LicenseModel(this))
     , m_logModel(new LogModel(2000, this))
@@ -321,6 +323,8 @@ AppEngine::AppEngine(QObject* parent)
     rootContext()->setContextProperty("cppRequestEditor", m_requestEditor);
     qmlRegisterUncreatableType<FolderEditor>("Cpp.WorkspaceManager", 1, 0, "FolderEditor", QStringLiteral("FolderEditor should not be created in QML."));
     rootContext()->setContextProperty("cppFolderEditor", m_folderEditor);
+    qmlRegisterUncreatableType<ImportController>("Cpp.WorkspaceManager", 1, 0, "ImportController", QStringLiteral("ImportController should not be created in QML."));
+    rootContext()->setContextProperty("cppImport", m_import);
     rootContext()->setContextProperty("cppResponse", m_response);
 
     RequestBuilder::Options builderOptions;

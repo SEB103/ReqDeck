@@ -3157,6 +3157,21 @@ Item {
             compare(mark.visible, false);
         }
 
+        /*! Verifies that the import dialog shows what a collection holds and adds it as a new folder. */
+        function test_importDialogAddsCollection() {
+            const window = createMain();
+            const dialog = findChild(window.contentItem, "importDialog") || window.importDialogForTests;
+            verify(cppImport.preview(cppTestHost.importSample()));
+            verify(cppImport.summary.indexOf("Postman collection") === 0, cppImport.summary);
+            verify(cppImport.report.length > 0);
+            const rows = cppCollection.rowCount();
+
+            verify(cppImport.apply().length > 0);
+
+            compare(cppCollection.rowCount(), rows + 1);
+            compare(cppWorkspaceManager.dirty, true);
+        }
+
         /*! Verifies that the folder settings dialog edits the folder and a request can inherit from it. */
         function test_folderSettingsEditTheFolder() {
             const pane = createCollection();

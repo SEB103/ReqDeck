@@ -599,6 +599,14 @@
             "example": "Папка с Bearer {{token}}; её запросы с Inherit from folder отправляют этот токен.",
             "next": "Правый клик по папке > Folder Settings…. Inherit from parent folder передаёт вопрос выше; No authentication его останавливает.",
             "chapter": "auth"
+        },
+        "dialog.import": {
+            "title": "Импорт коллекции",
+            "what": "Переносит коллекцию или окружение Postman в это рабочее пространство.",
+            "why": "Чтобы продолжить работу с запросами, созданными в Postman.",
+            "example": "Экспортируйте коллекцию в Postman (Collection v2.1) и выберите здесь этот файл.",
+            "next": "Прочитайте, что не перенесётся, и нажмите Import. Коллекция станет новой папкой; сохраните рабочее пространство, чтобы её оставить.",
+            "chapter": "requests"
         }
     },
     "chapters": [

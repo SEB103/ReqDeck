@@ -18,6 +18,7 @@ class LicenseModel;
 class LocaleController;
 class LogModel;
 class FolderEditor;
+class ImportController;
 class RequestEditor;
 class ResponseView;
 class UpdateController;
@@ -111,6 +112,9 @@ private:
 
     /** Folder settings exposed to QML as \c cppFolderEditor; owned by this engine. */
     FolderEditor* m_folderEditor = nullptr;
+
+    /** Import of other tools' files exposed to QML as \c cppImport; owned by this engine. */
+    ImportController* m_import = nullptr;
 
     /** Application/build metadata exposed to QML as \c cppAppInfo; owned by this engine. */
     AppInfo* m_appInfo = nullptr;
