@@ -470,7 +470,7 @@ Item {
                     Layout.preferredWidth: 180
                     // The order follows AuthType, so the index is the value.
                     model: [qsTr("No authentication"), qsTr("Basic"), qsTr("Bearer token"), qsTr("API key"),
-                            qsTr("Inherit from folder")]
+                            qsTr("Inherit from folder"), qsTr("OAuth 2.0")]
                     currentIndex: cppRequestEditor.authType
                     onActivated: (index) => cppRequestEditor.authType = index
                 }
@@ -667,6 +667,52 @@ Item {
                     model: [qsTr("Send as header"), qsTr("Send as query parameter")]
                     currentIndex: cppRequestEditor.apiKeyInQuery ? 1 : 0
                     onActivated: (index) => cppRequestEditor.apiKeyInQuery = index === 1
+                }
+
+                OAuthFields {
+                    objectName: "requestOAuth"
+
+                    Layout.fillWidth: true
+                    visible: cppRequestEditor.authType === 5 // AuthType::OAuth2
+                    settings: cppRequestEditor.oauth2
+                    onFieldEdited: (name, value) => cppRequestEditor.setOAuthField(name, value)
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    // Also for a request that inherits OAuth 2.0 from its folder.
+                    visible: cppRequestEditor.oauthStatus.length > 0
+                    spacing: 6
+
+                    Button {
+                        /*! Topic of the F1 help. */
+                        property string helpTopic: "request.oauthToken"
+
+                        objectName: "getTokenButton"
+
+                        text: cppRequestEditor.oauthBusy ? qsTr("Cancel Login") : qsTr("Get Token")
+                        onClicked: cppRequestEditor.oauthBusy ? cppRequestEditor.cancelLogin() : cppRequestEditor.getToken()
+                    }
+
+                    Button {
+                        /*! Topic of the F1 help. */
+                        property string helpTopic: "request.oauthToken"
+
+                        objectName: "resetTokenButton"
+
+                        text: qsTr("Reset")
+                        enabled: !cppRequestEditor.oauthBusy
+                        onClicked: cppRequestEditor.resetToken()
+                    }
+
+                    Label {
+                        objectName: "oauthStatus"
+
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        opacity: 0.8
+                        text: cppRequestEditor.oauthStatus
+                    }
                 }
 
                 RowLayout {

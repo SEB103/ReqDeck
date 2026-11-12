@@ -264,6 +264,22 @@
             "next": "Выбор действует для всех рабочих пространств на этом компьютере.",
             "chapter": "requests"
         },
+        "request.oauth": {
+            "title": "OAuth 2.0",
+            "what": "Получает токен у сервера авторизации и отправляет его как Bearer. Authorization code выполняет вход в браузере, client credentials — вход самого приложения.",
+            "why": "Многие API, среди них Google, Microsoft, GitHub и корпоративные, принимают только токены своего входа.",
+            "example": "Token URL https://login.example.com/oauth/token, client ID my-app, scope read.",
+            "next": "Адреса и scope называет документация API. Секрет клиента держите в секретной переменной, например {{clientSecret}}.",
+            "chapter": "auth"
+        },
+        "request.oauthToken": {
+            "title": "Токен",
+            "what": "Get Token выполняет вход и сохраняет токен; Reset забывает его. Строка рядом показывает, сколько токен действует.",
+            "why": "Токен истекает. ReqDeck обновляет его сам, если сервер выдал refresh token, и сам получает его для client credentials.",
+            "example": "Нажмите Get Token, войдите в браузере и вернитесь: следующая отправка понесёт токен.",
+            "next": "Токены хранятся зашифрованными для вашего пользователя Windows, никогда в файле рабочего пространства или в истории.",
+            "chapter": "auth"
+        },
         "request.authType": {
             "title": "Авторизация",
             "what": "Выбирает, как запрос докажет, кто вы.",

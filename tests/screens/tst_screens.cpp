@@ -276,7 +276,7 @@ public:
     static bool ownsTopic(const QQuickItem *item)
     {
         static const QStringList compound {
-            QStringLiteral("BsKeyValueTable"), QStringLiteral("FormDataTable"), QStringLiteral("BsSegmentedControl"),
+            QStringLiteral("BsKeyValueTable"), QStringLiteral("FormDataTable"), QStringLiteral("OAuthFields"), QStringLiteral("BsSegmentedControl"),
             QStringLiteral("BsLogPanel"), QStringLiteral("BsStatusBar"),
             QStringLiteral("BsNotificationBanner")};
         for (const QObject *object = item; object;) {

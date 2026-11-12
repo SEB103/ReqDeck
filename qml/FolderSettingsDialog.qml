@@ -24,7 +24,7 @@ Dialog {
     property string helpTopic: "dialog.folderSettings"
 
     /*! Values of AuthType in the order of the choices: Inherit first, as a new folder has it. */
-    readonly property var authTypes: [4, 0, 1, 2, 3]
+    readonly property var authTypes: [4, 0, 1, 2, 3, 5]
 
     /*! Shows the settings of the folder \a id. */
     function openFor(id) {
@@ -56,7 +56,7 @@ Dialog {
 
             Layout.preferredWidth: 220
             model: [qsTr("Inherit from parent folder"), qsTr("No authentication"), qsTr("Basic"), qsTr("Bearer token"),
-                    qsTr("API key")]
+                    qsTr("API key"), qsTr("OAuth 2.0")]
             currentIndex: dialog.authTypes.indexOf(cppFolderEditor.authType)
             Accessible.name: qsTr("Folder authentication")
             onActivated: (index) => cppFolderEditor.authType = dialog.authTypes[index]
@@ -126,6 +126,23 @@ Dialog {
                 Accessible.name: qsTr("Where to send the key")
                 onActivated: (index) => cppFolderEditor.apiKeyInQuery = index === 1
             }
+        }
+
+        OAuthFields {
+            objectName: "folderOAuth"
+
+            Layout.fillWidth: true
+            visible: cppFolderEditor.authType === 5 // AuthType::OAuth2
+            settings: cppFolderEditor.oauth2
+            onFieldEdited: (name, value) => cppFolderEditor.setOAuthField(name, value)
+        }
+
+        Label {
+            Layout.fillWidth: true
+            visible: cppFolderEditor.authType === 5 // AuthType::OAuth2
+            wrapMode: Text.Wrap
+            opacity: 0.7
+            text: qsTr("Get the token from a request in this folder: its Auth tab has Get Token.")
         }
 
         Base.BsKeyValueTable {

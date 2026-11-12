@@ -3,6 +3,7 @@
 
 #include "qmlapi/foldereditor.h"
 
+#include "core/http/oauthfields.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/keyvaluemodel.h"
 
@@ -53,7 +54,7 @@ int FolderEditor::authType() const
 
 void FolderEditor::setAuthType(int type)
 {
-    if (type >= int(AuthType::None) && type <= int(AuthType::Inherit))
+    if (type >= int(AuthType::None) && type <= int(AuthType::OAuth2))
         updateField(m_settings.auth.type, AuthType(type));
 }
 
@@ -75,6 +76,22 @@ QString FolderEditor::authPassword() const
 void FolderEditor::setAuthPassword(const QString &password)
 {
     updateField(m_settings.auth.password, password);
+}
+
+/*!
+ * \brief Returns the OAuth 2.0 settings as a map for QML.
+ */
+QVariantMap FolderEditor::oauth2() const
+{
+    return oauthMap(m_settings.auth.oauth2);
+}
+
+/*!
+ * \brief Sets the OAuth 2.0 field \a name to \a value, as the auth fields do.
+ */
+void FolderEditor::setOAuthField(const QString &name, const QVariant &value)
+{
+    updateField(m_settings.auth.oauth2, withOAuthField(m_settings.auth.oauth2, name, value));
 }
 
 QString FolderEditor::authToken() const

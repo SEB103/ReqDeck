@@ -474,7 +474,7 @@ void RequestEditorTest::invalidValuesAreIgnored()
     m_editor->setProperty("method", QStringLiteral("FETCH"));
     m_editor->setProperty("bodyMode", 5); // 4 is BodyMode::File
     m_editor->setProperty("rawBodyType", -1);
-    m_editor->setProperty("authType", 5); // 4 is AuthType::Inherit
+    m_editor->setProperty("authType", 6); // 5 is AuthType::OAuth2
     m_editor->setProperty("timeoutMs", -1);
 
     QCOMPARE(m_editor->property("method").toString(), QStringLiteral("POST"));

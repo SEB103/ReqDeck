@@ -3333,6 +3333,25 @@ Item {
             compare(cppRequestEditor.hasRequest, false);
         }
 
+        /*! Verifies the OAuth 2.0 fields of the request: grant, a field edit, and the token row. */
+        function test_oauthFieldsEditTheRequest() {
+            const pane = createRequest("r2");
+            findChild(pane, "tabs").currentIndex = 3;
+            cppRequestEditor.authType = 5; // AuthType::OAuth2
+            const fields = findChild(pane, "requestOAuth");
+            tryCompare(fields, "visible", true);
+            const tokenUrl = findChild(fields, "oauthTokenUrl");
+            tokenUrl.text = "https://id.test/token";
+            tokenUrl.textEdited();
+            compare(cppRequestEditor.oauth2.tokenUrl, "https://id.test/token");
+            findChild(fields, "oauthGrant").activated(1);
+            compare(cppRequestEditor.oauth2.grant, 1);
+            compare(findChild(fields, "oauthAuthUrl").visible, false);
+            verify(findChild(pane, "getTokenButton").visible);
+            compare(findChild(pane, "oauthStatus").text, cppRequestEditor.oauthStatus);
+            cppRequestEditor.authType = 0;
+        }
+
         /*! Verifies that a cancelled preview is gone when the import dialog opens again. */
         function test_importDialogForgetsCancelledPreview() {
             const host = createTemporaryObject(importComponent, root);

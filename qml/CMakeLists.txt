@@ -20,6 +20,7 @@ qt_add_qml_module(MainQml
         ImportDialog.qml
         LauncherScreen.qml
         Main.qml
+        OAuthFields.qml
         MainScreen.ui.qml
         RequestPane.qml
         RequestTabBar.qml

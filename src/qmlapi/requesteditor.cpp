@@ -11,6 +11,7 @@
 #include <QRegularExpression>
 #include <QUrl>
 
+#include "core/http/oauthfields.h"
 #include "core/http/curlconverter.h"
 #include "core/http/httpexecutor.h"
 #include "core/http/oauthclient.h"
@@ -229,7 +230,7 @@ int RequestEditor::authType() const
 
 void RequestEditor::setAuthType(int type)
 {
-    if (type >= int(AuthType::None) && type <= int(AuthType::Inherit))
+    if (type >= int(AuthType::None) && type <= int(AuthType::OAuth2))
         updateField(m_request.auth.type, AuthType(type));
 }
 
@@ -331,6 +332,22 @@ QString RequestEditor::authPassword() const
 void RequestEditor::setAuthPassword(const QString &password)
 {
     updateField(m_request.auth.password, password);
+}
+
+/*!
+ * \brief Returns the OAuth 2.0 settings as a map for QML.
+ */
+QVariantMap RequestEditor::oauth2() const
+{
+    return oauthMap(m_request.auth.oauth2);
+}
+
+/*!
+ * \brief Sets the OAuth 2.0 field \a name to \a value, as the auth fields do.
+ */
+void RequestEditor::setOAuthField(const QString &name, const QVariant &value)
+{
+    updateField(m_request.auth.oauth2, withOAuthField(m_request.auth.oauth2, name, value));
 }
 
 QString RequestEditor::authToken() const

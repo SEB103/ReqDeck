@@ -81,6 +81,9 @@ class RequestEditor : public QObject
     /** Bearer token. */
     Q_PROPERTY(QString authToken READ authToken WRITE setAuthToken NOTIFY requestChanged)
 
+    /** OAuth 2.0 settings: grant (0 authorization code, 1 client credentials), authUrl, tokenUrl, clientId, clientSecret, scope, audience. */
+    Q_PROPERTY(QVariantMap oauth2 READ oauth2 NOTIFY requestChanged)
+
     /**
      * Auth field of the current type that holds typed text, not only {{variable}}
      * references: "password", "token", "apiKey", or empty. Such text is saved in the
@@ -213,6 +216,12 @@ public:
 
     /** Returns the Bearer token. */
     QString authToken() const;
+
+    /** Returns the OAuth 2.0 settings as a map. */
+    QVariantMap oauth2() const;
+
+    /** Sets the OAuth 2.0 field \a name to \a value. */
+    Q_INVOKABLE void setOAuthField(const QString &name, const QVariant &value);
 
     /** Sets the Bearer token. */
     void setAuthToken(const QString &token);

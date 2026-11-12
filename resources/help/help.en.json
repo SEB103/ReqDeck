@@ -264,6 +264,22 @@
             "next": "The choice applies to every workspace on this computer.",
             "chapter": "requests"
         },
+        "request.oauth": {
+            "title": "OAuth 2.0",
+            "what": "Gets a token from an authorization server and sends it as Bearer. Authorization code logs you in in the browser; client credentials logs in the application itself.",
+            "why": "Many APIs, Google, Microsoft, GitHub, and company APIs among them, take only tokens from their own login.",
+            "example": "Token URL https://login.example.com/oauth/token, client ID my-app, scope read.",
+            "next": "The API's documentation names the URLs and scopes. Put the client secret in a secret variable, for example {{clientSecret}}.",
+            "chapter": "auth"
+        },
+        "request.oauthToken": {
+            "title": "Token",
+            "what": "Get Token logs in and keeps the token; Reset forgets it. The line beside them says how long the token lasts.",
+            "why": "A token expires. ReqDeck renews it by itself when the server gave a refresh token, and gets one by itself for client credentials.",
+            "example": "Press Get Token, log in in the browser, and come back: the next send carries the token.",
+            "next": "Tokens are kept encrypted for your Windows user, never in the workspace file or the history.",
+            "chapter": "auth"
+        },
         "request.authType": {
             "title": "Authentication",
             "what": "Chooses how the request proves who you are.",

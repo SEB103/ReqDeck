@@ -5,6 +5,7 @@
 #define FOLDEREDITOR_H
 
 #include <QObject>
+#include <QVariantMap>
 #include <QString>
 
 #include "core/workspace/workspacedata.h"
@@ -36,6 +37,9 @@ class FolderEditor : public QObject
 
     /** Bearer token. */
     Q_PROPERTY(QString authToken READ authToken WRITE setAuthToken NOTIFY folderChanged)
+
+    /** OAuth 2.0 settings: grant (0 authorization code, 1 client credentials), authUrl, tokenUrl, clientId, clientSecret, scope, audience. */
+    Q_PROPERTY(QVariantMap oauth2 READ oauth2 NOTIFY folderChanged)
 
     /** API key name. */
     Q_PROPERTY(QString apiKeyName READ apiKeyName WRITE setApiKeyName NOTIFY folderChanged)
@@ -79,6 +83,12 @@ public:
 
     /** Returns the bearer token. */
     QString authToken() const;
+
+    /** Returns the OAuth 2.0 settings as a map. */
+    QVariantMap oauth2() const;
+
+    /** Sets the OAuth 2.0 field \a name to \a value. */
+    Q_INVOKABLE void setOAuthField(const QString &name, const QVariant &value);
 
     /** Sets the bearer token. */
     void setAuthToken(const QString &token);
