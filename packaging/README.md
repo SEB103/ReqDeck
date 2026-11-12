@@ -206,10 +206,12 @@ statically, so it adds no DLL; its license reaches the deployment with
 Framework programs by The Qt Company; add the IFW/Qt attribution before a public
 release. Local pipeline runs produce unsigned artifacts.
 
-**Branding.** The application icon and logo in `resources/images/app/` are
-generated placeholders until final artwork exists; replace `ReqDeck.ico`,
-`MaintenanceTool.ico`, `ReqDeckLogo.png`, and the sources in
-`resources/images/app/source/` together.
+**Branding.** `resources/images/app/` holds the approved artwork: `ReqDeck.ico`
+(executable, window, taskbar, shortcut), `MaintenanceTool.ico` (Setup.exe and the
+Maintenance Tool, copied to `installer.ico`), `ReqDeckLogo.png` (512 px, launcher
+and About), and the 1024 px sources in `resources/images/app/source/`, from which
+`make-installer-images.ps1` draws the installer header. The icons contain 16 to
+256 px layers. Replace all of them together.
 
 **Beginner guide.** The application opens `help/ReqDeck-Guide.<en|ru>.pdf` next to
 the executable from Help > Beginner Guide and from the F1 help panel. The CMake
