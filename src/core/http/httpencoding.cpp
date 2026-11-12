@@ -3,6 +3,7 @@
 
 #include "core/http/httpencoding.h"
 
+#include <QMimeDatabase>
 #include <QUrl>
 
 /*!
@@ -63,4 +64,17 @@ QByteArray defaultContentType(BodyMode mode, RawBodyType rawType)
         break;
     }
     return QByteArrayLiteral("text/plain; charset=utf-8");
+}
+
+/*!
+ * \brief Returns the Content-Type for the file at \a path, judged by its name only.
+ *
+ * The content is not read, so a file that is not there yet still gets a type.
+ * \param path The path or file name.
+ * \return For example "image/png"; application/octet-stream for unknown names.
+ */
+QByteArray contentTypeForFile(const QString &path)
+{
+    const QMimeType type = QMimeDatabase().mimeTypeForFile(path, QMimeDatabase::MatchExtension);
+    return type.isValid() && !type.isDefault() ? type.name().toLatin1() : QByteArrayLiteral("application/octet-stream");
 }

@@ -141,10 +141,15 @@ void PostmanImporterTest::scriptsAreReportedNotKept()
     QVERIFY2(report.contains(QStringLiteral("Shop API / Orders / List orders: scripts")), qPrintable(report));
     QVERIFY2(report.contains(QStringLiteral("List orders: saved example responses")), qPrintable(report));
     QVERIFY2(report.contains(QStringLiteral("Upload: OAuth 2.0")), qPrintable(report));
-    QVERIFY2(report.contains(QStringLiteral("Upload: form-data body")), qPrintable(report));
+    QVERIFY2(report.contains(QStringLiteral("Upload: file a.png is a path of the computer the file came from")), qPrintable(report));
+    const RequestSpec &upload = result.folder.children.at(2).request;
+    QCOMPARE(upload.body.mode, BodyMode::FormData);
+    QCOMPARE(upload.body.parts.size(), 1);
+    QVERIFY(upload.body.parts.at(0).isFile);
+    QCOMPARE(upload.body.parts.at(0).value, QStringLiteral("a.png"));
     QVERIFY2(report.contains(QStringLiteral("Create order: dynamic variable {{$guid}}")), qPrintable(report));
     QCOMPARE(result.folder.children.at(2).request.auth.type, AuthType::None);
-    QCOMPARE(result.folder.children.at(2).request.body.mode, BodyMode::None);
+    QCOMPARE(result.folder.children.at(2).request.body.mode, BodyMode::FormData);
     QVERIFY(!QJsonDocument::fromJson(sampleCollection()).isNull());
 }
 

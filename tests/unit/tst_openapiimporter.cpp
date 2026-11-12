@@ -127,7 +127,7 @@ void OpenApiImporterTest::importsBodies()
     const QJsonObject example = QJsonDocument::fromJson(order.body.raw.toUtf8()).object();
     QCOMPARE(example.value(QLatin1StringView("quantity")).toInt(), 1);
 
-    QCOMPARE(result.folder.children.at(1).children.at(1).request.body.mode, BodyMode::None);
+    QCOMPARE(result.folder.children.at(1).children.at(1).request.body.mode, BodyMode::FormData);
 }
 
 void OpenApiImporterTest::importsServersAndSecurity()
@@ -168,7 +168,14 @@ void OpenApiImporterTest::reportsWhatIsDropped()
 
     QVERIFY2(report.contains(QStringLiteral("Pet Shop / pets / Get a pet: cookie parameter session")), qPrintable(report));
     QVERIFY2(report.contains(QStringLiteral("Pet Shop / store / Place an order: oauth2 authorization")), qPrintable(report));
-    QVERIFY2(report.contains(QStringLiteral("Pet Shop / store / Upload a photo: multipart/form-data body")), qPrintable(report));
+    QVERIFY2(report.contains(QStringLiteral("Pet Shop / store / Upload a photo: field photo needs a file; choose one")), qPrintable(report));
+    const RequestSpec &upload = result.folder.children.at(1).children.at(1).request;
+    QCOMPARE(upload.body.mode, BodyMode::FormData);
+    QCOMPARE(upload.body.parts.size(), 2);
+    QCOMPARE(upload.body.parts.at(0).key, QStringLiteral("caption"));
+    QCOMPARE(upload.body.parts.at(0).value, QStringLiteral("Rex at the beach"));
+    QVERIFY(upload.body.parts.at(1).isFile);
+    QCOMPARE(upload.body.parts.at(1).contentType, QStringLiteral("image/png"));
     QCOMPARE(result.folder.children.at(1).children.at(0).request.auth.type, AuthType::None);
 }
 

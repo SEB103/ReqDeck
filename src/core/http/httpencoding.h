@@ -22,4 +22,7 @@ QByteArray encodeKeyValuePairs(const QList<KeyValue> &pairs);
  */
 QByteArray defaultContentType(BodyMode mode, RawBodyType rawType);
 
+/** Returns the Content-Type for the file at \a path from its name, or application/octet-stream. */
+QByteArray contentTypeForFile(const QString &path);
+
 #endif // HTTPENCODING_H

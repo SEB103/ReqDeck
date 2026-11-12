@@ -375,7 +375,10 @@ CurlConverter::ParseResult failure(const QString &message)
  * and --json is joined with '&'. With -G the data is appended to the URL query
  * instead. --json also adds JSON Content-Type and Accept headers unless set,
  * --oauth2-bearer adds an Authorization header, and --compressed removes a
- * copied Accept-Encoding header. Multipart (-F), uploads (-T, @file), and
+ * copied Accept-Encoding header. -F and --form-string become form data parts,
+ * "name=@path" a file part with an optional ";type="; --data-binary @file and
+ * -T file become a file body (-T defaults to PUT). Text from a file
+ * (name=<file), -d @file, which curl changes, mixing these with -d, and
  * commands in Windows cmd syntax are rejected. The body
  * mode follows the Content-Type header: JSON or XML types produce a raw body
  * of that flavor; form-urlencoded or no type produce form fields when every
@@ -416,6 +419,10 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
     bool json = false;
     bool compressed = false;
     QStringList data;
+    QList<FormPart> parts;
+    bool form = false;
+    std::optional<QString> uploadFile;
+    bool uploadIsPut = false;
 
     for (qsizetype i = 1; i < tokens.size(); ++i) {
         const QString &token = tokens.at(i);
@@ -486,8 +493,15 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
             const std::optional<QString> value = takeValue();
             if (!value)
                 return missingValue();
+            if (name == QLatin1StringView("--data-binary") && value->startsWith(u'@') && value->size() > 1) {
+                // Sent byte for byte, which is what a file body does.
+                if (uploadFile)
+                    return failure(QStringLiteral("Only one file can be sent as the body."));
+                uploadFile = value->mid(1);
+                continue;
+            }
             if (name != QLatin1StringView("--data-raw") && value->startsWith(u'@'))
-                return failure(QStringLiteral("File uploads (@file) are not supported."));
+                return failure(QStringLiteral("Files read with -d @file are changed by curl; use --data-binary @file."));
             data.append(*value);
         } else if (name == QLatin1StringView("--data-urlencode")) {
             const std::optional<QString> value = takeValue();
@@ -523,9 +537,45 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
             result.ignoredOptions.append(token);
         } else if (name == QLatin1StringView("-F") || name == QLatin1StringView("--form")
                    || name == QLatin1StringView("--form-string")) {
-            return failure(QStringLiteral("Multipart form data (-F) is not supported."));
+            const std::optional<QString> value = takeValue();
+            if (!value)
+                return missingValue();
+            const qsizetype equals = value->indexOf(u'=');
+            if (equals <= 0)
+                return failure(QStringLiteral("Invalid form field: %1").arg(*value));
+            FormPart part;
+            part.key = value->left(equals);
+            QString content = value->mid(equals + 1);
+            if (name != QLatin1StringView("--form-string")) {
+                if (content.startsWith(u'<'))
+                    return failure(QStringLiteral("Form text read from a file (name=<file) is not supported."));
+                // curl reads ";type=" and ";filename=" after the content.
+                QStringList pieces = content.split(u';');
+                content = pieces.takeFirst();
+                for (const QString &piece : std::as_const(pieces)) {
+                    if (piece.startsWith(QLatin1StringView("type=")))
+                        part.contentType = piece.mid(5);
+                    else
+                        result.ignoredOptions.append(name + u' ' + part.key + u';' + piece);
+                }
+                if (content.startsWith(u'@')) {
+                    part.isFile = true;
+                    content = content.mid(1);
+                }
+            }
+            part.value = content;
+            parts.append(part);
+            form = true;
         } else if (name == QLatin1StringView("-T") || name == QLatin1StringView("--upload-file")) {
-            return failure(QStringLiteral("File uploads (-T) are not supported."));
+            const std::optional<QString> value = takeValue();
+            if (!value)
+                return missingValue();
+            if (uploadFile)
+                return failure(QStringLiteral("Only one file can be sent as the body."));
+            if (*value == QLatin1StringView("-") || value->contains(u'{') || value->contains(u'['))
+                return failure(QStringLiteral("Uploads from standard input or of several files (-T) are not supported."));
+            uploadFile = *value;
+            uploadIsPut = true;
         } else if (name == QLatin1StringView("--oauth2-bearer")) {
             const std::optional<QString> value = takeValue();
             if (!value)
@@ -579,12 +629,25 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
             spec.headers.append({QStringLiteral("Accept"), QStringLiteral("application/json"), true});
     }
 
+    if (int(form) + int(uploadFile.has_value()) + int(!data.isEmpty()) > 1)
+        return failure(QStringLiteral("Form fields (-F), a file body, and data (-d) cannot be combined."));
+
     if (head)
         spec.method = HttpMethod::Head;
     else if (explicitMethod)
         spec.method = *explicitMethod;
+    else if (uploadIsPut)
+        spec.method = HttpMethod::Put;
     else
-        spec.method = data.isEmpty() ? HttpMethod::Get : HttpMethod::Post;
+        spec.method = data.isEmpty() && !form && !uploadFile ? HttpMethod::Get : HttpMethod::Post;
+
+    if (form) {
+        spec.body.mode = BodyMode::FormData;
+        spec.body.parts = parts;
+    } else if (uploadFile) {
+        spec.body.mode = BodyMode::File;
+        spec.body.filePath = *uploadFile;
+    }
 
     if (!data.isEmpty() && spec.method != HttpMethod::Head) {
         const QString joined = data.join(u'&');
@@ -687,9 +750,28 @@ QString CurlConverter::toCurl(const RequestSpec &spec, bool followRedirects, int
                 lines.append(QStringLiteral("-H ") + shellQuote(u"Content-Type: " + type));
             }
             lines.append(QStringLiteral("--data-raw ") + shellQuote(spec.body.raw));
-        } else {
+        } else if (spec.body.mode == BodyMode::FormUrlEncoded) {
             lines.append(QStringLiteral("--data-raw ")
                          + shellQuote(QString::fromLatin1(encodeKeyValuePairs(spec.body.form))));
+        } else if (spec.body.mode == BodyMode::FormData) {
+            for (const FormPart &part : spec.body.parts) {
+                if (!part.enabled || part.key.trimmed().isEmpty())
+                    continue;
+                const QString type = part.contentType.isEmpty() ? QString() : u";type=" + part.contentType;
+                if (part.isFile)
+                    lines.append(QStringLiteral("-F ") + shellQuote(part.key + u"=@" + part.value + type));
+                else if (type.isEmpty())
+                    lines.append(QStringLiteral("--form-string ") + shellQuote(part.key + u'=' + part.value));
+                else
+                    lines.append(QStringLiteral("-F ") + shellQuote(part.key + u'=' + part.value + type));
+            }
+        } else {
+            // curl would send its form type for --data-binary; ReqDeck sends one from the name.
+            if (!headerValue(spec.headers, u"Content-Type")) {
+                lines.append(QStringLiteral("-H ")
+                             + shellQuote(u"Content-Type: " + QString::fromLatin1(contentTypeForFile(spec.body.filePath))));
+            }
+            lines.append(QStringLiteral("--data-binary ") + shellQuote(u'@' + spec.body.filePath));
         }
     }
 

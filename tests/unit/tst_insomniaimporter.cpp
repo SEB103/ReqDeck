@@ -123,7 +123,11 @@ void InsomniaImporterTest::reportsWhatIsDropped()
     QVERIFY2(report.contains(QStringLiteral("Shop / Orders / Create order: scripts")), qPrintable(report));
     QVERIFY2(report.contains(QStringLiteral("Create order: template tag {% uuid 'v4' %}")), qPrintable(report));
     QVERIFY2(report.contains(QStringLiteral("Upload: oauth2 authorization")), qPrintable(report));
-    QVERIFY2(report.contains(QStringLiteral("Upload: multipart/form-data body")), qPrintable(report));
+    QVERIFY2(report.contains(QStringLiteral("Upload: field f has no file; choose one")), qPrintable(report));
+    const RequestSpec &upload = result.folder.children.at(2).request;
+    QCOMPARE(upload.body.mode, BodyMode::FormData);
+    QCOMPARE(upload.body.parts.size(), 1);
+    QVERIFY(upload.body.parts.at(0).isFile);
     QCOMPARE(result.folder.children.at(2).request.auth.type, AuthType::None);
 }
 

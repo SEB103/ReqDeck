@@ -5,7 +5,6 @@
 
 #include <QFileInfo>
 #include <QHttpHeaders>
-#include <QMimeDatabase>
 #include <QRegularExpression>
 #include <QUrl>
 #include <QUuid>
@@ -104,16 +103,6 @@ QByteArray dispositionValue(const QString &text)
     QByteArray value = text.toUtf8();
     value.replace('"', "%22").replace('\r', "%0D").replace('\n', "%0A");
     return value;
-}
-
-/*!
- * \internal
- * \brief Returns the Content-Type for the file at \a path, from its name.
- */
-QByteArray contentTypeOfFile(const QString &path)
-{
-    const QMimeType type = QMimeDatabase().mimeTypeForFile(path, QMimeDatabase::MatchExtension);
-    return type.isValid() && !type.isDefault() ? type.name().toLatin1() : QByteArrayLiteral("application/octet-stream");
 }
 
 /*!
@@ -298,7 +287,7 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
             if (const QString error = unreadableFile(path); !error.isEmpty())
                 return failure(std::move(built), error);
             built.segments.append({{}, QFileInfo(path).absoluteFilePath()});
-            contentType = contentTypeOfFile(path);
+            contentType = contentTypeForFile(path);
         } else {
             // RFC 7578: each part names its field, files their file name too.
             const QByteArray boundary = "----ReqDeck" + QUuid::createUuid().toByteArray(QUuid::Id128);
@@ -316,7 +305,7 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
                         return failure(std::move(built), QStringLiteral("%1 (form field %2)").arg(error, key));
                     pending += "; filename=\"" + dispositionValue(QFileInfo(path).fileName()) + '"';
                     if (partType.isEmpty())
-                        partType = QString::fromLatin1(contentTypeOfFile(path));
+                        partType = QString::fromLatin1(contentTypeForFile(path));
                     pending += "\r\nContent-Type: " + partType.toUtf8() + "\r\n\r\n";
                     built.segments.append({std::exchange(pending, {}), {}});
                     built.segments.append({{}, QFileInfo(path).absoluteFilePath()});

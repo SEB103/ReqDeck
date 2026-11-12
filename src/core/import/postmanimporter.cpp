@@ -54,6 +54,22 @@ public:
 
     /*!
      * \internal
+     * \brief Reports the file \a path of field \a field at \a where: it is a path of the exporting computer.
+     *
+     * An empty \a field means the file body.
+     */
+    void reportFile(const QString &path, const QString &field, const QString &where)
+    {
+        if (path.trimmed().isEmpty()) {
+            report.append(field.isEmpty() ? QStringLiteral("%1: no file for the body; choose one").arg(where)
+                                          : QStringLiteral("%1: field %2 has no file; choose one").arg(where, field));
+        } else {
+            report.append(QStringLiteral("%1: file %2 is a path of the computer the file came from; check it").arg(where, path));
+        }
+    }
+
+    /*!
+     * \internal
      * \brief Returns Postman rows {key, value, disabled} as key/value rows.
      */
     static QList<KeyValue> rows(const QJsonValue &list)
@@ -186,14 +202,40 @@ public:
         } else if (mode == QLatin1StringView("urlencoded")) {
             spec.body.mode = BodyMode::FormUrlEncoded;
             spec.body.form = rows(body.value(QLatin1StringView("urlencoded")));
+        } else if (mode == QLatin1StringView("formdata")) {
+            spec.body.mode = BodyMode::FormData;
+            for (const QJsonValue &entry : body.value(QLatin1StringView("formdata")).toArray()) {
+                const QJsonObject item = entry.toObject();
+                FormPart part;
+                part.key = item.value(QLatin1StringView("key")).toString();
+                part.enabled = !item.value(QLatin1StringView("disabled")).toBool();
+                part.contentType = item.value(QLatin1StringView("contentType")).toString();
+                part.isFile = item.value(QLatin1StringView("type")).toString() == QLatin1StringView("file");
+                if (part.isFile) {
+                    const QJsonValue src = item.value(QLatin1StringView("src"));
+                    const QJsonArray sources = src.toArray();
+                    part.value = src.isArray() ? sources.at(0).toString() : src.toString();
+                    if (sources.size() > 1)
+                        report.append(QStringLiteral("%1: field %2 has %3 files; only the first is kept").arg(where, part.key).arg(sources.size()));
+                    reportFile(part.value, part.key, where);
+                } else {
+                    part.value = item.value(QLatin1StringView("value")).toVariant().toString();
+                }
+                spec.body.parts.append(part);
+            }
+        } else if (mode == QLatin1StringView("file")) {
+            spec.body.mode = BodyMode::File;
+            spec.body.filePath = body.value(QLatin1StringView("file")).toObject().value(QLatin1StringView("src")).toString();
+            reportFile(spec.body.filePath, QString(), where);
         } else if (!mode.isEmpty() && mode != QLatin1StringView("none")) {
-            report.append(QStringLiteral("%1: %2 body").arg(where, mode == QLatin1StringView("formdata") ? QStringLiteral("form-data")
-                                                                                                         : mode));
+            report.append(QStringLiteral("%1: %2 body").arg(where, mode));
         }
 
         QStringList texts {spec.url, spec.body.raw, spec.auth.token, spec.auth.password, spec.auth.apiKeyValue};
         for (const KeyValue &row : spec.queryParams + spec.headers + spec.body.form)
             texts << row.key << row.value;
+        for (const FormPart &part : std::as_const(spec.body.parts))
+            texts << part.key << part.value;
         reportDynamic(texts.join(u'\n'), where);
         return spec;
     }

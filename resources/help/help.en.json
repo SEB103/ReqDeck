@@ -932,7 +932,7 @@
                 },
                 {
                     "type": "warn",
-                    "text": "Scripts, tests, OAuth 2.0, file uploads, and generated values such as {{$guid}} do not carry over. ReqDeck never runs code from an imported file; the list before the import names each one, so you can redo it by hand."
+                    "text": "Scripts, tests, OAuth 2.0, and generated values such as {{$guid}} do not carry over. File uploads do, but their paths belong to the computer the file came from: check them. ReqDeck never runs code from an imported file; the list before the import names each case, so you can redo it by hand."
                 },
                 {
                     "type": "tip",

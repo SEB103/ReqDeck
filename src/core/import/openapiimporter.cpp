@@ -308,6 +308,30 @@ public:
                     spec.body.rawType = mime.contains(QLatin1StringView("xml")) ? RawBodyType::Xml : RawBodyType::Text;
                     spec.body.raw = value.isString() ? value.toString() : QString();
                 }
+            } else if (mime.startsWith(QLatin1StringView("multipart/form-data"))) {
+                spec.body.mode = BodyMode::FormData;
+                const QJsonObject schema = resolve(media.value(QLatin1StringView("schema")), where).toObject();
+                const QJsonObject properties = schema.value(QLatin1StringView("properties")).toObject();
+                const QJsonObject encodings = media.value(QLatin1StringView("encoding")).toObject();
+                for (auto it = properties.begin(); it != properties.end(); ++it) {
+                    const QJsonObject property = resolve(it.value(), where).toObject();
+                    FormPart part;
+                    part.key = it.key();
+                    part.contentType = encodings.value(it.key()).toObject().value(QLatin1StringView("contentType")).toString();
+                    const QString format = property.value(QLatin1StringView("format")).toString();
+                    part.isFile = format == QLatin1StringView("binary") || format == QLatin1StringView("base64")
+                                  || property.value(QLatin1StringView("contentMediaType")).isString();
+                    if (part.isFile)
+                        note(where, QStringLiteral("field %1 needs a file; choose one").arg(part.key));
+                    else
+                        part.value = text(example(it.value(), where));
+                    spec.body.parts.append(part);
+                }
+            } else if (mime == QLatin1StringView("application/octet-stream") || mime.startsWith(QLatin1StringView("image/"))
+                       || mime.startsWith(QLatin1StringView("audio/")) || mime.startsWith(QLatin1StringView("video/"))
+                       || mime == QLatin1StringView("application/pdf") || mime == QLatin1StringView("*/*")) {
+                spec.body.mode = BodyMode::File;
+                note(where, QStringLiteral("the body is a file (%1); choose one").arg(mime));
             } else {
                 note(where, QStringLiteral("%1 body").arg(mime));
             }

@@ -113,6 +113,22 @@ public:
 
     /*!
      * \internal
+     * \brief Reports the file \a path of field \a field at \a where: it is a path of the exporting computer.
+     *
+     * An empty \a field means the file body.
+     */
+    void reportFile(const QString &path, const QString &field, const QString &where)
+    {
+        if (path.trimmed().isEmpty()) {
+            report.append(field.isEmpty() ? QStringLiteral("%1: no file for the body; choose one").arg(where)
+                                          : QStringLiteral("%1: field %2 has no file; choose one").arg(where, field));
+        } else {
+            report.append(QStringLiteral("%1: file %2 is a path of the computer the file came from; check it").arg(where, path));
+        }
+    }
+
+    /*!
+     * \internal
      * \brief Reports template tags such as {% uuid %} in \a text at \a where, once each.
      */
     void reportTags(const QString &text, const QString &where)
@@ -151,8 +167,26 @@ public:
         if (mime == QLatin1StringView("application/x-www-form-urlencoded")) {
             spec.body.mode = BodyMode::FormUrlEncoded;
             spec.body.form = rows(body.value(QLatin1StringView("params")));
-        } else if (mime.startsWith(QLatin1StringView("multipart/")) || body.contains(QLatin1StringView("fileName"))) {
-            report.append(QStringLiteral("%1: %2 body").arg(where, mime.isEmpty() ? QStringLiteral("file") : mime));
+        } else if (mime.startsWith(QLatin1StringView("multipart/form-data"))) {
+            spec.body.mode = BodyMode::FormData;
+            for (const QJsonValue &entry : body.value(QLatin1StringView("params")).toArray()) {
+                const QJsonObject param = entry.toObject();
+                FormPart part;
+                part.key = references(param.value(QLatin1StringView("name")).toString());
+                part.enabled = !param.value(QLatin1StringView("disabled")).toBool();
+                part.isFile = param.value(QLatin1StringView("type")).toString() == QLatin1StringView("file");
+                part.value = part.isFile ? param.value(QLatin1StringView("fileName")).toString()
+                                         : references(param.value(QLatin1StringView("value")).toString());
+                if (part.isFile)
+                    reportFile(part.value, part.key, where);
+                spec.body.parts.append(part);
+            }
+        } else if (body.contains(QLatin1StringView("fileName"))) {
+            spec.body.mode = BodyMode::File;
+            spec.body.filePath = body.value(QLatin1StringView("fileName")).toString();
+            reportFile(spec.body.filePath, QString(), where);
+        } else if (mime.startsWith(QLatin1StringView("multipart/"))) {
+            report.append(QStringLiteral("%1: %2 body").arg(where, mime));
         } else if (body.contains(QLatin1StringView("text"))) {
             spec.body.mode = BodyMode::Raw;
             spec.body.raw = references(body.value(QLatin1StringView("text")).toString());
@@ -170,6 +204,8 @@ public:
         QStringList texts {spec.url, spec.body.raw, spec.auth.token, spec.auth.password, spec.auth.apiKeyValue};
         for (const KeyValue &row : spec.queryParams + spec.headers + spec.body.form)
             texts << row.key << row.value;
+        for (const FormPart &part : std::as_const(spec.body.parts))
+            texts << part.key << part.value;
         reportTags(texts.join(u'\n'), where);
         return spec;
     }

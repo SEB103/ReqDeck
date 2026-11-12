@@ -94,6 +94,16 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              properties:
+                caption:
+                  type: string
+                  example: Rex at the beach
+                photo:
+                  type: string
+                  format: binary
+            encoding:
+              photo:
+                contentType: image/png
 components:
   parameters:
     Trace:

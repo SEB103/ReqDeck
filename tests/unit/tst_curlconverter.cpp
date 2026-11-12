@@ -60,6 +60,8 @@ static QStringList validFixtures()
         QStringLiteral("curl --json '{\"a\":1}' https://h"),
         QStringLiteral("curl -G -d 'q=1' -d 'r=2' 'https://h/x?a=0'"),
         QStringLiteral("curl --oauth2-bearer tok https://h"),
+        QStringLiteral("curl https://h/up -F 'title=hello' -F 'doc=@C:/x.png;type=image/png'"),
+        QStringLiteral("curl -X PUT https://h/up -H 'Content-Type: image/png' --data-binary @C:/x.png"),
     };
 }
 
@@ -126,6 +128,12 @@ private slots:
 
     /*! Verifies exported auth, query parameters, and the omitted -X for GET. */
     void emitsAuthAndParams();
+
+    /*! Verifies -F, --form-string, --data-binary @file, and -T. */
+    void parsesFormDataAndFiles();
+
+    /*! Verifies the export of form data parts and a file body. */
+    void emitsFormDataAndFiles();
 
     /*! Verifies that parse, export, and parse again yields the same request. */
     void roundTripIsStable_data();
@@ -346,14 +354,18 @@ void CurlConverterTest::rejectsInvalidInput_data()
     QTest::newRow("method") << QStringLiteral("curl -X FETCH http://h")
                             << QStringLiteral("Unsupported method: FETCH");
     QTest::newRow("file") << QStringLiteral("curl -d @file.json http://h")
-                          << QStringLiteral("File uploads (@file) are not supported.");
+                          << QStringLiteral("Files read with -d @file are changed by curl; use --data-binary @file.");
     QTest::newRow("no-url") << QStringLiteral("curl -H 'A: b'") << QStringLiteral("No URL found.");
     QTest::newRow("urlencode-file") << QStringLiteral("curl --data-urlencode 'q@file.txt' http://h")
                                     << QStringLiteral("File uploads (@file) are not supported.");
-    QTest::newRow("multipart") << QStringLiteral("curl -F 'a=1' http://h")
-                               << QStringLiteral("Multipart form data (-F) is not supported.");
-    QTest::newRow("upload") << QStringLiteral("curl -T f.txt http://h")
-                            << QStringLiteral("File uploads (-T) are not supported.");
+    QTest::newRow("form-from-file") << QStringLiteral("curl -F 'a=<notes.txt' http://h")
+                                    << QStringLiteral("Form text read from a file (name=<file) is not supported.");
+    QTest::newRow("form-no-name") << QStringLiteral("curl -F '=1' http://h")
+                                  << QStringLiteral("Invalid form field: =1");
+    QTest::newRow("form-and-data") << QStringLiteral("curl -F 'a=1' -d 'b=2' http://h")
+                                   << QStringLiteral("Form fields (-F), a file body, and data (-d) cannot be combined.");
+    QTest::newRow("upload-stdin") << QStringLiteral("curl -T - http://h")
+                                  << QStringLiteral("Uploads from standard input or of several files (-T) are not supported.");
     QTest::newRow("cmd") << QStringLiteral("curl ^\"https://h^\" -H ^\"A: b^\"")
                          << QStringLiteral("Windows cmd syntax is not supported; copy the command as cURL (bash).");
 }
@@ -417,6 +429,55 @@ void CurlConverterTest::roundTripIsStable_data()
     const QStringList fixtures = validFixtures();
     for (qsizetype i = 0; i < fixtures.size(); ++i)
         QTest::addRow("fixture-%lld", static_cast<long long>(i)) << fixtures.at(i);
+}
+
+void CurlConverterTest::parsesFormDataAndFiles()
+{
+    CurlConverter::ParseResult result = CurlConverter::parse(
+        QStringLiteral("curl https://h/up -F 'title=hi;type=text/plain' -F 'doc=@C:/Docs/a b.pdf' --form-string 'raw=@x;y'"));
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QCOMPARE(result.request.method, HttpMethod::Post);
+    QCOMPARE(result.request.body.mode, BodyMode::FormData);
+    const QList<FormPart> &parts = result.request.body.parts;
+    QCOMPARE(parts.size(), 3);
+    QCOMPARE(parts.at(0).value, QStringLiteral("hi"));
+    QCOMPARE(parts.at(0).contentType, QStringLiteral("text/plain"));
+    QVERIFY(parts.at(1).isFile);
+    QCOMPARE(parts.at(1).value, QStringLiteral("C:/Docs/a b.pdf"));
+    QVERIFY(!parts.at(2).isFile);
+    QCOMPARE(parts.at(2).value, QStringLiteral("@x;y"));
+
+    result = CurlConverter::parse(QStringLiteral("curl https://h/up --data-binary @photo.png"));
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QCOMPARE(result.request.method, HttpMethod::Post);
+    QCOMPARE(result.request.body.mode, BodyMode::File);
+    QCOMPARE(result.request.body.filePath, QStringLiteral("photo.png"));
+
+    result = CurlConverter::parse(QStringLiteral("curl -T backup.zip https://h/files/backup.zip"));
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QCOMPARE(result.request.method, HttpMethod::Put);
+    QCOMPARE(result.request.body.filePath, QStringLiteral("backup.zip"));
+}
+
+void CurlConverterTest::emitsFormDataAndFiles()
+{
+    RequestSpec spec;
+    spec.method = HttpMethod::Post;
+    spec.url = QStringLiteral("https://h/up");
+    spec.body.mode = BodyMode::FormData;
+    spec.body.parts = {{QStringLiteral("title"), QStringLiteral("it's"), true, false, QString()},
+                       {QStringLiteral("off"), QStringLiteral("x"), false, false, QString()},
+                       {QStringLiteral("doc"), QStringLiteral("C:/a.pdf"), true, true, QStringLiteral("application/pdf")}};
+    QString command = CurlConverter::toCurl(spec);
+    QVERIFY2(command.contains(QStringLiteral("--form-string 'title=it'\\''s'")), qPrintable(command));
+    QVERIFY2(command.contains(QStringLiteral("-F 'doc=@C:/a.pdf;type=application/pdf'")), qPrintable(command));
+    QVERIFY(!command.contains(QStringLiteral("off=")));
+
+    spec.body.mode = BodyMode::File;
+    spec.body.filePath = QStringLiteral("C:/photo.png");
+    command = CurlConverter::toCurl(spec);
+    QVERIFY2(command.contains(QStringLiteral("-H 'Content-Type: image/png'")), qPrintable(command));
+    QVERIFY(command.contains(QStringLiteral("--data-binary '@C:/photo.png'")));
 }
 
 void CurlConverterTest::roundTripIsStable()
