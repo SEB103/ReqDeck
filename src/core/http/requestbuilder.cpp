@@ -250,6 +250,7 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
     switch (spec.auth.type) {
     case AuthType::None:
     case AuthType::Inherit: // Resolved from the folders before building; none is left here.
+    case AuthType::OAuth2: // RequestEditor adds the token as a header before building.
         break;
     case AuthType::Basic: {
         const QByteArray credentials =

@@ -53,6 +53,9 @@ private slots:
     /*! Verifies that a request with its own auth keeps it. */
     void requestAuthWinsOverFolder();
 
+    /*! Verifies that an OAuth 2.0 folder auth is inherited with all its settings. */
+    void inheritsOAuthSettings();
+
     /*! Verifies that Inherit finds the nearest folder that sets an auth. */
     void inheritsNearestFolderAuth();
 
@@ -65,6 +68,28 @@ private slots:
     /*! Verifies that an unknown request inherits nothing and Inherit becomes no auth. */
     void unknownRequestInheritsNothing();
 };
+
+void InheritanceTest::inheritsOAuthSettings()
+{
+    CollectionNode request;
+    request.id = QStringLiteral("r");
+    request.kind = CollectionNode::Kind::Request;
+    CollectionNode folder;
+    folder.id = QStringLiteral("f");
+    folder.kind = CollectionNode::Kind::Folder;
+    folder.folder.auth.type = AuthType::OAuth2;
+    folder.folder.auth.oauth2.grant = OAuthGrant::ClientCredentials;
+    folder.folder.auth.oauth2.tokenUrl = QStringLiteral("https://id.test/token");
+    folder.folder.auth.oauth2.clientId = QStringLiteral("app");
+    folder.children = {request};
+    RequestAuth own;
+    own.type = AuthType::Inherit;
+
+    const InheritedSettings inherited = inheritedSettings({folder}, QStringLiteral("r"), own);
+
+    QCOMPARE(inherited.auth.type, AuthType::OAuth2);
+    QCOMPARE(inherited.auth.oauth2, folder.folder.auth.oauth2);
+}
 
 void InheritanceTest::requestAuthWinsOverFolder()
 {

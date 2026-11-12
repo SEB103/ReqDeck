@@ -36,6 +36,9 @@ static RequestSpec makeFullRequest(HttpMethod method)
     spec.auth.apiKeyName = QStringLiteral("key");
     spec.auth.apiKeyValue = QStringLiteral("{{secret}}");
     spec.auth.apiKeyLocation = ApiKeyLocation::Query;
+    spec.auth.oauth2 = {OAuthGrant::ClientCredentials, QStringLiteral("https://id.test/authorize"),
+                        QStringLiteral("{{idp}}/token"), QStringLiteral("app"), QStringLiteral("{{clientSecret}}"),
+                        QStringLiteral("read write"), QStringLiteral("api://shop")};
     spec.timeoutMs = 5000;
     return spec;
 }
@@ -122,6 +125,7 @@ void RequestJsonTest::roundTripPreservesBodyAndAuthModes_data()
     QTest::newRow("xml-inherit") << BodyMode::Raw << RawBodyType::Xml << AuthType::Inherit;
     QTest::newRow("formdata-bearer") << BodyMode::FormData << RawBodyType::Json << AuthType::Bearer;
     QTest::newRow("file-none") << BodyMode::File << RawBodyType::Json << AuthType::None;
+    QTest::newRow("json-oauth2") << BodyMode::Raw << RawBodyType::Json << AuthType::OAuth2;
 }
 
 void RequestJsonTest::roundTripPreservesBodyAndAuthModes()
@@ -212,6 +216,9 @@ void RequestJsonTest::rejectsInvalidMembers_data()
     QTest::newRow("file-number") << QByteArray("{\"body\":{\"file\":3}}");
     QTest::newRow("auth-type") << QByteArray("{\"auth\":{\"type\":\"digest\"}}");
     QTest::newRow("key-location") << QByteArray("{\"auth\":{\"apiKeyLocation\":\"cookie\"}}");
+    QTest::newRow("oauth-grant") << QByteArray("{\"auth\":{\"oauth2\":{\"grant\":\"password\"}}}");
+    QTest::newRow("oauth-string") << QByteArray("{\"auth\":{\"oauth2\":\"x\"}}");
+    QTest::newRow("oauth-url-number") << QByteArray("{\"auth\":{\"oauth2\":{\"tokenUrl\":1}}}");
     QTest::newRow("timeout-negative") << QByteArray("{\"timeoutMs\":-1}");
     QTest::newRow("timeout-fraction") << QByteArray("{\"timeoutMs\":1.5}");
     QTest::newRow("timeout-string") << QByteArray("{\"timeoutMs\":\"5\"}");

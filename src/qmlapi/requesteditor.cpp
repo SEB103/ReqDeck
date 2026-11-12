@@ -247,6 +247,7 @@ QString RequestEditor::literalCredential() const
         return literal(m_request.auth.apiKeyValue) ? QStringLiteral("apiKey") : QString();
     case AuthType::None:
     case AuthType::Inherit:
+    case AuthType::OAuth2: // The client secret gets its own offer with the OAuth fields.
         break;
     }
     return {};

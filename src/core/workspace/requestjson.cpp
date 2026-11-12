@@ -46,12 +46,22 @@ constexpr std::array<Token<RawBodyType>, 3> kRawTypeTokens {{
  * \internal
  * \brief Tokens of AuthType.
  */
-constexpr std::array<Token<AuthType>, 5> kAuthTypeTokens {{
+constexpr std::array<Token<AuthType>, 6> kAuthTypeTokens {{
     {AuthType::None, QLatin1StringView("none")},
     {AuthType::Basic, QLatin1StringView("basic")},
     {AuthType::Bearer, QLatin1StringView("bearer")},
     {AuthType::ApiKey, QLatin1StringView("apiKey")},
     {AuthType::Inherit, QLatin1StringView("inherit")},
+    {AuthType::OAuth2, QLatin1StringView("oauth2")},
+}};
+
+/*!
+ * \internal
+ * \brief Tokens of OAuthGrant.
+ */
+constexpr std::array<Token<OAuthGrant>, 2> kGrantTokens {{
+    {OAuthGrant::AuthorizationCode, QLatin1StringView("authorizationCode")},
+    {OAuthGrant::ClientCredentials, QLatin1StringView("clientCredentials")},
 }};
 
 /*!
@@ -243,6 +253,18 @@ QJsonObject authObject(const RequestAuth &auth)
     if (auth.apiKeyLocation != ApiKeyLocation::Header) {
         object.insert(QLatin1StringView("apiKeyLocation"),
                       tokenOf(auth.apiKeyLocation, kKeyLocationTokens));
+    }
+    if (auth.oauth2 != OAuth2Settings()) {
+        QJsonObject oauth;
+        if (auth.oauth2.grant != OAuthGrant::AuthorizationCode)
+            oauth.insert(QLatin1StringView("grant"), tokenOf(auth.oauth2.grant, kGrantTokens));
+        insertText(oauth, QLatin1StringView("authUrl"), auth.oauth2.authUrl);
+        insertText(oauth, QLatin1StringView("tokenUrl"), auth.oauth2.tokenUrl);
+        insertText(oauth, QLatin1StringView("clientId"), auth.oauth2.clientId);
+        insertText(oauth, QLatin1StringView("clientSecret"), auth.oauth2.clientSecret);
+        insertText(oauth, QLatin1StringView("scope"), auth.oauth2.scope);
+        insertText(oauth, QLatin1StringView("audience"), auth.oauth2.audience);
+        object.insert(QLatin1StringView("oauth2"), oauth);
     }
     return object;
 }
@@ -465,6 +487,19 @@ std::optional<RequestAuth> authFromJson(const QJsonObject &object, QString *erro
         || !readText(object, QLatin1StringView("apiKeyName"), auth.apiKeyName)
         || !readText(object, QLatin1StringView("apiKeyValue"), auth.apiKeyValue)) {
         return invalidMember(errorString, QStringLiteral("auth"));
+    }
+    const QJsonValue oauthValue = object.value(QLatin1StringView("oauth2"));
+    if (!oauthValue.isUndefined() && !oauthValue.isObject())
+        return invalidMember(errorString, QStringLiteral("auth.oauth2"));
+    const QJsonObject oauth = oauthValue.toObject();
+    if (!readToken(oauth, QLatin1StringView("grant"), kGrantTokens, auth.oauth2.grant)
+        || !readText(oauth, QLatin1StringView("authUrl"), auth.oauth2.authUrl)
+        || !readText(oauth, QLatin1StringView("tokenUrl"), auth.oauth2.tokenUrl)
+        || !readText(oauth, QLatin1StringView("clientId"), auth.oauth2.clientId)
+        || !readText(oauth, QLatin1StringView("clientSecret"), auth.oauth2.clientSecret)
+        || !readText(oauth, QLatin1StringView("scope"), auth.oauth2.scope)
+        || !readText(oauth, QLatin1StringView("audience"), auth.oauth2.audience)) {
+        return invalidMember(errorString, QStringLiteral("auth.oauth2"));
     }
     return auth;
 }

@@ -105,7 +105,38 @@ enum class AuthType {
     Bearer,
     ApiKey,
     /** Takes the auth of the nearest folder above that sets one. */
-    Inherit
+    Inherit,
+    /** OAuth 2.0: a token from the authorization server (see OAuth2Settings). */
+    OAuth2
+};
+
+/** How an OAuth 2.0 token is obtained. */
+enum class OAuthGrant {
+    /** The user logs in in the browser; PKCE protects the code. */
+    AuthorizationCode,
+    /** The client logs in with its own id and secret, without a user. */
+    ClientCredentials
+};
+
+/** Settings of OAuth 2.0; text fields may contain {{variable}} references. */
+struct OAuth2Settings
+{
+    /** How the token is obtained. */
+    OAuthGrant grant {OAuthGrant::AuthorizationCode};
+    /** Authorization endpoint; used only by the authorization code grant. */
+    QString authUrl;
+    /** Token endpoint. */
+    QString tokenUrl;
+    /** Client id. */
+    QString clientId;
+    /** Client secret; empty for public clients. */
+    QString clientSecret;
+    /** Scopes separated by spaces. */
+    QString scope;
+    /** Audience or resource some servers require; empty to send none. */
+    QString audience;
+
+    bool operator==(const OAuth2Settings &) const = default;
 };
 
 /** Where an API key is sent. */
@@ -131,6 +162,8 @@ struct RequestAuth
     QString apiKeyValue;
     /** Whether the API key goes into a header or the query string. */
     ApiKeyLocation apiKeyLocation {ApiKeyLocation::Header};
+    /** OAuth 2.0 settings; tokens are kept apart, never here. */
+    OAuth2Settings oauth2;
 
     bool operator==(const RequestAuth &) const = default;
 };

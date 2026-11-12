@@ -757,6 +757,7 @@ QString CurlConverter::toCurl(const RequestSpec &spec, bool followRedirects, int
     switch (spec.auth.type) {
     case AuthType::None:
     case AuthType::Inherit:
+    case AuthType::OAuth2: // The token is added when sending (D9 Task 4).
         break;
     case AuthType::Basic:
         lines.append(QStringLiteral("-u ") + shellQuote(spec.auth.username + u':' + spec.auth.password));
