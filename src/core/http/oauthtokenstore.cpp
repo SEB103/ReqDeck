@@ -53,8 +53,9 @@ OAuthTokenStore::OAuthTokenStore(QObject *parent)
  * \brief Returns the key of the token that \a settings get for the node \a nodeId.
  *
  * "<nodeId>/<hash>", where the hash covers everything that decides which
- * token the server gives, the secret included; the secret itself is not in
- * the key.
+ * token the server gives. The client secret is left out: it may be a
+ * one-time value at a send, and a token got with an older secret stays
+ * valid at the server anyway.
  * \param nodeId The request or folder whose auth holds the settings.
  * \param settings The settings with variables resolved.
  */
@@ -62,8 +63,8 @@ QString OAuthTokenStore::keyFor(const QString &nodeId, const OAuth2Settings &set
 {
     QCryptographicHash hash(QCryptographicHash::Sha256);
     for (const QString &part : {QString::number(int(settings.grant)), settings.authUrl.trimmed(),
-                                settings.tokenUrl.trimmed(), settings.clientId.trimmed(), settings.clientSecret,
-                                settings.scope.trimmed(), settings.audience.trimmed()}) {
+                                settings.tokenUrl.trimmed(), settings.clientId.trimmed(), settings.scope.trimmed(),
+                                settings.audience.trimmed()}) {
         hash.addData(part.toUtf8());
         hash.addData(QByteArrayView("\x1f", 1));
     }

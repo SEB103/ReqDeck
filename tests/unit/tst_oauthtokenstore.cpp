@@ -14,7 +14,7 @@ class OAuthTokenStoreTest : public QObject
     Q_OBJECT
 
 private slots:
-    /*! Verifies that a changed setting gives another key, and the secret stays out of it. */
+    /*! Verifies that a changed setting gives another key, while the secret is no part of it. */
     void changedSettingsNeedNewToken();
 
     /*! Verifies keeping, replacing, and resetting tokens by node, and the kept refresh token. */
@@ -52,13 +52,15 @@ void OAuthTokenStoreTest::changedSettingsNeedNewToken()
     for (auto change : {+[](OAuth2Settings &s) { s.clientId = QStringLiteral("other"); },
                         +[](OAuth2Settings &s) { s.scope = QStringLiteral("admin"); },
                         +[](OAuth2Settings &s) { s.tokenUrl = QStringLiteral("https://evil.test/token"); },
-                        +[](OAuth2Settings &s) { s.grant = OAuthGrant::ClientCredentials; },
-                        +[](OAuth2Settings &s) { s.clientSecret = QStringLiteral("rotated"); }}) {
+                        +[](OAuth2Settings &s) { s.grant = OAuthGrant::ClientCredentials; }}) {
         OAuth2Settings changed = settings;
         change(changed);
         QVERIFY(OAuthTokenStore::keyFor(QStringLiteral("r1"), changed) != key);
     }
     QVERIFY(OAuthTokenStore::keyFor(QStringLiteral("r2"), settings) != key);
+    OAuth2Settings rotated = settings;
+    rotated.clientSecret = QStringLiteral("rotated");
+    QCOMPARE(OAuthTokenStore::keyFor(QStringLiteral("r1"), rotated), key);
 }
 
 void OAuthTokenStoreTest::keepsAndResets()

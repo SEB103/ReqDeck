@@ -42,6 +42,7 @@ InheritedSettings inheritedSettings(const QList<CollectionNode> &collection, con
 {
     InheritedSettings settings;
     settings.auth = own.type == AuthType::Inherit ? RequestAuth() : own;
+    settings.authOwnerId = requestId;
 
     QList<const CollectionNode *> path;
     if (!findPath(collection, requestId, path))
@@ -55,6 +56,7 @@ InheritedSettings inheritedSettings(const QList<CollectionNode> &collection, con
             const RequestAuth &auth = (*it)->folder.auth;
             if (auth.type != AuthType::Inherit) {
                 settings.auth = auth;
+                settings.authOwnerId = (*it)->id;
                 break;
             }
         }

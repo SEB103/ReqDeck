@@ -17,6 +17,8 @@
 
 class CollectionTreeModel;
 class HttpExecutor;
+class OAuthClient;
+struct OAuthResult;
 class TabsModel;
 class FormPartModel;
 class KeyValueModel;
@@ -85,6 +87,12 @@ class RequestEditor : public QObject
      * workspace file.
      */
     Q_PROPERTY(QString literalCredential READ literalCredential NOTIFY requestChanged)
+
+    /** Whether an OAuth 2.0 login or token request is running. */
+    Q_PROPERTY(bool oauthBusy READ oauthBusy NOTIFY oauthChanged)
+
+    /** State of the OAuth 2.0 token of the open request, for the user. */
+    Q_PROPERTY(QString oauthStatus READ oauthStatus NOTIFY oauthChanged)
 
     /** API key header or parameter name. */
     Q_PROPERTY(QString apiKeyName READ apiKeyName WRITE setApiKeyName NOTIFY requestChanged)
@@ -281,6 +289,21 @@ public:
     /** Copies the open request to the clipboard as a cURL command. */
     Q_INVOKABLE void copyAsCurl();
 
+    /** Returns whether an OAuth 2.0 login or token request is running. */
+    bool oauthBusy() const;
+
+    /** Returns the state of the OAuth 2.0 token of the open request. */
+    QString oauthStatus() const;
+
+    /** Gets an OAuth 2.0 token for the open request: in the browser, or with the client's credentials. */
+    Q_INVOKABLE void getToken();
+
+    /** Stops a running OAuth 2.0 login. */
+    Q_INVOKABLE void cancelLogin();
+
+    /** Removes the OAuth 2.0 tokens of the node whose settings the open request uses. */
+    Q_INVOKABLE void resetToken();
+
     /** Checks a cURL \a command; the map holds ok, error, summary, and ignored. */
     Q_INVOKABLE QVariantMap checkCurl(const QString &command) const;
 
@@ -296,6 +319,9 @@ signals:
 
     /** Emitted after copyAsCurl() wrote to the clipboard. */
     void copiedToClipboard();
+
+    /** Emitted when oauthBusy() or oauthStatus() changes. */
+    void oauthChanged();
 
     /** Emitted when busy() changes. */
     void busyChanged();
@@ -388,6 +414,46 @@ private:
 
     /** Tabs followed, or null; not owned. */
     TabsModel *m_tabs {nullptr};
+
+    /** The OAuth 2.0 settings of the open request, resolved, with their owner and store key. */
+    struct OAuthContext
+    {
+        /** Whether the open request uses OAuth 2.0. */
+        bool active {false};
+        /** Node whose auth holds the settings. */
+        QString owner;
+        /** Settings with variables resolved. */
+        OAuth2Settings settings;
+        /** Key of the token in the store. */
+        QString key;
+    };
+
+    /** Returns the OAuth context of the open request with the one-time values \a extra. */
+    OAuthContext oauthContext(const QList<KeyValue> &extra = {}) const;
+
+    /** Stores the token of \a result, then sends again or reports, as the running OAuth step asked. */
+    void finishOAuth(const OAuthResult &result);
+
+    /** Gets tokens; owned through the QObject tree. */
+    OAuthClient *m_oauth {nullptr};
+
+    /** Key of the token the running OAuth step gets. */
+    QString m_oauthKey;
+
+    /** Whether the running OAuth step should send the request of m_oauthSendKey afterwards. */
+    bool m_oauthThenSend {false};
+
+    /** Send key of the request waiting for a token. */
+    int m_oauthSendKey {0};
+
+    /** Certificate exception of the request waiting for a token. */
+    TlsCheck m_oauthTls;
+
+    /** One-time values of the request waiting for a token; never stored. */
+    QList<KeyValue> m_oauthExtra;
+
+    /** Last OAuth error for the user, or empty. */
+    QString m_oauthError;
 
     /** Defaults requests are built with. */
     RequestBuilder::Options m_builderOptions;

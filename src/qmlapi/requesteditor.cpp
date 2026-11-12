@@ -4,6 +4,7 @@
 #include "qmlapi/requesteditor.h"
 
 #include <QClipboard>
+#include <QDesktopServices>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QLocale>
@@ -12,6 +13,8 @@
 
 #include "core/http/curlconverter.h"
 #include "core/http/httpexecutor.h"
+#include "core/http/oauthclient.h"
+#include "core/http/oauthtokenstore.h"
 #include "core/http/variableresolver.h"
 #include "core/workspace/collectiontree.h"
 #include "core/workspace/inheritance.h"
@@ -40,7 +43,11 @@ RequestEditor::RequestEditor(WorkspaceManager *manager, CollectionTreeModel *col
     , m_headers(new KeyValueModel(this))
     , m_form(new KeyValueModel(this))
     , m_parts(new FormPartModel(this))
+    , m_oauth(new OAuthClient(this))
 {
+    connect(m_oauth, &OAuthClient::finished, this, &RequestEditor::finishOAuth);
+    connect(m_manager->tokenStore(), &OAuthTokenStore::changed, this, &RequestEditor::oauthChanged);
+    connect(this, &RequestEditor::requestChanged, this, &RequestEditor::oauthChanged);
     connect(m_collection, &CollectionTreeModel::collectionChanged, this,
             &RequestEditor::syncWithCollection);
     connect(m_params, &KeyValueModel::edited, this, &RequestEditor::storeTables);
@@ -534,8 +541,48 @@ void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue
     send.name = m_name;
     send.requestId = m_requestId;
     QList<KeyValue> rows;
-    const RequestSpec request = effectiveRequest(rows);
+    RequestSpec request = effectiveRequest(rows);
     const VariableResolver variables = VariableResolver::fromKeyValues(rows + extra);
+
+    // OAuth 2.0: a usable token goes in as a header; otherwise one is fetched
+    // first when that needs no user, and the send comes back here.
+    if (request.auth.type == AuthType::OAuth2) {
+        const OAuthContext oauth = oauthContext(extra);
+        const std::optional<OAuthToken> token = m_manager->tokenStore()->token(oauth.key);
+        if (token && token->isUsable()) {
+            request.auth.type = AuthType::None;
+            request.headers.append({QStringLiteral("Authorization"),
+                                    (token->tokenType.isEmpty() ? QStringLiteral("Bearer") : token->tokenType) + u' '
+                                        + token->accessToken,
+                                    true});
+        } else if (!m_oauth->isBusy()
+                   && ((token && !token->refreshToken.isEmpty()) || oauth.settings.grant == OAuthGrant::ClientCredentials)) {
+            m_response->setBusy(m_name, m_requestId);
+            m_oauthKey = oauth.key;
+            m_oauthThenSend = true;
+            m_oauthSendKey = currentKey();
+            m_oauthTls = tlsException;
+            m_oauthExtra = extra;
+            const bool started = token && !token->refreshToken.isEmpty()
+                                     ? m_oauth->refresh(oauth.settings, token->refreshToken)
+                                     : m_oauth->requestClientCredentials(oauth.settings);
+            if (!started) {
+                m_oauthThenSend = false;
+                send.buildError = tr("The OAuth 2.0 token URL is not valid.");
+                m_response->setBuildError(send.buildError, {});
+            }
+            emit oauthChanged();
+            return;
+        } else {
+            m_response->setBusy(m_name, m_requestId);
+            send.response.reset();
+            send.buildError = m_oauth->isBusy() ? tr("A login is running; send again when it is done.")
+                                                : tr("Log in first: press Get Token in the OAuth 2.0 settings.");
+            m_response->setBuildError(send.buildError, {});
+            return;
+        }
+    }
+
     BuiltRequest built = RequestBuilder::build(request, variables, m_builderOptions);
     built.tlsException = tlsException;
 
@@ -624,6 +671,149 @@ void RequestEditor::showResponse(const ResponseData &response)
     }
     // Without tabs the one send has key 0.
     finishSend(0, response);
+}
+
+/*!
+ * \brief Returns whether an OAuth 2.0 login or token request is running.
+ */
+bool RequestEditor::oauthBusy() const
+{
+    return m_oauth->isBusy();
+}
+
+/*!
+ * \brief Returns the state of the OAuth 2.0 token of the open request, for the user.
+ *
+ * Empty when the request does not use OAuth 2.0.
+ */
+QString RequestEditor::oauthStatus() const
+{
+    const OAuthContext oauth = oauthContext();
+    if (!oauth.active)
+        return {};
+    if (m_oauth->isBusy())
+        return tr("Waiting for the login…");
+    if (!m_oauthError.isEmpty())
+        return m_oauthError;
+    const std::optional<OAuthToken> token = m_manager->tokenStore()->token(oauth.key);
+    if (!token)
+        return tr("No token yet.");
+    if (token->isUsable()) {
+        return token->expiresAt.isValid()
+                   ? tr("Token valid until %1.").arg(QLocale().toString(token->expiresAt.toLocalTime().time(), QLocale::ShortFormat))
+                   : tr("Token ready.");
+    }
+    return token->refreshToken.isEmpty() ? tr("The token expired; get a new one.")
+                                         : tr("The token expired; it is renewed on the next send.");
+}
+
+/*!
+ * \brief Gets an OAuth 2.0 token for the open request.
+ *
+ * Authorization Code opens the system browser at the login page and waits
+ * for the callback; Client Credentials asks the token endpoint directly.
+ */
+void RequestEditor::getToken()
+{
+    const OAuthContext oauth = oauthContext();
+    if (!oauth.active || m_oauth->isBusy())
+        return;
+    m_oauthError.clear();
+    m_oauthKey = oauth.key;
+    m_oauthThenSend = false;
+    if (oauth.settings.grant == OAuthGrant::ClientCredentials) {
+        if (!m_oauth->requestClientCredentials(oauth.settings))
+            m_oauthError = tr("The OAuth 2.0 token URL is not valid.");
+    } else {
+        QString error;
+        const QUrl url = m_oauth->startAuthorization(oauth.settings, &error);
+        if (url.isEmpty())
+            m_oauthError = error;
+        else
+            QDesktopServices::openUrl(url);
+    }
+    emit oauthChanged();
+}
+
+/*!
+ * \brief Stops a running OAuth 2.0 login.
+ */
+void RequestEditor::cancelLogin()
+{
+    m_oauthThenSend = false;
+    m_oauth->cancel();
+}
+
+/*!
+ * \brief Removes the OAuth 2.0 tokens of the node whose settings the open request uses.
+ */
+void RequestEditor::resetToken()
+{
+    const OAuthContext oauth = oauthContext();
+    if (!oauth.active)
+        return;
+    m_oauthError.clear();
+    m_manager->tokenStore()->removeNode(oauth.owner);
+    emit oauthChanged();
+}
+
+/*!
+ * \internal
+ * \brief Returns the OAuth context of the open request.
+ *
+ * The settings come from the request or the folder it inherits from, with
+ * variables resolved as a send would resolve them, \a extra included.
+ */
+RequestEditor::OAuthContext RequestEditor::oauthContext(const QList<KeyValue> &extra) const
+{
+    OAuthContext context;
+    if (!hasRequest())
+        return context;
+    const WorkspaceData &data = m_manager->workspaceData();
+    const InheritedSettings inherited = inheritedSettings(data.collection, m_requestId, m_request.auth);
+    if (inherited.auth.type != AuthType::OAuth2)
+        return context;
+    const VariableResolver variables =
+        VariableResolver::fromKeyValues(inherited.variables + activeEnvironmentVariables(data) + extra);
+    const OAuth2Settings &raw = inherited.auth.oauth2;
+    context.active = true;
+    context.owner = inherited.authOwnerId;
+    context.settings = raw;
+    for (QString *field : {&context.settings.authUrl, &context.settings.tokenUrl, &context.settings.clientId,
+                           &context.settings.clientSecret, &context.settings.scope, &context.settings.audience})
+        *field = variables.resolve(*field);
+    context.key = OAuthTokenStore::keyFor(context.owner, context.settings);
+    return context;
+}
+
+/*!
+ * \internal
+ * \brief Stores the token of \a result, then sends again or reports.
+ *
+ * A send that waited for the token goes out only when its tab is still the
+ * current one; otherwise it is dropped, and the next send uses the token.
+ */
+void RequestEditor::finishOAuth(const OAuthResult &result)
+{
+    const bool thenSend = std::exchange(m_oauthThenSend, false);
+    if (result.ok) {
+        m_oauthError.clear();
+        m_manager->tokenStore()->setToken(m_oauthKey, result.token);
+    } else {
+        m_oauthError = result.errorString;
+    }
+    emit oauthChanged();
+    if (!thenSend)
+        return;
+    if (!result.ok) {
+        TabSend &send = sendOf(m_oauthSendKey);
+        send.buildError = result.errorString;
+        if (m_oauthSendKey == currentKey())
+            m_response->setBuildError(result.errorString, {});
+        return;
+    }
+    if (m_oauthSendKey == currentKey())
+        sendBuilt(std::exchange(m_oauthTls, {}), std::exchange(m_oauthExtra, {}));
 }
 
 /*!

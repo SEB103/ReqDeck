@@ -89,6 +89,9 @@ void InheritanceTest::inheritsOAuthSettings()
 
     QCOMPARE(inherited.auth.type, AuthType::OAuth2);
     QCOMPARE(inherited.auth.oauth2, folder.folder.auth.oauth2);
+    QCOMPARE(inherited.authOwnerId, QStringLiteral("f"));
+    own.type = AuthType::Bearer;
+    QCOMPARE(inheritedSettings({folder}, QStringLiteral("r"), own).authOwnerId, QStringLiteral("r"));
 }
 
 void InheritanceTest::requestAuthWinsOverFolder()

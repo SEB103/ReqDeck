@@ -215,6 +215,12 @@ private slots:
     /*! Verifies that selecting a folder leaves the current tab's request in the editor. */
     void folderSelectionKeepsTheTab();
 
+    /*! Verifies that a Client Credentials request gets its token by itself, keeps it, and resets. */
+    void clientCredentialsTokenOnSend();
+
+    /*! Verifies that an Authorization Code request without a token asks to log in and sends nothing. */
+    void authorizationCodeAsksForLogin();
+
     /*! Verifies the file body path, a file URL turned into a path, and the file info. */
     void fileBodyPathAndInfo();
 
@@ -1064,6 +1070,51 @@ void RequestEditorTest::folderSelectionKeepsTheTab()
 
     QCOMPARE(m_editor->requestId(), QStringLiteral("a"));
     QVERIFY(m_editor->hasRequest());
+}
+
+void RequestEditorTest::clientCredentialsTokenOnSend()
+{
+    openRequestAt(QStringLiteral("/echo"));
+    m_editor->setAuthType(int(AuthType::OAuth2));
+    WorkspaceData data = m_manager->workspaceData();
+    RequestSpec request = *m_collection->request(QStringLiteral("other"));
+    request.auth.type = AuthType::OAuth2;
+    request.auth.oauth2.grant = OAuthGrant::ClientCredentials;
+    request.auth.oauth2.tokenUrl = m_server.url(QStringLiteral("/oauth/token")).toString();
+    request.auth.oauth2.clientId = QStringLiteral("app");
+    request.auth.oauth2.clientSecret = QStringLiteral("{{secret}}");
+    QVERIFY(m_collection->updateRequest(QStringLiteral("other"), request));
+    m_editor->load(QStringLiteral("other"));
+    QCOMPARE(m_editor->oauthStatus(), tr("No token yet."));
+
+    m_editor->sendWithValues({{QStringLiteral("secret"), QStringLiteral("s3cret+&=")}});
+
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY2(m_response->bodyText().contains(QStringLiteral("Bearer cc-token")), qPrintable(m_response->bodyText()));
+    QVERIFY(m_editor->oauthStatus().startsWith(tr("Token valid until %1.").left(17)));
+    QVERIFY(!m_collection->request(QStringLiteral("other"))->auth.oauth2.clientSecret.contains(QStringLiteral("s3cret")));
+
+    m_editor->resetToken();
+    QCOMPARE(m_editor->oauthStatus(), tr("No token yet."));
+}
+
+void RequestEditorTest::authorizationCodeAsksForLogin()
+{
+    openRequestAt(QStringLiteral("/echo"));
+    RequestSpec request = *m_collection->request(QStringLiteral("other"));
+    request.auth.type = AuthType::OAuth2;
+    request.auth.oauth2.authUrl = QStringLiteral("https://id.test/authorize");
+    request.auth.oauth2.tokenUrl = m_server.url(QStringLiteral("/oauth/token")).toString();
+    request.auth.oauth2.clientId = QStringLiteral("app");
+    QVERIFY(m_collection->updateRequest(QStringLiteral("other"), request));
+    m_editor->load(QStringLiteral("other"));
+    const int before = m_server.requestCount();
+
+    m_editor->send();
+
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY2(m_response->errorText().contains(tr("Log in first")), qPrintable(m_response->errorText()));
+    QCOMPARE(m_server.requestCount(), before);
 }
 
 void RequestEditorTest::fileBodyPathAndInfo()

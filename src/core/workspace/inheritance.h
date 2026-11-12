@@ -15,6 +15,8 @@ struct InheritedSettings
 {
     /** Effective auth: the request's own, or that of the nearest folder above that sets one. */
     RequestAuth auth;
+    /** Id of the node whose auth that is: the request, or the folder; the request when none sets one. */
+    QString authOwnerId;
     /** Variable rows of the folders, outermost first, so that inner rows win. */
     QList<KeyValue> variables;
 };
