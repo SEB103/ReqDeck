@@ -2968,10 +2968,11 @@ Item {
             host.response.width = 244;
             waitForRendering(host);
 
+            // The Flow lays out again on a later frame, which a slow machine may not have drawn yet.
             for (const name of ["statusChip", "timeLabel", "sizeLabel", "responseTabs"]) {
                 const item = findChild(host.response, name);
-                const right = item.mapToItem(host.response, item.width, 0).x;
-                verify(right <= 244, name + " ends at " + right);
+                tryVerify(() => item.mapToItem(host.response, item.width, 0).x <= 244, 3000,
+                          name + " ends at " + item.mapToItem(host.response, item.width, 0).x);
             }
         }
 
