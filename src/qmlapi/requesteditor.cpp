@@ -91,6 +91,8 @@ bool RequestEditor::hasRequest() const
 
 bool RequestEditor::busy() const
 {
+    if (m_oauthThenSend && m_oauthSendKey == currentKey())
+        return true;
     const auto it = m_sends.constFind(currentKey());
     return it != m_sends.constEnd() && it->executor->isBusy();
 }
@@ -565,29 +567,49 @@ void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue
     // first when that needs no user, and the send comes back here.
     if (request.auth.type == AuthType::OAuth2) {
         const OAuthContext oauth = oauthContext(extra);
-        const std::optional<OAuthToken> token = m_manager->tokenStore()->token(oauth.key);
-        if (token && token->isUsable()) {
+        // A token fetched for this very send is used once even when it expires soon.
+        const std::optional<OAuthToken> fresh = std::exchange(m_freshToken, std::nullopt);
+        const std::optional<OAuthToken> token = fresh ? fresh : m_manager->tokenStore()->token(oauth.key);
+        if (token && (fresh || token->isUsable())) {
+            if (!token->tokenType.isEmpty() && token->tokenType.compare(QLatin1StringView("bearer"), Qt::CaseInsensitive) != 0) {
+                m_response->setBusy(m_name, m_requestId);
+                send.response.reset();
+                send.buildError = tr("The token type %1 is not supported; only Bearer tokens are.").arg(token->tokenType);
+                m_response->setBuildError(send.buildError, {});
+                return;
+            }
             request.auth.type = AuthType::None;
-            request.headers.append({QStringLiteral("Authorization"),
-                                    (token->tokenType.isEmpty() ? QStringLiteral("Bearer") : token->tokenType) + u' '
-                                        + token->accessToken,
-                                    true});
+            // The token replaces an Authorization header typed in the request, as other auth does.
+            request.headers.removeIf([](const KeyValue &row) {
+                return row.key.trimmed().compare(QLatin1StringView("Authorization"), Qt::CaseInsensitive) == 0;
+            });
+            request.headers.append({QStringLiteral("Authorization"), QStringLiteral("Bearer ") + token->accessToken, true});
+        } else if (fresh) {
+            m_response->setBusy(m_name, m_requestId);
+            send.buildError = tr("The authorization server gave no usable token.");
+            m_response->setBuildError(send.buildError, {});
+            return;
         } else if (!m_oauth->isBusy()
                    && ((token && !token->refreshToken.isEmpty()) || oauth.settings.grant == OAuthGrant::ClientCredentials)) {
             m_response->setBusy(m_name, m_requestId);
             m_oauthKey = oauth.key;
             m_oauthThenSend = true;
             m_oauthSendKey = currentKey();
+            m_oauthRequestId = m_requestId;
+            m_oauthWorkspaceId = m_manager->workspaceData().id;
             m_oauthTls = tlsException;
             m_oauthExtra = extra;
-            const bool started = token && !token->refreshToken.isEmpty()
-                                     ? m_oauth->refresh(oauth.settings, token->refreshToken)
-                                     : m_oauth->requestClientCredentials(oauth.settings);
+            m_oauthIsRefresh = token && !token->refreshToken.isEmpty();
+            const bool started = m_oauthIsRefresh ? m_oauth->refresh(oauth.settings, token->refreshToken)
+                                                  : m_oauth->requestClientCredentials(oauth.settings);
             if (!started) {
                 m_oauthThenSend = false;
+                m_oauthExtra.clear();
                 send.buildError = tr("The OAuth 2.0 token URL is not valid.");
                 m_response->setBuildError(send.buildError, {});
             }
+            emit busyChanged();
+            emit canSendChanged();
             emit oauthChanged();
             return;
         } else {
@@ -622,6 +644,11 @@ void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue
  */
 void RequestEditor::cancel()
 {
+    // A send waiting for its token stops with the token request.
+    if (m_oauthThenSend && m_oauthSendKey == currentKey()) {
+        m_oauth->cancel();
+        return;
+    }
     const auto it = m_sends.constFind(currentKey());
     if (it != m_sends.constEnd())
         it->executor->abort();
@@ -738,16 +765,21 @@ void RequestEditor::getToken()
     m_oauthError.clear();
     m_oauthKey = oauth.key;
     m_oauthThenSend = false;
+    m_oauthIsRefresh = false;
+    m_oauthRequestId = m_requestId;
+    m_oauthWorkspaceId = m_manager->workspaceData().id;
     if (oauth.settings.grant == OAuthGrant::ClientCredentials) {
         if (!m_oauth->requestClientCredentials(oauth.settings))
             m_oauthError = tr("The OAuth 2.0 token URL is not valid.");
     } else {
         QString error;
         const QUrl url = m_oauth->startAuthorization(oauth.settings, &error);
-        if (url.isEmpty())
+        if (url.isEmpty()) {
             m_oauthError = error;
-        else
-            QDesktopServices::openUrl(url);
+        } else if (!QDesktopServices::openUrl(url)) {
+            m_oauth->cancel();
+            m_oauthError = tr("The browser could not be opened.");
+        }
     }
     emit oauthChanged();
 }
@@ -757,7 +789,7 @@ void RequestEditor::getToken()
  */
 void RequestEditor::cancelLogin()
 {
-    m_oauthThenSend = false;
+    // A waiting send hears of it through finishOAuth().
     m_oauth->cancel();
 }
 
@@ -813,24 +845,44 @@ RequestEditor::OAuthContext RequestEditor::oauthContext(const QList<KeyValue> &e
 void RequestEditor::finishOAuth(const OAuthResult &result)
 {
     const bool thenSend = std::exchange(m_oauthThenSend, false);
-    if (result.ok) {
+    const TlsCheck tls = std::exchange(m_oauthTls, {});
+    const QList<KeyValue> extra = std::exchange(m_oauthExtra, {});
+    // A token of a workspace that was closed meanwhile must not land in another one.
+    const bool sameWorkspace = m_manager->workspaceData().id == m_oauthWorkspaceId;
+    if (result.ok && sameWorkspace) {
         m_oauthError.clear();
-        m_manager->tokenStore()->setToken(m_oauthKey, result.token);
-    } else {
+        m_manager->tokenStore()->setToken(m_oauthKey, result.token, m_oauthIsRefresh);
+    } else if (!result.ok) {
         m_oauthError = result.errorString;
+        // A refresh token the server refused is dropped, so the next send asks for a login.
+        if (m_oauthIsRefresh && sameWorkspace) {
+            if (std::optional<OAuthToken> stale = m_manager->tokenStore()->token(m_oauthKey)) {
+                stale->refreshToken.clear();
+                m_manager->tokenStore()->setToken(m_oauthKey, *stale);
+            }
+        }
     }
+    emit busyChanged();
+    emit canSendChanged();
     emit oauthChanged();
-    if (!thenSend)
+    if (!thenSend || !sameWorkspace)
         return;
+    const bool sameRequest = m_oauthSendKey == currentKey() && m_oauthRequestId == m_requestId;
     if (!result.ok) {
         TabSend &send = sendOf(m_oauthSendKey);
         send.buildError = result.errorString;
-        if (m_oauthSendKey == currentKey())
+        if (sameRequest)
             m_response->setBuildError(result.errorString, {});
         return;
     }
-    if (m_oauthSendKey == currentKey())
-        sendBuilt(std::exchange(m_oauthTls, {}), std::exchange(m_oauthExtra, {}));
+    // Sent only when the same request is still open in the same tab.
+    if (sameRequest) {
+        m_freshToken = result.token;
+        sendBuilt(tls, extra);
+        m_freshToken.reset();
+    } else if (m_oauthSendKey == currentKey()) {
+        m_response->clear();
+    }
 }
 
 /*!
@@ -961,6 +1013,9 @@ void RequestEditor::dropTab(int tabId)
  */
 void RequestEditor::dropResponse()
 {
+    // A login or token request of the old workspace ends here.
+    m_oauthThenSend = false;
+    m_oauth->cancel();
     const QHash<int, TabSend> sends = std::exchange(m_sends, {});
     for (const TabSend &send : sends) {
         send.executor->abort();

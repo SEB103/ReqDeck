@@ -68,11 +68,13 @@ void OAuthTokenStoreTest::keepsAndResets()
     OAuthTokenStore store;
     QSignalSpy changed(&store, &OAuthTokenStore::changed);
     store.setToken(QStringLiteral("r1/a"), makeToken(QStringLiteral("t1"), QStringLiteral("refresh-1")));
-    store.setToken(QStringLiteral("r1/a"), makeToken(QStringLiteral("t2"), QString()));
+    store.setToken(QStringLiteral("r1/a"), makeToken(QStringLiteral("t2"), QString()), true);
     store.setToken(QStringLiteral("r10/a"), makeToken(QStringLiteral("other"), QString()));
 
     QCOMPARE(store.token(QStringLiteral("r1/a"))->accessToken, QStringLiteral("t2"));
     QCOMPARE(store.token(QStringLiteral("r1/a"))->refreshToken, QStringLiteral("refresh-1"));
+    store.setToken(QStringLiteral("r1/a"), makeToken(QStringLiteral("t3"), QString()));
+    QVERIFY(store.token(QStringLiteral("r1/a"))->refreshToken.isEmpty());
     QVERIFY(store.hasNode(QStringLiteral("r1")));
     QVERIFY(!store.token(QStringLiteral("r1/b")));
 
@@ -80,7 +82,7 @@ void OAuthTokenStoreTest::keepsAndResets()
     QVERIFY(!store.hasNode(QStringLiteral("r1")));
     QVERIFY(store.hasNode(QStringLiteral("r10")));
     QVERIFY(!store.removeNode(QStringLiteral("r1")));
-    QCOMPARE(changed.count(), 4);
+    QCOMPARE(changed.count(), 5);
 }
 
 void OAuthTokenStoreTest::savesEncrypted()

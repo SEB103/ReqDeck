@@ -615,6 +615,7 @@ RequestSpec HistoryStore::redacted(const RequestSpec &spec)
     clearLiteral(result.auth.password);
     clearLiteral(result.auth.token);
     clearLiteral(result.auth.apiKeyValue);
+    clearLiteral(result.auth.oauth2.clientSecret);
 
     // Basic without a password has the secret in the user name, as in curl -u token:
     if (spec.auth.type == AuthType::Basic && spec.auth.password.isEmpty())

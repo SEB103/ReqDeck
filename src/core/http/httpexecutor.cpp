@@ -148,7 +148,7 @@ HttpExecutor::HttpExecutor(QObject *parent)
     , m_network(new QNetworkAccessManager(this))
 {
     m_network->setCookieJar(nullptr);
-    m_network->setProxyFactory(new SystemProxyFactory);
+    useSystemProxy(m_network);
 }
 
 qint64 HttpExecutor::bodyMemoryLimit() const
@@ -282,6 +282,17 @@ CookieStore *HttpExecutor::cookieStore() const
 void HttpExecutor::setCookieStore(CookieStore *store)
 {
     m_cookies = store;
+}
+
+/*!
+ * \brief Makes \a manager use the system proxy, except for this computer.
+ *
+ * Token requests of OAuthClient go the same way as sends.
+ * \param manager The network manager; it takes the factory.
+ */
+void HttpExecutor::useSystemProxy(QNetworkAccessManager *manager)
+{
+    manager->setProxyFactory(new SystemProxyFactory);
 }
 
 /*!

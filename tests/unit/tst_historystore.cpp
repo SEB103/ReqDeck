@@ -62,6 +62,9 @@ private slots:
 
     /*! Verifies that literal credential headers are cleared. */
     void redactsLiteralCredentialHeaders_data();
+
+    /*! Verifies that a literal OAuth client secret is dropped, and a variable kept. */
+    void redactsOAuthClientSecret();
     /*! Runs one credential header case. */
     void redactsLiteralCredentialHeaders();
 
@@ -808,6 +811,19 @@ void HistoryStoreTest::clearWhileLockedKeepsEntries()
     QVERIFY(!error.isEmpty());
     QCOMPARE(store.entries().size(), 1);
     QVERIFY(QFile::exists(path));
+}
+
+void HistoryStoreTest::redactsOAuthClientSecret()
+{
+    RequestSpec spec;
+    spec.url = QStringLiteral("https://h.test/");
+    spec.auth.type = AuthType::OAuth2;
+    spec.auth.oauth2.clientId = QStringLiteral("app");
+    spec.auth.oauth2.clientSecret = QStringLiteral("literal-secret");
+    QVERIFY(HistoryStore::redacted(spec).auth.oauth2.clientSecret.isEmpty());
+    QCOMPARE(HistoryStore::redacted(spec).auth.oauth2.clientId, QStringLiteral("app"));
+    spec.auth.oauth2.clientSecret = QStringLiteral("{{clientSecret}}");
+    QCOMPARE(HistoryStore::redacted(spec).auth.oauth2.clientSecret, QStringLiteral("{{clientSecret}}"));
 }
 
 QTEST_GUILESS_MAIN(HistoryStoreTest)

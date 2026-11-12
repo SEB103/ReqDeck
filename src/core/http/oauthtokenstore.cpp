@@ -85,13 +85,16 @@ std::optional<OAuthToken> OAuthTokenStore::token(const QString &key) const
 /*!
  * \brief Keeps \a token under \a key, replacing the token kept before.
  *
- * A token without a refresh token keeps the one kept before, as RFC 6749
- * section 6 allows the server to leave it out of a refresh.
+ * After a refresh without a new refresh token the old one stays, as RFC 6749
+ * section 6 allows the server to leave it out; a new login replaces it.
+ * \param key The key from keyFor().
+ * \param token The token.
+ * \param fromRefresh Whether the token came from a refresh.
  */
-void OAuthTokenStore::setToken(const QString &key, const OAuthToken &token)
+void OAuthTokenStore::setToken(const QString &key, const OAuthToken &token, bool fromRefresh)
 {
     OAuthToken kept = token;
-    if (kept.refreshToken.isEmpty()) {
+    if (fromRefresh && kept.refreshToken.isEmpty()) {
         if (const auto old = m_tokens.constFind(key); old != m_tokens.constEnd())
             kept.refreshToken = old->refreshToken;
     }
@@ -141,6 +144,9 @@ void OAuthTokenStore::clear()
  *
  * The store is emptied first, also when reading fails. A missing file is an
  * empty store.
+ * \param path The tokens file of the workspace.
+ * \param cipher The cipher that encrypted it.
+ * \param errorString Receives the reason of a failure; may be null.
  * \return False when the file exists but cannot be read or decrypted.
  */
 bool OAuthTokenStore::load(const QString &path, const SecretCipher &cipher, QString *errorString)
@@ -180,6 +186,9 @@ bool OAuthTokenStore::load(const QString &path, const SecretCipher &cipher, QStr
  * \brief Saves the tokens to \a path, encrypted for the Windows user.
  *
  * Without any token the file is removed.
+ * \param path The tokens file of the workspace.
+ * \param cipher The cipher to encrypt with.
+ * \param errorString Receives the reason of a failure; may be null.
  * \return True on success.
  */
 bool OAuthTokenStore::save(const QString &path, const SecretCipher &cipher, QString *errorString) const

@@ -14,6 +14,8 @@
 #include <QTcpSocket>
 #include <QUrlQuery>
 
+#include "core/http/httpexecutor.h"
+
 #include <chrono>
 
 namespace {
@@ -79,6 +81,7 @@ OAuthClient::OAuthClient(QObject *parent)
     , m_network(new QNetworkAccessManager(this))
 {
     m_network->setCookieJar(nullptr);
+    HttpExecutor::useSystemProxy(m_network);
     m_timeout.setSingleShot(true);
     m_timeout.setInterval(kCallbackTimeoutMs);
     connect(&m_timeout, &QTimer::timeout, this, [this]() {
@@ -170,14 +173,16 @@ QUrl OAuthClient::startAuthorization(const OAuth2Settings &settings, QString *er
     m_state = codeVerifier().left(32);
     m_redirectUri = QStringLiteral("http://127.0.0.1:%1/callback").arg(m_server->serverPort());
 
+    // Encoded as in postToken(), so '+' and '%' reach the server as typed.
+    const auto encoded = [](const QString &value) { return QString::fromLatin1(QUrl::toPercentEncoding(value)); };
     QUrlQuery query(authorization);
     query.addQueryItem(QStringLiteral("response_type"), QStringLiteral("code"));
-    query.addQueryItem(QStringLiteral("client_id"), settings.clientId.trimmed());
-    query.addQueryItem(QStringLiteral("redirect_uri"), m_redirectUri);
+    query.addQueryItem(QStringLiteral("client_id"), encoded(settings.clientId.trimmed()));
+    query.addQueryItem(QStringLiteral("redirect_uri"), encoded(m_redirectUri));
     if (!settings.scope.trimmed().isEmpty())
-        query.addQueryItem(QStringLiteral("scope"), settings.scope.trimmed());
+        query.addQueryItem(QStringLiteral("scope"), encoded(settings.scope.trimmed()));
     if (!settings.audience.trimmed().isEmpty())
-        query.addQueryItem(QStringLiteral("audience"), settings.audience.trimmed());
+        query.addQueryItem(QStringLiteral("audience"), encoded(settings.audience.trimmed()));
     query.addQueryItem(QStringLiteral("state"), QString::fromLatin1(m_state));
     query.addQueryItem(QStringLiteral("code_challenge"), QString::fromLatin1(codeChallenge(m_verifier)));
     query.addQueryItem(QStringLiteral("code_challenge_method"), QStringLiteral("S256"));
@@ -209,6 +214,8 @@ bool OAuthClient::requestClientCredentials(const OAuth2Settings &settings)
 
 /*!
  * \brief Gets a new token with \a refreshToken.
+ * \param settings The settings with variables resolved.
+ * \param refreshToken The refresh token the server gave.
  * \return False when busy or the token URL is not valid; finished() follows otherwise.
  */
 bool OAuthClient::refresh(const OAuth2Settings &settings, const QString &refreshToken)
@@ -258,6 +265,7 @@ void OAuthClient::readCallback()
             const QList<QByteArray> requestLine = socket->readLine(8192).trimmed().split(' ');
             const QUrl target = requestLine.size() >= 2 ? QUrl(QString::fromLatin1(requestLine.at(1))) : QUrl();
             const QUrlQuery query(target);
+            socket->disconnect(this);
             const bool ours = requestLine.value(0) == "GET" && target.path() == QLatin1StringView("/callback")
                               && query.queryItemValue(QStringLiteral("state")).toLatin1() == m_state && !m_state.isEmpty();
             if (!ours) {
@@ -270,6 +278,8 @@ void OAuthClient::readCallback()
             socket->write(callbackPage(error.isEmpty() ? tr("You are logged in. You can close this window and go back to ReqDeck.")
                                                        : tr("The login did not work. You can close this window.")));
             socket->disconnectFromHost();
+            // Consumed: a second callback with the same state is not ours any more.
+            m_state.clear();
             stopListening();
             emit callbackReceived();
             if (!error.isEmpty() || code.isEmpty()) {
@@ -292,8 +302,10 @@ void OAuthClient::readCallback()
  * \internal
  * \brief Posts \a form to the token endpoint, with the client id and, if set, the secret.
  *
- * The client authenticates in the body (client_secret_post), which every
- * common server accepts.
+ * The client authenticates in the body (client_secret_post), which most
+ * servers accept; RFC 6749 prefers HTTP Basic, which some servers require.
+ * \param settings The settings with variables resolved.
+ * \param form The grant's own fields.
  */
 bool OAuthClient::postToken(const OAuth2Settings &settings, const QList<std::pair<QString, QString>> &form)
 {

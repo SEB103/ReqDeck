@@ -11,6 +11,7 @@
 
 #include <optional>
 
+#include "core/http/oauthclient.h"
 #include "core/http/requestbuilder.h"
 #include "core/http/requestspec.h"
 #include "core/http/responsedata.h"
@@ -463,6 +464,18 @@ private:
 
     /** Last OAuth error for the user, or empty. */
     QString m_oauthError;
+
+    /** Request and workspace of the running OAuth step, so its token and send land where they began. */
+    QString m_oauthRequestId;
+
+    /** Workspace of the running OAuth step. */
+    QString m_oauthWorkspaceId;
+
+    /** Whether the running OAuth step is a refresh. */
+    bool m_oauthIsRefresh {false};
+
+    /** A token just fetched for the waiting send, used even when it expires soon. */
+    std::optional<OAuthToken> m_freshToken;
 
     /** Defaults requests are built with. */
     RequestBuilder::Options m_builderOptions;

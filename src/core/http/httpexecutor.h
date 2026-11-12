@@ -82,6 +82,9 @@ public:
     /** Returns the proxies a request to \a url would try, in order; NoProxy means direct. */
     QList<QNetworkProxy> proxiesFor(const QUrl &url) const;
 
+    /** Makes \a manager use the system proxy, except for this computer, as the executor does. */
+    static void useSystemProxy(QNetworkAccessManager *manager);
+
     /** Returns whether \a host is this computer: a loopback address, localhost, or a name under it. */
     static bool isThisComputer(const QString &host);
 

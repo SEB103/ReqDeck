@@ -34,8 +34,8 @@ public:
     /** Returns the token kept under \a key, or nothing. */
     std::optional<OAuthToken> token(const QString &key) const;
 
-    /** Keeps \a token under \a key. */
-    void setToken(const QString &key, const OAuthToken &token);
+    /** Keeps \a token under \a key; \a fromRefresh keeps the old refresh token when the new one has none. */
+    void setToken(const QString &key, const OAuthToken &token, bool fromRefresh = false);
 
     /** Removes every token of the node \a nodeId; returns whether there was one. */
     bool removeNode(const QString &nodeId);

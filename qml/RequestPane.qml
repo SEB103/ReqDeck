@@ -710,6 +710,8 @@ Item {
 
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
+                        // The text may hold the authorization server's words.
+                        textFormat: Text.PlainText
                         opacity: 0.8
                         text: cppRequestEditor.oauthStatus
                     }
