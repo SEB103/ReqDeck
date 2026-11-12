@@ -85,9 +85,9 @@ struct SentHop
 {
     /** Request verb, for example "GET". */
     QString method;
-    /** URL of the hop; a password and an API key in the query are masked. */
+    /** URL of the hop; a password, a lone user name, and credential query values are masked. */
     QUrl url;
-    /** Headers in sent order; values of credential headers are masked. */
+    /** Headers in sent order; values of credential headers, by kind or by name, are masked. */
     QList<std::pair<QString, QString>> headers;
     /** Size of the body in bytes; 0 without a body. */
     qint64 bodySize {0};

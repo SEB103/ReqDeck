@@ -24,7 +24,8 @@
  *
  * Only a response that arrived is kept: a transport failure leaves the earlier
  * response in place, so one failed send does not break the requests that read
- * it. A body held in a temporary file is not copied back into memory.
+ * it. Only a JSON body of at most kMaxJsonBytes in memory is kept, parsed, so
+ * a template does not parse it again and large downloads are not held.
  * \param requestId Id of the request that was sent.
  * \param requestName Name of the request when it was sent.
  * \param response The response.
@@ -36,8 +37,16 @@ void ResponseCache::store(const QString &requestId, const QString &requestName, 
     Entry entry;
     entry.name = requestName;
     entry.headers = response.headers;
-    if (!response.bodyFile)
-        entry.body = response.body;
+    if (!response.bodyFile && !response.body.isEmpty() && response.body.size() <= kMaxJsonBytes) {
+        const QByteArray trimmed = response.body.trimmed();
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            const QJsonDocument document = QJsonDocument::fromJson(trimmed);
+            if (document.isArray())
+                entry.json = document.array();
+            else if (document.isObject())
+                entry.json = document.object();
+        }
+    }
     entry.order = ++m_nextOrder;
     m_entries.insert(requestId, std::move(entry));
 }
@@ -62,9 +71,10 @@ bool ResponseCache::isEmpty() const
  * \brief Returns the value \a selector picks from the last response of \a request.
  *
  * \a request is a request id or, failing that, a request name; when several
- * requests have that name, the one sent last counts. \a selector is either
+ * requests have that name, the one sent last counts, other than \a exceptRequestId. \a selector is either
  * "header:Name", the first header of that name, or a JSONPath into a JSON body,
- * whose first match is returned: a string as it is, any other value as compact
+ * whose first match is returned (object members come sorted by name, as Qt keeps
+ * them): a string as it is, any other value as compact
  * JSON. A missing response, header, or match gives nothing, and so does the
  * request \a exceptRequestId, so a request never reads its own response.
  * \param request Id or name of the request whose response is read.
@@ -81,7 +91,7 @@ std::optional<QString> ResponseCache::value(const QString &request, const QStrin
         entryId = byId.key();
     } else {
         for (auto it = m_entries.cbegin(); it != m_entries.cend(); ++it) {
-            if (it->name == request && (!entry || it->order > entry->order)) {
+            if (it.key() != exceptRequestId && it->name == request && (!entry || it->order > entry->order)) {
                 entry = &it.value();
                 entryId = it.key();
             }
@@ -103,13 +113,9 @@ std::optional<QString> ResponseCache::value(const QString &request, const QStrin
         return std::nullopt;
     }
 
-    if (entry->body.isEmpty())
+    if (entry->json.isUndefined())
         return std::nullopt;
-    const QJsonDocument document = QJsonDocument::fromJson(entry->body);
-    if (document.isNull())
-        return std::nullopt;
-    const QJsonValue root = document.isArray() ? QJsonValue(document.array()) : QJsonValue(document.object());
-    const JsonPathResult result = JsonPath::evaluate(root, trimmed);
+    const JsonPathResult result = JsonPath::evaluate(entry->json, trimmed);
     if (!result.ok || result.matches.isEmpty())
         return std::nullopt;
     const QJsonValue match = result.matches.first();

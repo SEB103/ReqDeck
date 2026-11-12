@@ -130,7 +130,8 @@ QString ResponseView::sentText() const
     QStringList blocks;
     for (const SentHop &hop : std::as_const(m_response.sent)) {
         QStringList lines;
-        lines.append(hop.method + u' ' + hop.url.toString(QUrl::FullyEncoded));
+        // Decoded for reading, so a mask shows as dots rather than percent codes.
+        lines.append(hop.method + u' ' + hop.url.toString(QUrl::PrettyDecoded));
         for (const auto &[name, value] : hop.headers)
             lines.append(name + QLatin1StringView(": ") + value);
         if (hop.bodySize > 0)
@@ -187,7 +188,7 @@ QString ResponseView::bodyText() const
     if (m_body.kind == BodyKind::Binary)
         return tr("Binary body, %1. Not shown.").arg(sizeText());
     if (!m_filterText.trimmed().isEmpty() && canFilter() && m_filterError.isEmpty())
-        return m_filtered.left(kMaxDisplayChars);
+        return m_filtered;
     const QString &text = m_pretty && canPretty() ? formattedBody() : m_body.text;
     qsizetype shown = qMin(text.size(), kMaxDisplayChars);
     // A character outside the BMP takes two QChars; the cut must not split it.
@@ -215,6 +216,8 @@ bool ResponseView::truncated() const
 {
     if (m_body.kind == BodyKind::Binary)
         return false;
+    if (!m_filterText.trimmed().isEmpty() && canFilter() && m_filterError.isEmpty())
+        return m_filterCut;
     if (bodyOnDisk())
         return true;
     const QString &text = m_pretty && canPretty() ? formattedBody() : m_body.text;
@@ -545,10 +548,6 @@ void ResponseView::clear()
 }
 
 /*!
- * \internal
- * \brief Forgets the shown result, keeping requestName() and pretty().
- */
-/*!
  * \brief Returns the JSONPath of the filter.
  */
 QString ResponseView::filterText() const
@@ -591,32 +590,80 @@ bool ResponseView::canFilter() const
 /*!
  * \internal
  * \brief Applies the filter to the body; the matches show as an indented JSON array.
+ *
+ * The body is parsed once per response, not per keystroke. The matches are
+ * written one after the other and the text stops at kMaxDisplayChars, so a
+ * path such as $..* on a deeply nested body cannot build text far larger than
+ * the view shows; truncated() then reports the cut.
  */
 void ResponseView::applyFilter()
 {
     m_filtered.clear();
     m_filterError.clear();
+    m_filterCut = false;
     if (m_filterText.trimmed().isEmpty() || !canFilter())
         return;
-    QJsonParseError parseError;
-    const QJsonDocument document = QJsonDocument::fromJson(m_body.text.toUtf8(), &parseError);
-    if (document.isNull()) {
-        m_filterError = tr("The body is not valid JSON: %1").arg(parseError.errorString());
+    if (!m_filterParsed) {
+        QJsonParseError parseError;
+        const QJsonDocument document = QJsonDocument::fromJson(m_body.text.toUtf8(), &parseError);
+        if (document.isNull())
+            m_filterParseError = tr("The body is not valid JSON: %1").arg(parseError.errorString());
+        else
+            m_filterRoot = document.isArray() ? QJsonValue(document.array()) : QJsonValue(document.object());
+        m_filterParsed = true;
+    }
+    if (!m_filterParseError.isEmpty()) {
+        m_filterError = m_filterParseError;
         return;
     }
-    const QJsonValue root = document.isArray() ? QJsonValue(document.array()) : QJsonValue(document.object());
-    const JsonPathResult result = JsonPath::evaluate(root, m_filterText);
+    const JsonPathResult result = JsonPath::evaluate(m_filterRoot, m_filterText);
     if (!result.ok) {
         m_filterError = result.errorString;
         return;
     }
-    m_filtered = result.matches.isEmpty() ? tr("No match.")
-                                          : QString::fromUtf8(QJsonDocument(result.matches).toJson(QJsonDocument::Indented));
+    if (result.matches.isEmpty()) {
+        m_filtered = tr("No match.");
+        return;
+    }
+    // Each match is written as the one element of an array, "[\n    value\n]\n",
+    // and its inner lines are joined, which gives the text of the whole array.
+    QString text = QStringLiteral("[\n");
+    for (qsizetype i = 0; i < result.matches.size(); ++i) {
+        const QByteArray item = QJsonDocument(QJsonArray({result.matches.at(i)})).toJson(QJsonDocument::Indented);
+        if (i > 0) {
+            text.chop(1);
+            text += QLatin1StringView(",\n");
+        }
+        text += QString::fromUtf8(item.sliced(2, item.size() - 4));
+        if (text.size() > kMaxDisplayChars) {
+            m_filterCut = true;
+            break;
+        }
+    }
+    if (m_filterCut) {
+        qsizetype shown = kMaxDisplayChars;
+        // A character outside the BMP takes two QChars; the cut must not split it.
+        if (text.at(shown - 1).isHighSurrogate())
+            --shown;
+        text.truncate(shown);
+    } else {
+        text += QLatin1StringView("]\n");
+    }
+    m_filtered = text;
 }
 
+/*!
+ * \internal
+ * \brief Forgets the shown result, keeping requestName() and pretty().
+ */
 void ResponseView::resetResult()
 {
     m_response = ResponseData();
+    m_filterRoot = QJsonValue();
+    m_filterParsed = false;
+    m_filterParseError.clear();
+    m_filtered.clear();
+    m_filterCut = false;
     m_rawBody.clear();
     m_body = DecodedBody();
     m_formatted.clear();

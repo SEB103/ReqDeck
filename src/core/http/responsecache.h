@@ -6,6 +6,7 @@
 
 #include <QByteArray>
 #include <QHash>
+#include <QJsonValue>
 #include <QList>
 #include <QString>
 #include <QStringList>
@@ -18,12 +19,16 @@ struct ResponseData;
 /**
  * Last response of each request, kept in memory for response() templates.
  *
- * Nothing is written to disk: responses can hold tokens. A body that did not
- * fit in memory is not kept, so a template can read only its headers.
+ * Nothing is written to disk: responses can hold tokens. Only a JSON body of at
+ * most kMaxJsonBytes is kept, parsed once; of any other response a template can
+ * read only the headers.
  */
 class ResponseCache
 {
 public:
+    /** Largest JSON body kept for templates. */
+    static constexpr qsizetype kMaxJsonBytes = 4 * 1024 * 1024;
+
     /** Keeps \a response as the last one of the request \a requestId named \a requestName. */
     void store(const QString &requestId, const QString &requestName, const ResponseData &response);
 
@@ -51,8 +56,8 @@ private:
         QString name;
         /** Response headers as received. */
         QList<std::pair<QByteArray, QByteArray>> headers;
-        /** The whole body; empty when it was too large for memory. */
-        QByteArray body;
+        /** The JSON body, parsed; undefined when the body was not JSON or too large. */
+        QJsonValue json {QJsonValue::Undefined};
         /** Order of storing; higher is newer. */
         quint64 order {0};
     };

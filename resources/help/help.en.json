@@ -293,7 +293,7 @@
             "what": "Shows only the parts of a JSON response the path selects.",
             "why": "In a long response the one value you need is hard to find; a path picks it out.",
             "example": "$.items[*].id, $..price, or $.items[?(@.status == 'open')].name",
-            "next": "Clear the field to see the whole body again. The filter stays for the next send.",
+            "next": "Clear the field to see the whole body again. The filter stays for the next send. Members of an object come in alphabetical order of their names, so with .. or * the first match may not be the first in the text.",
             "chapter": "response"
         },
         "request.authType": {

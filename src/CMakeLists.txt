@@ -47,6 +47,8 @@ target_sources(ReqDeckCore
         core/http/oauthfields.h
         core/http/oauthtokenstore.cpp
         core/http/oauthtokenstore.h
+        core/http/credentialnames.cpp
+        core/http/credentialnames.h
         core/http/curlconverter.cpp
         core/http/curlconverter.h
         core/http/httpencoding.cpp

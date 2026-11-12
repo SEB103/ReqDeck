@@ -166,7 +166,11 @@ private:
             ++m_pos;
         if (m_pos == from || (m_pos == from + 1 && m_text.at(from) == u'-'))
             return std::nullopt;
-        return m_text.mid(from, m_pos - from).toLongLong();
+        bool ok = false;
+        const qint64 value = m_text.mid(from, m_pos - from).toLongLong(&ok);
+        if (!ok)
+            fail(QStringLiteral("The number at %1 is too large.").arg(from + 1));
+        return value;
     }
 
     QList<Selector> bracket()
@@ -314,8 +318,12 @@ public:
                 const auto clamp = [size](qint64 i) { return std::clamp<qint64>(i < 0 ? size + i : i, 0, size); };
                 const qint64 from = selector.start ? clamp(*selector.start) : 0;
                 const qint64 to = selector.end ? clamp(*selector.end) : size;
-                for (qint64 i = from; i < to; i += selector.step)
+                // Stepping stops before it could pass the end, so a huge step cannot overflow.
+                for (qint64 i = from; i < to; i += selector.step) {
                     add(out, array.at(i));
+                    if (to - i <= selector.step)
+                        break;
+                }
             }
             break;
         case Selector::Kind::Filter:
@@ -329,7 +337,7 @@ public:
 
     /*!
      * \internal
-     * \brief Appends \a value and all values inside it to \a out, in document order.
+     * \brief Appends \a value and all values inside it to \a out, parents before children.
      */
     void descendants(const QJsonValue &value, QJsonArray &out)
     {

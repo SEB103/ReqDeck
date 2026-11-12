@@ -263,6 +263,14 @@ void VariableResolverTest::responseCacheSelectors()
     QVERIFY(!value(QStringLiteral("$.missing")));
     QVERIFY(!value(QStringLiteral("token")));
 
+    // A body that is not JSON keeps only the headers.
+    ResponseData html = response;
+    html.body = "<html></html>";
+    cache.store(QStringLiteral("page"), QStringLiteral("Page"), html);
+    QVERIFY(!cache.value(QStringLiteral("page"), QStringLiteral("$"), QString()));
+    QCOMPARE(cache.value(QStringLiteral("page"), QStringLiteral("header:x-token"), QString()),
+             std::optional<QString>(QStringLiteral("h-1")));
+
     // A failed send keeps the earlier response.
     ResponseData failed;
     failed.error = ResponseError::Timeout;
@@ -285,6 +293,9 @@ void VariableResolverTest::responseCacheFindsRequests()
     QCOMPARE(cache.value(QStringLiteral("a"), QStringLiteral("$.v"), QString()), std::optional<QString>(QStringLiteral("old")));
     QCOMPARE(cache.value(QStringLiteral("Same"), QStringLiteral("$.v"), QString()), std::optional<QString>(QStringLiteral("new")));
     QVERIFY(!cache.value(QStringLiteral("b"), QStringLiteral("$.v"), QStringLiteral("b")));
+    // By name, the excluded request gives way to the other one of that name.
+    QCOMPARE(cache.value(QStringLiteral("Same"), QStringLiteral("$.v"), QStringLiteral("b")),
+             std::optional<QString>(QStringLiteral("old")));
     QVERIFY(!cache.value(QStringLiteral("Other"), QStringLiteral("$.v"), QString()));
     QCOMPARE(cache.requestNames(QString()), QStringList({QStringLiteral("Same")}));
     QCOMPARE(cache.requestNames(QStringLiteral("b")), QStringList({QStringLiteral("Same")}));

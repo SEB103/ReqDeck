@@ -10,13 +10,14 @@
 #include <QHttpHeaders>
 #include <QNetworkAccessManager>
 #include <QNetworkProxyFactory>
-#include <QUrlQuery>
 #if QT_CONFIG(ssl)
 #include <QSslError>
 #endif
 
 #include <algorithm>
 #include <utility>
+
+#include "core/http/credentialnames.h"
 
 namespace {
 /*!
@@ -122,10 +123,6 @@ public:
 
 /*!
  * \internal
- * \brief Returns whether \a lhs and \a rhs share scheme, host, and effective port.
- */
-/*!
- * \internal
  * \brief Text shown in place of a secret.
  */
 constexpr QStringView kMask = u"\u2022\u2022\u2022\u2022\u2022\u2022";
@@ -156,6 +153,10 @@ QString maskedCredential(const QString &name, const QString &value)
     return kMask.toString();
 }
 
+/*!
+ * \internal
+ * \brief Returns whether \a lhs and \a rhs share scheme, host, and effective port.
+ */
 bool isSameOrigin(const QUrl &lhs, const QUrl &rhs)
 {
     const auto defaultPort = [](const QUrl &url) {
@@ -486,8 +487,10 @@ void HttpExecutor::startReply()
  * \internal
  * \brief Appends the current hop to m_sent, with \a bodySize bytes of body.
  *
- * Only masked values are kept: the headers in BuiltRequest::credentialHeaders,
- * the password of the URL, and the API key query parameter. Headers the network
+ * Only masked values are kept: the headers in BuiltRequest::credentialHeaders
+ * and every header or query parameter whose name marks a credential (see
+ * isCredentialName()), the password of the URL or, without one, its user name,
+ * and the API key query parameter. Headers the network
  * layer adds itself, such as Host or Accept-Encoding, are not in the request
  * and so not in the hop.
  */
@@ -498,26 +501,36 @@ void HttpExecutor::recordHop(qint64 bodySize)
     hop.url = m_current.request.url();
     if (!hop.url.password().isEmpty())
         hop.url.setPassword(kMask.toString());
-    if (!m_current.credentialQueryName.isEmpty()) {
-        QUrlQuery query(hop.url);
-        const QString name = m_current.credentialQueryName;
-        if (query.hasQueryItem(name)) {
-            const int count = query.allQueryItemValues(name).size();
-            query.removeAllQueryItems(name);
-            for (int i = 0; i < count; ++i)
-                query.addQueryItem(name, kMask.toString());
-            hop.url.setQuery(query);
+    else if (!hop.url.userName().isEmpty())
+        hop.url.setUserName(kMask.toString()); // A token can stand alone before the @.
+    if (hop.url.hasQuery()) {
+        // The query stays as it was sent; only values of credential items change.
+        QStringList parts = hop.url.query(QUrl::FullyEncoded).split(u'&');
+        bool masked = false;
+        const QString encodedMask = QString::fromLatin1(QUrl::toPercentEncoding(kMask.toString()));
+        for (QString &part : parts) {
+            const qsizetype equals = part.indexOf(u'=');
+            if (equals < 0 || equals + 1 == part.size())
+                continue;
+            const QString name = QUrl::fromPercentEncoding(part.first(equals).toLatin1());
+            if (name == m_current.credentialQueryName || isCredentialName(name)) {
+                part = part.first(equals + 1) + encodedMask;
+                masked = true;
+            }
         }
+        if (masked)
+            hop.url.setQuery(parts.join(u'&'), QUrl::StrictMode);
     }
     const QHttpHeaders headers = m_current.request.headers();
     for (qsizetype i = 0; i < headers.size(); ++i) {
         const QString name = QString::fromLatin1(headers.nameAt(i));
         QString value = QString::fromUtf8(headers.valueAt(i));
-        const bool credential = std::any_of(m_current.credentialHeaders.cbegin(), m_current.credentialHeaders.cend(),
-                                            [&name](const QByteArray &credentialName) {
-                                                return name.compare(QLatin1StringView(credentialName),
-                                                                    Qt::CaseInsensitive) == 0;
-                                            });
+        const bool credential =
+            isCredentialName(name)
+            || std::any_of(m_current.credentialHeaders.cbegin(), m_current.credentialHeaders.cend(),
+                           [&name](const QByteArray &credentialName) {
+                               return name.compare(QLatin1StringView(credentialName), Qt::CaseInsensitive) == 0;
+                           });
         if (credential)
             value = maskedCredential(name, value);
         hop.headers.append({name, value});

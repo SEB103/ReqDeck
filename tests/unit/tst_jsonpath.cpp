@@ -42,6 +42,9 @@ private slots:
 
     /*! Verifies that a query over a large body stays fast and bounded. */
     void filterIsLinearOnLargeBodies();
+
+    /*! Verifies that an index too large fails and a huge slice step cannot overflow. */
+    void numbersAndStepsAreSafe();
 };
 
 void JsonPathTest::evaluatesRfcExamples_data()
@@ -123,6 +126,16 @@ void JsonPathTest::filterIsLinearOnLargeBodies()
     const JsonPathResult bounded = JsonPath::evaluate(QJsonObject {{QStringLiteral("w"), wide}}, QStringLiteral("$..*"));
     QVERIFY(!bounded.ok);
     QVERIFY(bounded.errorString.contains(QStringLiteral("more than")));
+}
+
+void JsonPathTest::numbersAndStepsAreSafe()
+{
+    const QJsonValue root = QJsonArray({0, 1, 2});
+    QVERIFY(!JsonPath::evaluate(root, QStringLiteral("$[99999999999999999999]")).ok);
+    const JsonPathResult huge = JsonPath::evaluate(root, QStringLiteral("$[1::9223372036854775807]"));
+    QVERIFY(huge.ok);
+    QCOMPARE(huge.matches, QJsonArray({1}));
+    QCOMPARE(JsonPath::evaluate(root, QStringLiteral("$[0::2]")).matches, QJsonArray({0, 2}));
 }
 
 QTEST_GUILESS_MAIN(JsonPathTest)

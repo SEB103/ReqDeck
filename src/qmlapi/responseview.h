@@ -4,6 +4,7 @@
 #ifndef RESPONSEVIEW_H
 #define RESPONSEVIEW_H
 
+#include <QJsonValue>
 #include <QObject>
 #include <QVariantList>
 #include <QUrl>
@@ -319,6 +320,18 @@ private:
 
     /** Why the filter failed, or empty. */
     QString m_filterError;
+
+    /** Whether the filter's matches were cut at the display limit. */
+    bool m_filterCut {false};
+
+    /** The body parsed for the filter, once per response. */
+    QJsonValue m_filterRoot;
+
+    /** Whether m_filterRoot holds the parsed body or m_filterParseError says why not. */
+    bool m_filterParsed {false};
+
+    /** Why the body could not be parsed for the filter. */
+    QString m_filterParseError;
 
     /** Applies m_filterText to the body. */
     void applyFilter();

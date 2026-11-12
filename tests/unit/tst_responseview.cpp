@@ -444,6 +444,18 @@ void ResponseViewTest::filterShowsMatches()
     view.setResponse(makeResponse("plain", QStringLiteral("text/plain")), {});
     QVERIFY(!view.property("canFilter").toBool());
     QCOMPARE(view.bodyText(), QStringLiteral("plain"));
+
+    // Many matches stop at the display limit, and truncated() says so.
+    QByteArray big = "[";
+    for (int i = 0; i < 200000; ++i)
+        big += (i ? ",\"" : "\"") + QByteArray("abcdefghij") + '"';
+    big += ']';
+    view.setResponse(makeResponse(big, QStringLiteral("application/json")), {});
+    view.setProperty("filterText", QStringLiteral("$[*]"));
+    QVERIFY(view.truncated());
+    QVERIFY(view.bodyText().size() <= kMaxDisplayChars);
+    view.setProperty("filterText", QStringLiteral("$[0]"));
+    QVERIFY(!view.truncated());
 }
 
 void ResponseViewTest::skippedCookiesBecomeWarning()

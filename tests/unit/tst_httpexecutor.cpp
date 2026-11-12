@@ -1264,6 +1264,7 @@ void HttpExecutorTest::sentViewMasksCredentials()
     spec.body.raw = QStringLiteral("hello");
     spec.headers.append({QStringLiteral("Cookie"), QStringLiteral("sid=abc; theme=dark"), true});
     spec.headers.append({QStringLiteral("X-Trace"), QStringLiteral("t1"), true});
+    spec.headers.append({QStringLiteral("PRIVATE-TOKEN"), QStringLiteral("secret-typed"), true});
     spec.auth.type = AuthType::Bearer;
     spec.auth.token = QStringLiteral("secret-token");
 
@@ -1291,6 +1292,7 @@ void HttpExecutorTest::sentViewMasksCredentials()
     QCOMPARE(valueOf(QStringLiteral("Authorization")), QStringLiteral("Bearer ") + mask);
     QCOMPARE(valueOf(QStringLiteral("Cookie")), QStringLiteral("sid=%1; theme=%1").arg(mask));
     QCOMPARE(valueOf(QStringLiteral("X-Trace")), QStringLiteral("t1"));
+    QCOMPARE(valueOf(QStringLiteral("PRIVATE-TOKEN")), mask);
     for (const SentHop &hop : response->sent) {
         for (const auto &[name, value] : hop.headers)
             QVERIFY2(!value.contains(QLatin1StringView("secret")), qPrintable(name));
@@ -1299,7 +1301,7 @@ void HttpExecutorTest::sentViewMasksCredentials()
 
 void HttpExecutorTest::sentHopMasksQueryKeyAndPassword()
 {
-    QUrl url = m_server.url(QStringLiteral("/echo?a=1"));
+    QUrl url = m_server.url(QStringLiteral("/echo?a=1&access_token=q-secret&b=x%2Fy"));
     url.setUserName(QStringLiteral("user"));
     url.setPassword(QStringLiteral("pw"));
     RequestSpec spec = specFor(url);
@@ -1314,10 +1316,20 @@ void HttpExecutorTest::sentHopMasksQueryKeyAndPassword()
     QCOMPARE(response->sent.size(), 1);
     const QUrl sent = response->sent.at(0).url;
     QVERIFY(!sent.toString().contains(QLatin1StringView("k-secret")));
+    QVERIFY(!sent.toString().contains(QLatin1StringView("q-secret")));
     QVERIFY(!sent.toString().contains(QLatin1StringView("pw")));
     QCOMPARE(sent.userName(), QStringLiteral("user"));
     QCOMPARE(QUrlQuery(sent).queryItemValue(QStringLiteral("a")), QStringLiteral("1"));
     QVERIFY(QUrlQuery(sent).hasQueryItem(QStringLiteral("key")));
+    // Other items keep the encoding they were sent with.
+    QVERIFY(sent.query(QUrl::FullyEncoded).contains(QLatin1StringView("b=x%2Fy")));
+
+    // A token standing alone before the @ is masked too.
+    QUrl tokenUrl = m_server.url(QStringLiteral("/echo"));
+    tokenUrl.setUserName(QStringLiteral("ghp-secret"));
+    const auto tokenResponse = sendAndWait(executor, buildRequest(specFor(tokenUrl)));
+    QVERIFY(tokenResponse);
+    QVERIFY(!tokenResponse->sent.at(0).url.toString().contains(QLatin1StringView("ghp-secret")));
 }
 
 void HttpExecutorTest::utf8HeaderValueArrives()

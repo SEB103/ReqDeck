@@ -15,7 +15,7 @@ struct JsonPathResult
     bool ok {false};
     /** Why not, for the user. */
     QString errorString;
-    /** The values the path selects, in document order. */
+    /** The values the path selects: array elements in order, object members sorted by name, as Qt keeps them. */
     QJsonArray matches;
 };
 
