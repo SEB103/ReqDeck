@@ -14,6 +14,7 @@
 #include <functional>
 
 #include "core/http/cookiestore.h"
+#include "core/http/oauthtokenstore.h"
 #include "core/workspace/workspacedata.h"
 #include "framework/diagnosticslevel.h"
 #include "framework/retranslatablestatus.h"
@@ -147,6 +148,12 @@ public:
 
     /** Writes the cookies of the active workspace now instead of after the short delay. */
     void saveCookies();
+
+    /** Returns the OAuth tokens of the active workspace; empty without one; owned by the manager. */
+    OAuthTokenStore *tokenStore() const;
+
+    /** Writes the OAuth tokens of the active workspace now. */
+    void saveTokens();
 
     /** Returns the in-memory data of the active workspace (empty when none is active). */
     const WorkspaceData &workspaceData() const;
@@ -321,6 +328,12 @@ protected:
 
     /** Whether the cookies file of the workspace could not be read, so it is never written. */
     bool m_cookiesUnwritable {false};
+
+    /** OAuth tokens of the active workspace; owned through QObject. */
+    OAuthTokenStore *m_tokens {nullptr};
+
+    /** Whether the tokens file of the workspace could not be read, so it is never written. */
+    bool m_tokensUnwritable {false};
 
     /** Delays writing the cookies so a burst of responses writes once. */
     QTimer m_cookieSaveTimer;

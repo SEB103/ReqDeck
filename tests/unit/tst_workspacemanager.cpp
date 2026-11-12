@@ -247,6 +247,9 @@ private slots:
     /*! Verifies that the cookie setting is stored in the workspace and survives a reopen. */
     void cookieSettingIsStored();
 
+    /*! Verifies that OAuth tokens follow their workspace and stay out of the workspace file. */
+    void tokensFollowTheWorkspace();
+
     /*! Verifies that a cookies file that cannot be read stays as it is, also after new cookies. */
     void unreadableCookiesFileIsKept();
 
@@ -1301,6 +1304,27 @@ void WorkspaceManagerTest::cookieSettingIsStored()
     QVERIFY(!manager.cookiesEnabled());
     manager.setCookiesEnabled(true);
     QVERIFY(manager.cookiesEnabled());
+}
+
+void WorkspaceManagerTest::tokensFollowTheWorkspace()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.createWorkspace(QStringLiteral("One"), dir.path()));
+    const QString one = manager.activeWorkspacePath();
+    OAuthToken token;
+    token.accessToken = QStringLiteral("access-secret");
+    manager.tokenStore()->setToken(QStringLiteral("r1/x"), token);
+    QVERIFY(manager.saveWorkspace());
+
+    QVERIFY(manager.createWorkspace(QStringLiteral("Two"), dir.path()));
+    QVERIFY(!manager.tokenStore()->hasNode(QStringLiteral("r1")));
+    QVERIFY(manager.openWorkspace(one));
+    QCOMPARE(manager.tokenStore()->token(QStringLiteral("r1/x"))->accessToken, QStringLiteral("access-secret"));
+    QVERIFY(!readFile(one).contains("access-secret"));
 }
 
 void WorkspaceManagerTest::unreadableCookiesFileIsKept()

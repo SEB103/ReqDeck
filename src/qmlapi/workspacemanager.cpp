@@ -90,7 +90,13 @@ QString withWorkspaceSuffix(const QString &path)
 WorkspaceManager::WorkspaceManager(QObject *parent)
     : QObject(parent)
     , m_cookies(new CookieStore(this))
+    , m_tokens(new OAuthTokenStore(this))
 {
+    // Tokens are few and change seldom, so they are written at once.
+    connect(m_tokens, &OAuthTokenStore::changed, this, [this]() {
+        if (!m_cookiesWorkspaceId.isEmpty())
+            saveTokens();
+    });
     m_cookieSaveTimer.setSingleShot(true);
     m_cookieSaveTimer.setInterval(kCookieSaveDelayMs);
     connect(&m_cookieSaveTimer, &QTimer::timeout, this, &WorkspaceManager::saveCookies);
@@ -106,6 +112,7 @@ WorkspaceManager::WorkspaceManager(QObject *parent)
 WorkspaceManager::~WorkspaceManager()
 {
     saveCookies();
+    saveTokens();
 }
 
 /*!
@@ -745,10 +752,22 @@ void WorkspaceManager::switchCookies(const QString &workspaceId)
     if (workspaceId == m_cookiesWorkspaceId)
         return;
     saveCookies();
+    saveTokens();
     m_cookiesWorkspaceId.clear();
     if (!isValidWorkspaceId(workspaceId)) {
         m_cookies->clear();
+        m_tokens->clear();
         return;
+    }
+    QString tokenError;
+    const QString tokensPath = QDir(secretsDir()).filePath(workspaceId + QStringLiteral(".tokens.json"));
+    m_tokensUnwritable = !m_tokens->load(tokensPath, SecretCipher(), &tokenError);
+    if (m_tokensUnwritable) {
+        notify(Diagnostics::Level::Warning, [tokenError]() {
+            return QCoreApplication::translate("WorkspaceManager",
+                                               "%1 The file is left unchanged; new tokens are kept until the workspace closes.")
+                .arg(tokenError);
+        });
     }
     QString error;
     m_cookiesUnwritable = !m_cookies->load(cookiesFilePath(workspaceId), SecretCipher(), &error);
@@ -762,6 +781,30 @@ void WorkspaceManager::switchCookies(const QString &workspaceId)
         });
     }
     m_cookiesWorkspaceId = workspaceId;
+}
+
+/*!
+ * \brief Returns the OAuth tokens of the active workspace, owned by the manager.
+ */
+OAuthTokenStore *WorkspaceManager::tokenStore() const
+{
+    return m_tokens;
+}
+
+/*!
+ * \brief Writes the OAuth tokens of the active workspace now.
+ *
+ * Like the cookies they live beside the secret values, encrypted, and a file
+ * that could not be read is never overwritten.
+ */
+void WorkspaceManager::saveTokens()
+{
+    if (m_cookiesWorkspaceId.isEmpty() || m_tokensUnwritable)
+        return;
+    QString error;
+    const QString path = QDir(secretsDir()).filePath(m_cookiesWorkspaceId + QStringLiteral(".tokens.json"));
+    if (!m_tokens->save(path, SecretCipher(), &error))
+        notify(Diagnostics::Level::Warning, [error]() { return error; });
 }
 
 /*!
