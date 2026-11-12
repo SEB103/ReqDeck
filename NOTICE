@@ -24,6 +24,9 @@ THIRD_PARTY_NOTICES.md and the full license texts are in the LICENSES/ directory
   - Qt 6.11 ............ GNU LGPL v3 (open-source option used here; Qt is also
                         available under GPLv2 and under commercial licenses)
   - Google Material Symbols icons ... Apache License 2.0 (embedded SVG resources)
+  - yaml-cpp 0.9.0 ...... MIT License (linked statically)
+  - Qt Installer Framework (Setup.exe and the Maintenance Tool) ... GNU GPL v3
+                        with The Qt Company GPL Exception 1.0
 
 These third-party licenses apply only to their respective components. They do
 not change the license of the ReqDeck source code itself, which is

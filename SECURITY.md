@@ -2,10 +2,9 @@
 
 ## Supported versions
 
-ReqDeck has not been released yet. Once releases are published on
-<https://github.com/SEB103/ReqDeck/releases/latest>, only the latest release
-receives security fixes. Older releases are not maintained; please update before
-reporting.
+Releases are published on <https://github.com/SEB103/ReqDeck/releases/latest>.
+Only the latest release receives security fixes. Older releases are not
+maintained; please update before reporting.
 
 | Version | Supported |
 |---------|-----------|

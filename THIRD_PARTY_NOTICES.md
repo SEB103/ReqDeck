@@ -90,6 +90,21 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
+## Qt Installer Framework
+
+The installer (`ReqDeck-<version>-Setup.exe`) and the Maintenance Tool it
+installs (`ReqDeckMaintenanceTool.exe`) are programs of the Qt Installer
+Framework 4.10 by The Qt Company, built by its `binarycreator` with ReqDeck's
+configuration, wizard images, and install script. The portable ZIP does not
+contain them.
+
+- **License:** GNU General Public License, version 3 (`LICENSES/GPL-3.0-or-later.txt`
+  holds the same text), with The Qt Company GPL Exception 1.0
+  (`LICENSES/Qt-GPL-exception-1.0.txt`), which lets an installer created with the
+  framework carry an application under other terms.
+- **Source:** <https://code.qt.io/cgit/installer-framework/installer-framework.git/>;
+  documentation at <https://doc.qt.io/qtinstallerframework/>.
+
 ## Country flag (UI-language selector)
 
 The SVG flag `resources/images/flags/gb.svg` is used by the UI-language selector.
@@ -101,5 +116,6 @@ It carries a Creative Commons Public Domain dedication in its source markup.
 ## Before distributing binaries
 
 Verify that the license texts and notices for every component you actually ship
-(Qt, the icon set, and yaml-cpp) are included with the distribution and that the LGPLv3
-relinking obligation for Qt is satisfied.
+(Qt, the icon set, yaml-cpp, and the Qt Installer Framework in the installer) are
+included with the distribution and that the LGPLv3 relinking obligation for Qt is
+satisfied.

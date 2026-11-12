@@ -203,8 +203,8 @@ so the `QtTest` import of `tests/qml` also deploys `Qt6Test.dll`,
 `THIRD_PARTY_NOTICES.md`). yaml-cpp (MIT) is built from `third_party/` and linked
 statically, so it adds no DLL; its license reaches the deployment with
 `LICENSES/` and `THIRD_PARTY_NOTICES.md`. The installer and Maintenance Tool are Qt Installer
-Framework programs by The Qt Company; add the IFW/Qt attribution before a public
-release. Local pipeline runs produce unsigned artifacts.
+Framework programs by The Qt Company (GPL-3.0 with The Qt Company GPL Exception
+1.0), listed in `NOTICE` and `THIRD_PARTY_NOTICES.md`. Local pipeline runs produce unsigned artifacts.
 
 **Branding.** `resources/images/app/` holds the approved artwork: `ReqDeck.ico`
 (executable, window, taskbar, shortcut), `MaintenanceTool.ico` (Setup.exe and the
