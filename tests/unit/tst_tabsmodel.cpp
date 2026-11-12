@@ -71,6 +71,9 @@ private slots:
     /*! Verifies that the tabs of a workspace are kept in the settings and come back with it. */
     void tabsComeBackWithTheirWorkspace();
 
+    /*! Verifies that hidden tabs leave one preview tab, and the choice is kept. */
+    void hiddenTabsKeepOnePreview();
+
 private:
     /*! Directory of the workspace. */
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -290,6 +293,29 @@ void TabsModelTest::tabsComeBackWithTheirWorkspace()
     QCOMPARE(m_tabs->requestIds(), QStringList({QStringLiteral("r1"), QStringLiteral("r3"), QStringLiteral("r4")}));
     QCOMPARE(m_tabs->previewRequestId(), QStringLiteral("r4"));
     QCOMPARE(m_tabs->currentRequestId(), QStringLiteral("r3"));
+}
+
+void TabsModelTest::hiddenTabsKeepOnePreview()
+{
+    QSettings settings(m_dir->filePath(QStringLiteral("ui.ini")), QSettings::IniFormat);
+    m_tabs->setSettings(&settings);
+    m_tabs->open(QStringLiteral("r1"));
+    m_tabs->open(QStringLiteral("r2"));
+    QSignalSpy changed(m_tabs.get(), &TabsModel::showTabsChanged);
+
+    m_tabs->setShowTabs(false);
+
+    QCOMPARE(changed.count(), 1);
+    QCOMPARE(m_tabs->requestIds(), QStringList({QStringLiteral("r2")}));
+    QCOMPARE(m_tabs->previewRequestId(), QStringLiteral("r2"));
+    m_tabs->open(QStringLiteral("r3"));
+    m_tabs->keepCurrent();
+    m_tabs->preview(QStringLiteral("r1"));
+    QCOMPARE(m_tabs->requestIds(), QStringList({QStringLiteral("r1")}));
+
+    TabsModel other(m_collection.get());
+    other.setSettings(&settings);
+    QVERIFY(!other.showTabs());
 }
 
 QTEST_GUILESS_MAIN(TabsModelTest)

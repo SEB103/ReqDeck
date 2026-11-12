@@ -879,6 +879,20 @@ ApplicationWindow {
 
             // Automatic startup update check; disabled until the update feature is
             // enabled in the product configuration.
+            Label { text: qsTr("Tabs:"); Layout.preferredWidth: 180 }
+            CheckBox {
+                /*! Topic of the F1 help. */
+                property string helpTopic: "settings.showTabs"
+
+                objectName: "showTabsBox"
+
+                Layout.fillWidth: true
+                Layout.columnSpan: 2
+                text: qsTr("Show tabs, to keep several requests open")
+                checked: cppTabs.showTabs
+                onToggled: cppTabs.showTabs = checked
+            }
+
             Label { text: qsTr("Updates:"); Layout.preferredWidth: 180 }
             CheckBox {
                 Layout.fillWidth: true

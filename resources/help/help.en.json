@@ -256,6 +256,14 @@
             "next": "Ctrl+Tab goes to the next tab, Ctrl+W closes one; a middle click on a tab closes it too.",
             "chapter": "requests"
         },
+        "settings.showTabs": {
+            "title": "Show tabs",
+            "what": "Shows the open requests as tabs above the request.",
+            "why": "Tabs keep several requests open, each with its own last response. Turned off, ReqDeck shows one request at a time.",
+            "example": "Turn it off for a quiet window with a single request.",
+            "next": "The choice applies to every workspace on this computer.",
+            "chapter": "requests"
+        },
         "request.authType": {
             "title": "Authentication",
             "what": "Chooses how the request proves who you are.",

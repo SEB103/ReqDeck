@@ -38,6 +38,39 @@ TabsModel::TabsModel(CollectionTreeModel *collection, QObject *parent)
 void TabsModel::setSettings(QSettings *settings)
 {
     m_settings = settings;
+    if (m_settings && !m_settings->value(QStringLiteral("Tabs/show"), true).toBool())
+        setShowTabs(false);
+}
+
+/*!
+ * \brief Returns whether the tab bar shows.
+ */
+bool TabsModel::showTabs() const
+{
+    return m_showTabs;
+}
+
+/*!
+ * \brief Shows or hides the tab bar, and keeps the choice in the settings.
+ *
+ * Hidden, ReqDeck works with one request at a time as before tabs: the other
+ * tabs close, the current one becomes the preview tab, and open() and edits
+ * no longer keep tabs.
+ * \param show True to show the tabs.
+ */
+void TabsModel::setShowTabs(bool show)
+{
+    if (show == m_showTabs)
+        return;
+    m_showTabs = show;
+    if (m_settings)
+        m_settings->setValue(QStringLiteral("Tabs/show"), show);
+    if (!show && m_current >= 0) {
+        closeOthers(m_current);
+        m_tabs[0].preview = true;
+        emit dataChanged(index(0), index(0), {PreviewRole});
+    }
+    emit showTabsChanged();
 }
 
 /*!
@@ -194,6 +227,10 @@ void TabsModel::preview(const QString &requestId)
  */
 void TabsModel::open(const QString &requestId)
 {
+    if (!m_showTabs) {
+        preview(requestId);
+        return;
+    }
     if (!m_collection->request(requestId))
         return;
     if (const int row = rowOfRequest(requestId); row >= 0) {
@@ -212,7 +249,7 @@ void TabsModel::open(const QString &requestId)
  */
 void TabsModel::keepCurrent()
 {
-    if (m_current < 0 || !m_tabs.at(m_current).preview)
+    if (!m_showTabs || m_current < 0 || !m_tabs.at(m_current).preview)
         return;
     m_tabs[m_current].preview = false;
     emit dataChanged(index(m_current), index(m_current), {PreviewRole});

@@ -39,6 +39,9 @@ class TabsModel : public QAbstractListModel
     /** Number of tabs. */
     Q_PROPERTY(int count READ rowCount NOTIFY countChanged)
 
+    /** Whether the tab bar shows; off keeps one preview tab, as without tabs. */
+    Q_PROPERTY(bool showTabs READ showTabs WRITE setShowTabs NOTIFY showTabsChanged)
+
 public:
     /** Data roles of a tab. */
     enum Role {
@@ -117,6 +120,12 @@ public:
     /** Closes every tab. */
     Q_INVOKABLE void clear();
 
+    /** Returns whether the tab bar shows; true unless turned off in the settings. */
+    bool showTabs() const;
+
+    /** Shows or hides the tab bar; hiding keeps only the current tab, as a preview tab. */
+    void setShowTabs(bool show);
+
     /** Keeps the tabs of each workspace in \a settings, which is not owned; null keeps nothing. */
     void setSettings(QSettings *settings);
 
@@ -129,6 +138,9 @@ signals:
 
     /** Emitted when the number of tabs changes. */
     void countChanged();
+
+    /** Emitted when showTabs() changes. */
+    void showTabsChanged();
 
     /** Emitted when the tab \a tabId closes, so its response and send can go. */
     void tabClosed(int tabId);
@@ -165,6 +177,9 @@ private:
 
     /** Whether tabs are being restored, so nothing is saved meanwhile. */
     bool m_restoring {false};
+
+    /** Whether the tab bar shows. */
+    bool m_showTabs {true};
 
     /** Collection of the requests; not owned. */
     CollectionTreeModel *m_collection {nullptr};

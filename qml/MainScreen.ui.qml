@@ -242,7 +242,7 @@ Pane {
 
                     RequestTabBar {
                         Layout.fillWidth: true
-                        visible: count > 0
+                        visible: count > 0 && cppTabs.showTabs
                     }
 
                     RequestPane {
