@@ -280,6 +280,14 @@
             "next": "Tokens are kept encrypted for your Windows user, never in the workspace file or the history.",
             "chapter": "auth"
         },
+        "response.filter": {
+            "title": "JSONPath filter",
+            "what": "Shows only the parts of a JSON response the path selects.",
+            "why": "In a long response the one value you need is hard to find; a path picks it out.",
+            "example": "$.items[*].id, $..price, or $.items[?(@.status == 'open')].name",
+            "next": "Clear the field to see the whole body again. The filter stays for the next send.",
+            "chapter": "response"
+        },
         "request.authType": {
             "title": "Authentication",
             "what": "Chooses how the request proves who you are.",

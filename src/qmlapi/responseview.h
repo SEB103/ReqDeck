@@ -74,6 +74,15 @@ class ResponseView : public QObject
     /** Text for the body view, Pretty or Raw. */
     Q_PROPERTY(QString bodyText READ bodyText NOTIFY responseChanged)
 
+    /** JSONPath that filters a JSON body; empty shows the whole body. */
+    Q_PROPERTY(QString filterText READ filterText WRITE setFilterText NOTIFY responseChanged)
+
+    /** Why the filter cannot be applied, or empty. */
+    Q_PROPERTY(QString filterError READ filterError NOTIFY responseChanged)
+
+    /** Whether the body can be filtered: JSON held in memory. */
+    Q_PROPERTY(bool canFilter READ canFilter NOTIFY responseChanged)
+
     /** Number of lines of bodyText, known without asking the text item. */
     Q_PROPERTY(int bodyLineCount READ bodyLineCount NOTIFY responseChanged)
 
@@ -134,6 +143,18 @@ public:
 
     /** Returns the warning text. */
     QString warningText() const;
+
+    /** Returns the JSONPath of the filter. */
+    QString filterText() const;
+
+    /** Filters a JSON body with the JSONPath \a path; empty shows the whole body. */
+    void setFilterText(const QString &path);
+
+    /** Returns why the filter cannot be applied, or an empty string. */
+    QString filterError() const;
+
+    /** Returns whether the body can be filtered. */
+    bool canFilter() const;
 
     /** Returns the duration in milliseconds. */
     qint64 elapsedMs() const;
@@ -283,6 +304,18 @@ private:
 
     /** Warning text. */
     QString m_warningText;
+
+    /** JSONPath of the filter, kept across sends. */
+    QString m_filterText;
+
+    /** The filter's matches as indented JSON, or empty without a filter. */
+    QString m_filtered;
+
+    /** Why the filter failed, or empty. */
+    QString m_filterError;
+
+    /** Applies m_filterText to the body. */
+    void applyFilter();
 
     /** Whether the body has a run too long to wrap at word boundaries. */
     bool m_wrapAnywhere {false};

@@ -5,6 +5,8 @@
 #include <QTemporaryDir>
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QtTest>
 
 #include "core/http/responsedata.h"
@@ -96,6 +98,9 @@ private slots:
 
     /*! Verifies that stored cookies left out for a typed Cookie header give a warning. */
     void skippedCookiesBecomeWarning();
+
+    /*! Verifies the JSONPath filter: matches, no match, errors, and that it stays for the next response. */
+    void filterShowsMatches();
 
     /*! Verifies that find ignores case and reports positions in the shown text. */
     void findIsCaseInsensitive();
@@ -384,6 +389,30 @@ void ResponseViewTest::buildErrorShowsMessageWithoutStatus()
     QVERIFY(!view.property("busy").toBool());
     QCOMPARE(view.property("statusCode").toInt(), 0);
     QCOMPARE(view.property("errorText").toString(), QStringLiteral("URL is empty."));
+}
+
+void ResponseViewTest::filterShowsMatches()
+{
+    ResponseView view;
+    view.setResponse(makeResponse(R"({"items":[{"id":1},{"id":2}]})", QStringLiteral("application/json")), {});
+    QVERIFY(view.property("canFilter").toBool());
+
+    view.setProperty("filterText", QStringLiteral("$.items[*].id"));
+    QCOMPARE(QJsonDocument::fromJson(view.bodyText().toUtf8()).array(), QJsonArray({1, 2}));
+    QVERIFY(view.property("filterError").toString().isEmpty());
+
+    view.setProperty("filterText", QStringLiteral("$.nothing"));
+    QCOMPARE(view.bodyText(), tr("No match."));
+    view.setProperty("filterText", QStringLiteral("items"));
+    QVERIFY(!view.property("filterError").toString().isEmpty());
+
+    view.setProperty("filterText", QStringLiteral("$.items[0].id"));
+    view.setResponse(makeResponse(R"({"items":[{"id":7}]})", QStringLiteral("application/json")), {});
+    QCOMPARE(QJsonDocument::fromJson(view.bodyText().toUtf8()).array(), QJsonArray({7}));
+
+    view.setResponse(makeResponse("plain", QStringLiteral("text/plain")), {});
+    QVERIFY(!view.property("canFilter").toBool());
+    QCOMPARE(view.bodyText(), QStringLiteral("plain"));
 }
 
 void ResponseViewTest::skippedCookiesBecomeWarning()

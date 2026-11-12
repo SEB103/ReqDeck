@@ -3352,6 +3352,24 @@ Item {
             cppRequestEditor.authType = 0;
         }
 
+        /*! Verifies the JSONPath filter field of the response. */
+        function test_responseFilterShowsMatches() {
+            const host = createSender(cppTestHost.serverUrl("/json/3"));
+            sendAndWait(host);
+            const filter = findChild(host.response, "responseFilter");
+            tryCompare(filter, "visible", true);
+            filter.text = "$[*]";
+            filter.textEdited();
+            compare(cppResponse.filterText, "$[*]");
+            verify(cppResponse.filterError.length === 0, cppResponse.filterError);
+            filter.text = "oops";
+            filter.textEdited();
+            tryCompare(findChild(host.response, "responseFilterError"), "visible", true);
+            filter.text = "";
+            filter.textEdited();
+            compare(cppResponse.filterText, "");
+        }
+
         /*! Verifies that a cancelled preview is gone when the import dialog opens again. */
         function test_importDialogForgetsCancelledPreview() {
             const host = createTemporaryObject(importComponent, root);

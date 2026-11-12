@@ -310,6 +310,33 @@ Item {
             ColumnLayout {
                 spacing: 4
 
+                TextField {
+                    /*! Topic of the F1 help. */
+                    property string helpTopic: "response.filter"
+
+                    objectName: "responseFilter"
+
+                    Layout.fillWidth: true
+                    visible: cppResponse.canFilter
+                    placeholderText: qsTr("Filter with JSONPath, for example $.items[*].id")
+                    selectByMouse: true
+                    font.family: "Consolas"
+                    text: cppResponse.filterText
+                    Accessible.name: qsTr("JSONPath filter")
+                    onTextEdited: cppResponse.filterText = text
+                }
+
+                Label {
+                    objectName: "responseFilterError"
+
+                    Layout.fillWidth: true
+                    visible: cppResponse.canFilter && cppResponse.filterError.length > 0
+                    wrapMode: Text.Wrap
+                    textFormat: Text.PlainText
+                    color: Material.color(Material.Red)
+                    text: cppResponse.filterError
+                }
+
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8

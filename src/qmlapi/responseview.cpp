@@ -5,10 +5,14 @@
 
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QQuickTextDocument>
 #include <QRegularExpression>
 #include <QSaveFile>
 
+#include "core/http/jsonpath.h"
 #include "qmlapi/bodyhighlighter.h"
 
 namespace {
@@ -153,6 +157,8 @@ QString ResponseView::bodyText() const
 {
     if (m_body.kind == BodyKind::Binary)
         return tr("Binary body, %1. Not shown.").arg(sizeText());
+    if (!m_filterText.trimmed().isEmpty() && canFilter() && m_filterError.isEmpty())
+        return m_filtered.left(kMaxDisplayChars);
     const QString &text = m_pretty && canPretty() ? formattedBody() : m_body.text;
     qsizetype shown = qMin(text.size(), kMaxDisplayChars);
     // A character outside the BMP takes two QChars; the cut must not split it.
@@ -460,6 +466,7 @@ void ResponseView::setResponse(const ResponseData &response, const QStringList &
     if (!unresolvedVariables.isEmpty())
         warnings.append(unresolvedWarning(unresolvedVariables));
     m_warningText = warnings.join(u'\n');
+    applyFilter();
 
     if (response.error != ResponseError::None) {
         QStringList lines {response.errorString};
@@ -512,6 +519,72 @@ void ResponseView::clear()
  * \internal
  * \brief Forgets the shown result, keeping requestName() and pretty().
  */
+/*!
+ * \brief Returns the JSONPath of the filter.
+ */
+QString ResponseView::filterText() const
+{
+    return m_filterText;
+}
+
+/*!
+ * \brief Filters a JSON body with the JSONPath \a path.
+ *
+ * The filter stays for later responses, so a send repeated shows the same
+ * part again. An empty path shows the whole body.
+ * \param path The JSONPath, for example "$.items[*].id".
+ */
+void ResponseView::setFilterText(const QString &path)
+{
+    if (path == m_filterText)
+        return;
+    m_filterText = path;
+    applyFilter();
+    emit responseChanged();
+}
+
+/*!
+ * \brief Returns why the filter cannot be applied, or an empty string.
+ */
+QString ResponseView::filterError() const
+{
+    return m_filterError;
+}
+
+/*!
+ * \brief Returns whether the body can be filtered: JSON held in memory.
+ */
+bool ResponseView::canFilter() const
+{
+    return m_hasResponse && !bodyOnDisk() && m_body.kind == BodyKind::Json;
+}
+
+/*!
+ * \internal
+ * \brief Applies the filter to the body; the matches show as an indented JSON array.
+ */
+void ResponseView::applyFilter()
+{
+    m_filtered.clear();
+    m_filterError.clear();
+    if (m_filterText.trimmed().isEmpty() || !canFilter())
+        return;
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(m_body.text.toUtf8(), &parseError);
+    if (document.isNull()) {
+        m_filterError = tr("The body is not valid JSON: %1").arg(parseError.errorString());
+        return;
+    }
+    const QJsonValue root = document.isArray() ? QJsonValue(document.array()) : QJsonValue(document.object());
+    const JsonPathResult result = JsonPath::evaluate(root, m_filterText);
+    if (!result.ok) {
+        m_filterError = result.errorString;
+        return;
+    }
+    m_filtered = result.matches.isEmpty() ? tr("No match.")
+                                          : QString::fromUtf8(QJsonDocument(result.matches).toJson(QJsonDocument::Indented));
+}
+
 void ResponseView::resetResult()
 {
     m_response = ResponseData();
