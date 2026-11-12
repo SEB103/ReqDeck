@@ -104,6 +104,23 @@ public:
             result.apiKeyValue = references(object.value(QLatin1StringView("value")).toString());
             if (object.value(QLatin1StringView("addTo")).toString() == QLatin1StringView("queryParams"))
                 result.apiKeyLocation = ApiKeyLocation::Query;
+        } else if (type == QLatin1StringView("oauth2")
+                   && (object.value(QLatin1StringView("grantType")).toString() == QLatin1StringView("authorization_code")
+                       || object.value(QLatin1StringView("grantType")).toString() == QLatin1StringView("client_credentials"))) {
+            const auto text = [&object](const char *key) {
+                return references(object.value(QLatin1StringView(key)).toString());
+            };
+            result.type = AuthType::OAuth2;
+            result.oauth2.grant = object.value(QLatin1StringView("grantType")).toString() == QLatin1StringView("client_credentials")
+                                      ? OAuthGrant::ClientCredentials
+                                      : OAuthGrant::AuthorizationCode;
+            result.oauth2.authUrl = text("authorizationUrl");
+            result.oauth2.tokenUrl = text("accessTokenUrl");
+            result.oauth2.clientId = text("clientId");
+            result.oauth2.clientSecret = text("clientSecret");
+            result.oauth2.scope = text("scope");
+            result.oauth2.audience = text("audience");
+            report.append(QStringLiteral("%1: OAuth 2.0 settings came over; get a token with Get Token").arg(where));
         } else {
             result.type = AuthType::None;
             report.append(QStringLiteral("%1: %2 authorization").arg(where, type));

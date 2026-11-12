@@ -55,6 +55,9 @@ private slots:
 
     /*! Verifies that an example of wide nested schemas stays small and is reported. */
     void limitsExampleSize();
+
+    /*! Verifies that an OAuth 2.0 security scheme comes over with the requirement's scopes. */
+    void readsOAuthScheme();
 };
 
 void OpenApiImporterTest::recognizesFormat()
@@ -167,7 +170,7 @@ void OpenApiImporterTest::reportsWhatIsDropped()
     const QString report = result.report.join(u'\n');
 
     QVERIFY2(report.contains(QStringLiteral("Pet Shop / pets / Get a pet: cookie parameter session")), qPrintable(report));
-    QVERIFY2(report.contains(QStringLiteral("Pet Shop / store / Place an order: oauth2 authorization")), qPrintable(report));
+    QVERIFY2(report.contains(QStringLiteral("Pet Shop / store / Place an order: oauth2 authorization without")), qPrintable(report));
     QVERIFY2(report.contains(QStringLiteral("Pet Shop / store / Upload a photo: field photo needs a file; choose one")), qPrintable(report));
     const RequestSpec &upload = result.folder.children.at(1).children.at(1).request;
     QCOMPARE(upload.body.mode, BodyMode::FormData);
@@ -210,6 +213,26 @@ void OpenApiImporterTest::limitsExampleSize()
     QVERIFY(result.folder.children.at(0).request.body.raw.size() < 200000);
     QVERIFY2(result.report.join(u'\n').contains(QStringLiteral("example cut short")), qPrintable(result.report.join(u'\n')));
     QVERIFY2(result.report.join(u'\n').contains(QStringLiteral("no servers")), qPrintable(result.report.join(u'\n')));
+}
+
+void OpenApiImporterTest::readsOAuthScheme()
+{
+    const QByteArray json = "{\"openapi\": \"3.0.0\", \"info\": {\"title\": \"O\"},"
+                            "\"security\": [{\"id\": [\"read\", \"write\"]}],"
+                            "\"paths\": {\"/x\": {\"get\": {\"summary\": \"X\"}}},"
+                            "\"components\": {\"securitySchemes\": {\"id\": {\"type\": \"oauth2\", \"flows\": {"
+                            "\"clientCredentials\": {\"tokenUrl\": \"https://id.test/token\", \"scopes\": {}},"
+                            "\"authorizationCode\": {\"authorizationUrl\": \"https://id.test/authorize\","
+                            "\"tokenUrl\": \"https://id.test/token\", \"scopes\": {}}}}}}}";
+    const ImportResult result = OpenApiImporter::importDocument(json);
+
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    const RequestAuth &auth = result.folder.folder.auth;
+    QCOMPARE(auth.type, AuthType::OAuth2);
+    QCOMPARE(auth.oauth2.grant, OAuthGrant::AuthorizationCode);
+    QCOMPARE(auth.oauth2.authUrl, QStringLiteral("https://id.test/authorize"));
+    QCOMPARE(auth.oauth2.scope, QStringLiteral("read write"));
+    QCOMPARE(auth.oauth2.clientId, QStringLiteral("{{clientId}}"));
 }
 
 QTEST_GUILESS_MAIN(OpenApiImporterTest)

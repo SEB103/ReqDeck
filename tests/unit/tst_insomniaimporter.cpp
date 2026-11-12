@@ -41,6 +41,9 @@ private slots:
 
     /*! Verifies that a folder inside itself and a very long chain of folders end with a report line. */
     void stopsLoopsAndDeepChains();
+
+    /*! Verifies that OAuth 2.0 settings come over. */
+    void readsOAuthSettings();
 };
 
 /*!
@@ -135,6 +138,21 @@ void InsomniaImporterTest::rejectsOtherFiles()
 {
     QVERIFY(!InsomniaImporter::importExport("{oops").ok);
     QVERIFY(!InsomniaImporter::importExport("{\"_type\": \"export\", \"resources\": []}").ok);
+}
+
+void InsomniaImporterTest::readsOAuthSettings()
+{
+    const ImportResult result = InsomniaImporter::importExport(exportWith(
+        ",{\"_id\": \"req_o\", \"_type\": \"request\", \"parentId\": \"wrk\", \"name\": \"O\", \"url\": \"https://h/\","
+        "\"authentication\": {\"type\": \"oauth2\", \"grantType\": \"authorization_code\","
+        "\"authorizationUrl\": \"https://id.test/authorize\", \"accessTokenUrl\": \"{{ _.idp }}/token\","
+        "\"clientId\": \"app\", \"scope\": \"openid\"}}"));
+    QVERIFY(result.ok);
+    const RequestAuth &auth = result.folder.children.at(0).request.auth;
+    QCOMPARE(auth.type, AuthType::OAuth2);
+    QCOMPARE(auth.oauth2.grant, OAuthGrant::AuthorizationCode);
+    QCOMPARE(auth.oauth2.tokenUrl, QStringLiteral("{{idp}}/token"));
+    QCOMPARE(auth.oauth2.scope, QStringLiteral("openid"));
 }
 
 void InsomniaImporterTest::stopsLoopsAndDeepChains()

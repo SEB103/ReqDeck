@@ -228,6 +228,26 @@ public:
             result.apiKeyLocation = in == QLatin1StringView("query") ? ApiKeyLocation::Query : ApiKeyLocation::Header;
         } else if (type == QLatin1StringView("apiKey")) {
             note(where, QStringLiteral("API key in %1").arg(in));
+        } else if (type == QLatin1StringView("oauth2")) {
+            // The authorization code flow wins when a scheme offers both.
+            const QJsonObject flows = scheme.value(QLatin1StringView("flows")).toObject();
+            const QJsonObject code = flows.value(QLatin1StringView("authorizationCode")).toObject();
+            const QJsonObject client = flows.value(QLatin1StringView("clientCredentials")).toObject();
+            const QJsonObject flow = !code.isEmpty() ? code : client;
+            if (flow.isEmpty()) {
+                note(where, QStringLiteral("oauth2 authorization without an authorization code or client credentials flow"));
+            } else {
+                result.type = AuthType::OAuth2;
+                result.oauth2.grant = !code.isEmpty() ? OAuthGrant::AuthorizationCode : OAuthGrant::ClientCredentials;
+                result.oauth2.authUrl = flow.value(QLatin1StringView("authorizationUrl")).toString();
+                result.oauth2.tokenUrl = flow.value(QLatin1StringView("tokenUrl")).toString();
+                result.oauth2.clientId = QStringLiteral("{{clientId}}");
+                QStringList scopes;
+                for (const QJsonValue &scope : requirement.value(name).toArray())
+                    scopes.append(scope.toString());
+                result.oauth2.scope = scopes.join(u' ');
+                note(where, QStringLiteral("OAuth 2.0 settings came over; fill in {{clientId}} and get a token"));
+            }
         } else {
             note(where, QStringLiteral("%1 authorization").arg(type.isEmpty() ? name : type));
         }

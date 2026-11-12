@@ -112,6 +112,22 @@ public:
             result.apiKeyValue = valueOf(list, QLatin1StringView("value"));
             if (valueOf(list, QLatin1StringView("in")) == QLatin1StringView("query"))
                 result.apiKeyLocation = ApiKeyLocation::Query;
+        } else if (type == QLatin1StringView("oauth2")
+                   && (valueOf(object.value(QLatin1StringView("oauth2")), QLatin1StringView("grant_type")).startsWith(QLatin1StringView("authorization_code"))
+                       || valueOf(object.value(QLatin1StringView("oauth2")), QLatin1StringView("grant_type")) == QLatin1StringView("client_credentials"))) {
+            // Postman's settings come over; its tokens do not.
+            const QJsonValue list = object.value(QLatin1StringView("oauth2"));
+            result.type = AuthType::OAuth2;
+            result.oauth2.grant = valueOf(list, QLatin1StringView("grant_type")) == QLatin1StringView("client_credentials")
+                                      ? OAuthGrant::ClientCredentials
+                                      : OAuthGrant::AuthorizationCode;
+            result.oauth2.authUrl = valueOf(list, QLatin1StringView("authUrl"));
+            result.oauth2.tokenUrl = valueOf(list, QLatin1StringView("accessTokenUrl"));
+            result.oauth2.clientId = valueOf(list, QLatin1StringView("clientId"));
+            result.oauth2.clientSecret = valueOf(list, QLatin1StringView("clientSecret"));
+            result.oauth2.scope = valueOf(list, QLatin1StringView("scope"));
+            result.oauth2.audience = valueOf(list, QLatin1StringView("audience"));
+            report.append(QStringLiteral("%1: OAuth 2.0 settings came over; get a token with Get Token").arg(where));
         } else if (!type.isEmpty() && type != QLatin1StringView("inherit")) {
             // An auth ReqDeck cannot send must not fall back to the folder's.
             result.type = AuthType::None;

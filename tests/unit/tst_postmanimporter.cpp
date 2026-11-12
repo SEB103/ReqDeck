@@ -61,6 +61,9 @@ private slots:
     /*! Verifies that Collection v2.0 auth, attributes as one object, is read. */
     void readsVersion20Auth();
 
+    /*! Verifies that OAuth 2.0 settings come over, without tokens. */
+    void readsOAuthSettings();
+
     /*! Verifies that folders nested deeper than ReqDeck allows are left out and reported. */
     void leavesOutTooDeepFolders();
 };
@@ -140,7 +143,7 @@ void PostmanImporterTest::scriptsAreReportedNotKept()
     QVERIFY2(report.contains(QStringLiteral("Shop API: scripts")), qPrintable(report));
     QVERIFY2(report.contains(QStringLiteral("Shop API / Orders / List orders: scripts")), qPrintable(report));
     QVERIFY2(report.contains(QStringLiteral("List orders: saved example responses")), qPrintable(report));
-    QVERIFY2(report.contains(QStringLiteral("Upload: OAuth 2.0")), qPrintable(report));
+    QVERIFY2(report.contains(QStringLiteral("Upload: OAuth 2.0 authorization")), qPrintable(report));
     QVERIFY2(report.contains(QStringLiteral("Upload: file a.png is a path of the computer the file came from")), qPrintable(report));
     const RequestSpec &upload = result.folder.children.at(2).request;
     QCOMPARE(upload.body.mode, BodyMode::FormData);
@@ -178,6 +181,30 @@ void PostmanImporterTest::rejectsOtherFiles()
         QVERIFY(!result.errorString.isEmpty());
     }
     QVERIFY(!PostmanImporter::importEnvironment("{}").ok);
+}
+
+void PostmanImporterTest::readsOAuthSettings()
+{
+    const QByteArray json = "{\"info\": {\"name\": \"O\", \"schema\": "
+                            "\"https://schema.getpostman.com/json/collection/v2.1.0/collection.json\"},"
+                            "\"auth\": {\"type\": \"oauth2\", \"oauth2\": ["
+                            "{\"key\": \"grant_type\", \"value\": \"client_credentials\"},"
+                            "{\"key\": \"accessTokenUrl\", \"value\": \"https://id.test/token\"},"
+                            "{\"key\": \"clientId\", \"value\": \"app\"},"
+                            "{\"key\": \"clientSecret\", \"value\": \"{{secret}}\"},"
+                            "{\"key\": \"scope\", \"value\": \"read\"},"
+                            "{\"key\": \"accessToken\", \"value\": \"stale-token\"}]},"
+                            "\"item\": []}";
+    const ImportResult result = PostmanImporter::importCollection(json);
+
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    const RequestAuth &auth = result.folder.folder.auth;
+    QCOMPARE(auth.type, AuthType::OAuth2);
+    QCOMPARE(auth.oauth2.grant, OAuthGrant::ClientCredentials);
+    QCOMPARE(auth.oauth2.tokenUrl, QStringLiteral("https://id.test/token"));
+    QCOMPARE(auth.oauth2.clientSecret, QStringLiteral("{{secret}}"));
+    QVERIFY(auth.token.isEmpty());
+    QVERIFY(result.report.join(u'\n').contains(QStringLiteral("Get Token")));
 }
 
 void PostmanImporterTest::readsVersion20Auth()
