@@ -54,6 +54,8 @@ public:
         int defaultTimeoutMs {30000};
         /** Whether redirects are followed (never from https to http). */
         bool followRedirects {true};
+        /** Folder relative file paths resolve against, normally the workspace's; empty for the working directory. */
+        QString baseDirectory;
     };
 
     /**

@@ -5,12 +5,14 @@
 
 #include <QClipboard>
 #include <QDesktopServices>
+#include <QDir>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QLocale>
 #include <QRegularExpression>
 #include <QUrl>
 
+#include "core/http/bodysource.h"
 #include "core/http/oauthfields.h"
 #include "core/http/curlconverter.h"
 #include "core/http/httpexecutor.h"
@@ -84,6 +86,82 @@ void RequestEditor::setTabs(TabsModel *tabs)
 void RequestEditor::setBuilderOptions(const RequestBuilder::Options &options)
 {
     m_builderOptions = options;
+}
+
+/*!
+ * \internal
+ * \brief Returns the builder options with the workspace folder as the base of relative paths.
+ */
+RequestBuilder::Options RequestEditor::builderOptions() const
+{
+    RequestBuilder::Options options = m_builderOptions;
+    const QString workspace = m_manager->activeWorkspacePath();
+    if (!workspace.isEmpty())
+        options.baseDirectory = QFileInfo(workspace).absolutePath();
+    return options;
+}
+
+/*!
+ * \internal
+ * \brief Returns the comparison key of the file at \a path: clean, and case-blind on Windows.
+ */
+QString RequestEditor::fileKey(const QString &path)
+{
+    const QString clean = QDir::cleanPath(QFileInfo(path).absoluteFilePath());
+#ifdef Q_OS_WIN
+    return clean.toLower();
+#else
+    return clean;
+#endif
+}
+
+/*!
+ * \internal
+ * \brief Returns the files \a built would upload that were not confirmed, each once.
+ */
+QStringList RequestEditor::unconfirmedFilesOf(const BuiltRequest &built) const
+{
+    QStringList files;
+    for (const BodySegment &segment : built.segments) {
+        if (!segment.filePath.isEmpty() && !m_confirmedFiles.contains(fileKey(segment.filePath))
+            && !files.contains(segment.filePath))
+            files.append(segment.filePath);
+    }
+    return files;
+}
+
+/*!
+ * \brief Returns the files the open request would upload that were not confirmed yet.
+ *
+ * A workspace or an imported collection can name any file on this computer;
+ * the user sees each one before its first upload. Files chosen with a file
+ * dialog count as confirmed. The confirmation lasts until another workspace
+ * opens.
+ * \param values One-time values for variables the request lacks, as for sendWithValues().
+ * \return The absolute paths, or nothing when the request cannot be built yet.
+ */
+QStringList RequestEditor::unconfirmedFiles(const QVariantMap &values) const
+{
+    if (!hasRequest())
+        return {};
+    QList<KeyValue> extra;
+    for (auto it = values.cbegin(); it != values.cend(); ++it)
+        extra.append({it.key(), it.value().toString(), true});
+    QList<KeyValue> rows;
+    const RequestSpec request = effectiveRequest(rows);
+    return unconfirmedFilesOf(RequestBuilder::build(request, resolverFor(rows + extra), builderOptions()));
+}
+
+/*!
+ * \brief Allows the files at \a paths to be uploaded until another workspace opens.
+ * \param paths Absolute paths, or file URLs as a file dialog gives them.
+ */
+void RequestEditor::confirmFiles(const QStringList &paths)
+{
+    for (const QString &path : paths) {
+        const QUrl url(path);
+        m_confirmedFiles.insert(fileKey(url.isLocalFile() ? url.toLocalFile() : path));
+    }
 }
 
 bool RequestEditor::hasRequest() const
@@ -211,7 +289,8 @@ QString RequestEditor::bodyFileInfo() const
         return tr("No file chosen.");
     if (path.contains(QLatin1StringView("{{")))
         return QString();
-    const QFileInfo info(path);
+    const QString base = builderOptions().baseDirectory;
+    const QFileInfo info(QDir::isRelativePath(path) && !base.isEmpty() ? QDir(base).filePath(path) : path);
     if (!info.isFile())
         return tr("The file was not found.");
     return QLocale().formattedDataSize(info.size());
@@ -499,15 +578,17 @@ QStringList RequestEditor::missingVariables() const
     QList<KeyValue> rows;
     const RequestSpec request = effectiveRequest(rows);
     const VariableResolver variables = resolverFor(rows);
-    const BuiltRequest built = RequestBuilder::build(request, variables, m_builderOptions);
+    const BuiltRequest built = RequestBuilder::build(request, variables, builderOptions());
     QStringList names = built.unresolvedVariables;
     if (!built.ok) {
         // The builder stops at a URL it cannot use; the other fields are checked
         // with a stand-in address, so all names are asked for at once.
         RequestSpec rest = request;
         rest.url = QStringLiteral("http://placeholder.invalid/");
-        names += RequestBuilder::build(rest, variables, m_builderOptions).unresolvedVariables;
+        names += RequestBuilder::build(rest, variables, builderOptions()).unresolvedVariables;
     }
+    // OAuth settings are resolved apart from the request, and must not go out literal either.
+    names += oauthContext().unresolved;
     names.removeDuplicates();
     return names;
 }
@@ -591,6 +672,12 @@ void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue
             send.buildError = tr("The authorization server gave no usable token.");
             m_response->setBuildError(send.buildError, {});
             return;
+        } else if (!oauth.unresolved.isEmpty()) {
+            m_response->setBusy(m_name, m_requestId);
+            send.response.reset();
+            send.buildError = oauthVariablesMessage(oauth.unresolved);
+            m_response->setBuildError(send.buildError, oauth.unresolved);
+            return;
         } else if (!m_oauth->isBusy()
                    && ((token && !token->refreshToken.isEmpty()) || oauth.settings.grant == OAuthGrant::ClientCredentials)) {
             m_response->setBusy(m_name, m_requestId);
@@ -624,7 +711,7 @@ void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue
         }
     }
 
-    BuiltRequest built = RequestBuilder::build(request, variables, m_builderOptions);
+    BuiltRequest built = RequestBuilder::build(request, variables, builderOptions());
     built.tlsException = tlsException;
 
     m_response->setBusy(m_name, m_requestId);
@@ -633,6 +720,14 @@ void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue
         send.response.reset();
         send.buildError = built.errorString;
         m_response->setBuildError(built.errorString, built.unresolvedVariables);
+        return;
+    }
+    // A file the user has not seen never leaves this computer.
+    if (const QStringList files = unconfirmedFilesOf(built); !files.isEmpty()) {
+        send.response.reset();
+        send.buildError = tr("Confirm the upload of %1 first: press Send to see the question.")
+                              .arg(QDir::toNativeSeparators(files.first()));
+        m_response->setBuildError(send.buildError, {});
         return;
     }
     send.buildError.clear();
@@ -764,6 +859,11 @@ void RequestEditor::getToken()
     const OAuthContext oauth = oauthContext();
     if (!oauth.active || m_oauth->isBusy())
         return;
+    if (!oauth.unresolved.isEmpty()) {
+        m_oauthError = oauthVariablesMessage(oauth.unresolved);
+        emit oauthChanged();
+        return;
+    }
     m_oauthError.clear();
     m_oauthKey = oauth.key;
     m_oauthThenSend = false;
@@ -831,9 +931,50 @@ RequestEditor::OAuthContext RequestEditor::oauthContext(const QList<KeyValue> &e
     context.settings = raw;
     for (QString *field : {&context.settings.authUrl, &context.settings.tokenUrl, &context.settings.clientId,
                            &context.settings.clientSecret, &context.settings.scope, &context.settings.audience})
-        *field = variables.resolve(*field);
+        *field = variables.resolve(*field, &context.unresolved);
     context.key = OAuthTokenStore::keyFor(context.owner, context.settings);
     return context;
+}
+
+/*!
+ * \internal
+ * \brief Returns the message that \a names must have values before a token can be fetched.
+ *
+ * A literal {{name}} must never reach the authorization server, where it could
+ * end up in a log as a client id or, worse, next to a real secret.
+ */
+QString RequestEditor::oauthVariablesMessage(const QStringList &names)
+{
+    QStringList references;
+    for (const QString &name : names)
+        references.append(QStringLiteral("{{%1}}").arg(name));
+    return tr("Give these variables a value first: %1.").arg(references.join(QLatin1StringView(", ")));
+}
+
+/*!
+ * \brief Returns why the OAuth 2.0 token of the open request may travel unencrypted.
+ *
+ * The token URL carries the client secret and returns the token; the request
+ * URL carries the token. Over plain http either can be read on the way, except
+ * to this computer itself.
+ */
+QString RequestEditor::oauthWarning() const
+{
+    const OAuthContext oauth = oauthContext();
+    if (!oauth.active)
+        return {};
+    const auto plain = [](const QString &text) {
+        const QUrl url(text.trimmed());
+        return url.scheme().compare(QLatin1StringView("http"), Qt::CaseInsensitive) == 0
+               && !HttpExecutor::isThisComputer(url.host());
+    };
+    if (plain(oauth.settings.tokenUrl))
+        return tr("The token URL uses plain http: the client secret and the token travel unencrypted.");
+    QList<KeyValue> rows;
+    const RequestSpec request = effectiveRequest(rows);
+    if (plain(resolverFor(rows).resolve(request.url)))
+        return tr("This request uses plain http: its token travels unencrypted.");
+    return {};
 }
 
 /*!
@@ -1056,8 +1197,9 @@ void RequestEditor::dropResponse()
         send.executor->deleteLater();
     }
     m_response->clear();
-    // Responses of another workspace are never read.
+    // Responses of another workspace are never read, and its files are asked about again.
     m_responses.clear();
+    m_confirmedFiles.clear();
     emit responseTemplatesChanged();
     emit busyChanged();
     emit canSendChanged();

@@ -6,6 +6,7 @@
 
 #include <QHash>
 #include <QObject>
+#include <QSet>
 #include <QString>
 #include <QVariantMap>
 
@@ -99,6 +100,9 @@ class RequestEditor : public QObject
 
     /** State of the OAuth 2.0 token of the open request, for the user. */
     Q_PROPERTY(QString oauthStatus READ oauthStatus NOTIFY oauthChanged)
+
+    /** Why the OAuth 2.0 token of the open request may travel unencrypted, or empty. */
+    Q_PROPERTY(QString oauthWarning READ oauthWarning NOTIFY oauthChanged)
 
     /** API key header or parameter name. */
     Q_PROPERTY(QString apiKeyName READ apiKeyName WRITE setApiKeyName NOTIFY requestChanged)
@@ -295,6 +299,12 @@ public:
     /** Sends the open request with \a values added to the active variables for this send only. */
     Q_INVOKABLE void sendWithValues(const QVariantMap &values);
 
+    /** Returns the files the open request would upload with \a values that were not confirmed yet. */
+    Q_INVOKABLE QStringList unconfirmedFiles(const QVariantMap &values = {}) const;
+
+    /** Allows the files at \a paths to be uploaded until another workspace opens. */
+    Q_INVOKABLE void confirmFiles(const QStringList &paths);
+
     /**
      * Sends the open request again without checking the certificate of the host
      * whose check failed for its last response; does nothing otherwise.
@@ -312,6 +322,9 @@ public:
 
     /** Returns the state of the OAuth 2.0 token of the open request. */
     QString oauthStatus() const;
+
+    /** Returns why the OAuth 2.0 token may travel unencrypted, or an empty string. */
+    QString oauthWarning() const;
 
     /** Gets an OAuth 2.0 token for the open request: in the browser, or with the client's credentials. */
     Q_INVOKABLE void getToken();
@@ -447,7 +460,12 @@ private:
         OAuth2Settings settings;
         /** Key of the token in the store. */
         QString key;
+        /** Variables of the settings that have no value, each once. */
+        QStringList unresolved;
     };
+
+    /** Returns the message that \a names must have values before a token can be fetched. */
+    static QString oauthVariablesMessage(const QStringList &names);
 
     /** Returns the OAuth context of the open request with the one-time values \a extra. */
     OAuthContext oauthContext(const QList<KeyValue> &extra = {}) const;
@@ -490,6 +508,18 @@ private:
 
     /** Last response of each request in this run, for response() templates; never stored. */
     ResponseCache m_responses;
+
+    /** Files the user allowed to upload in this workspace, as fileKey() gives them. */
+    QSet<QString> m_confirmedFiles;
+
+    /** Returns the builder options with the workspace folder as the base of relative paths. */
+    RequestBuilder::Options builderOptions() const;
+
+    /** Returns the files of \a built that were not confirmed. */
+    QStringList unconfirmedFilesOf(const BuiltRequest &built) const;
+
+    /** Returns the comparison key of the file at \a path. */
+    static QString fileKey(const QString &path);
 
     /** Returns a resolver over \a rows whose response() templates read m_responses. */
     VariableResolver resolverFor(const QList<KeyValue> &rows) const;

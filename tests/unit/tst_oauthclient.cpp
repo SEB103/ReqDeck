@@ -39,6 +39,9 @@ private slots:
     /*! Verifies refresh and token expiry. */
     void refreshAndExpiry();
 
+    /*! Verifies that a refused token names the HTTP status and an oversized answer is not read. */
+    void tokenErrorsNameStatusAndSize();
+
 private:
     /*! Waits for finished() of \a client and returns its result. */
     static std::optional<OAuthResult> waitFor(OAuthClient &client);
@@ -177,6 +180,24 @@ void OAuthClientTest::errorsAreReported()
     result = waitFor(other);
     QVERIFY(!result->ok);
     QVERIFY2(result->errorString.contains(QStringLiteral("The grant is not valid.")), qPrintable(result->errorString));
+}
+
+void OAuthClientTest::tokenErrorsNameStatusAndSize()
+{
+    OAuth2Settings s = settings();
+    s.grant = OAuthGrant::ClientCredentials;
+    s.clientSecret = QStringLiteral("wrong");
+    OAuthClient client;
+    QVERIFY(client.requestClientCredentials(s));
+    std::optional<OAuthResult> result = waitFor(client);
+    QVERIFY(result && !result->ok);
+    QVERIFY2(result->errorString.contains(QStringLiteral("HTTP 400")), qPrintable(result->errorString));
+
+    s.tokenUrl = m_server.url(QStringLiteral("/bytes/3000000")).toString();
+    QVERIFY(client.requestClientCredentials(s));
+    result = waitFor(client);
+    QVERIFY(result && !result->ok);
+    QVERIFY2(result->errorString.contains(QStringLiteral("1 MB")), qPrintable(result->errorString));
 }
 
 void OAuthClientTest::refreshAndExpiry()

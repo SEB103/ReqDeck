@@ -52,6 +52,20 @@ Item {
         if (missing.length > 0)
             missingValuesDialog.ask(missing)
         else
+            root.sendWithFiles({})
+    }
+
+    /*!
+        Sends with the one-time \a values, after the user confirmed the files the
+        request uploads that they have not seen yet.
+    */
+    function sendWithFiles(values) {
+        const files = cppRequestEditor.unconfirmedFiles(values)
+        if (files.length > 0)
+            confirmFilesDialog.ask(files, values)
+        else if (Object.keys(values).length > 0)
+            cppRequestEditor.sendWithValues(values)
+        else
             cppRequestEditor.send()
     }
 
@@ -453,7 +467,11 @@ Item {
 
                         title: qsTr("Choose the file to send")
                         fileMode: FileDialog.OpenFile
-                        onAccepted: cppRequestEditor.bodyFilePath = selectedFile.toString()
+                        onAccepted: {
+                            // A file the user picks is confirmed for upload.
+                            cppRequestEditor.confirmFiles([selectedFile.toString()])
+                            cppRequestEditor.bodyFilePath = selectedFile.toString()
+                        }
                     }
                 }
 
@@ -721,6 +739,17 @@ Item {
                     }
                 }
 
+                Label {
+                    objectName: "oauthWarning"
+
+                    Layout.fillWidth: true
+                    visible: cppRequestEditor.oauthStatus.length > 0 && cppRequestEditor.oauthWarning.length > 0
+                    wrapMode: Text.Wrap
+                    textFormat: Text.PlainText
+                    color: Material.color(Material.Orange, Base.BsTheme.dark ? Material.Shade300 : Material.Shade900)
+                    text: cppRequestEditor.oauthWarning
+                }
+
                 RowLayout {
                     spacing: 6
 
@@ -749,6 +778,60 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                 }
+            }
+        }
+    }
+
+    Dialog {
+        id: confirmFilesDialog
+
+        /*! Topic of the F1 help. */
+        property string helpTopic: "dialog.confirmFiles"
+
+        /*! Absolute paths of the files to confirm. */
+        property var files: []
+
+        /*! One-time values of the send that waits. */
+        property var values: ({})
+
+        /*! Asks about \a list of files for the send with \a sendValues. */
+        function ask(list, sendValues) {
+            confirmFilesDialog.files = list
+            confirmFilesDialog.values = sendValues
+            confirmFilesDialog.open()
+        }
+
+        objectName: "confirmFilesDialog"
+        anchors.centerIn: Overlay.overlay
+        width: 520
+        modal: true
+        Material.roundedScale: Material.SmallScale
+        title: qsTr("Upload files?")
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        onAccepted: {
+            cppRequestEditor.confirmFiles(confirmFilesDialog.files)
+            root.sendWithFiles(confirmFilesDialog.values)
+        }
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 8
+
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: qsTr("This request sends these files from your computer to the server. Send them?")
+            }
+
+            Label {
+                objectName: "confirmFilesList"
+
+                Layout.fillWidth: true
+                wrapMode: Text.WrapAnywhere
+                textFormat: Text.PlainText
+                font.family: "Consolas"
+                text: confirmFilesDialog.files.join("\n")
             }
         }
     }
@@ -789,9 +872,9 @@ Item {
                 for (const name of missingValuesDialog.names)
                     // Typed values may be tokens or passwords: they stay on this computer.
                     cppEnvironments.setVariable(name, values[name], true)
-                cppRequestEditor.send()
+                root.sendWithFiles({})
             } else {
-                cppRequestEditor.sendWithValues(values)
+                root.sendWithFiles(values)
             }
         }
 

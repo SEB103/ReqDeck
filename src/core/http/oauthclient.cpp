@@ -12,11 +12,13 @@
 #include <QRandomGenerator>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QTimer>
 #include <QUrlQuery>
 
 #include "core/http/httpexecutor.h"
 
 #include <chrono>
+#include <utility>
 
 namespace {
 /*!
@@ -30,6 +32,18 @@ constexpr char kUnreserved[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv
  * \brief Milliseconds a token request may take.
  */
 constexpr int kTokenTimeoutMs = 30000;
+
+/*!
+ * \internal
+ * \brief Largest answer of the token endpoint that is read; a token is a few kilobytes.
+ */
+constexpr qint64 kMaxTokenAnswerBytes = 1024 * 1024;
+
+/*!
+ * \internal
+ * \brief Milliseconds a connection to the callback may stay without a request line.
+ */
+constexpr int kCallbackIdleMs = 10000;
 
 /*!
  * \internal
@@ -259,6 +273,8 @@ void OAuthClient::readCallback()
         // Kept by the client: the server goes away after the callback, the answer must not.
         socket->setParent(this);
         connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
+        // A connection that never sends a request line does not stay open.
+        QTimer::singleShot(kCallbackIdleMs, socket, [socket]() { socket->abort(); });
         connect(socket, &QTcpSocket::readyRead, this, [this, socket]() {
             if (!socket->canReadLine() && socket->bytesAvailable() < 8192)
                 return;
@@ -326,8 +342,15 @@ bool OAuthClient::postToken(const OAuth2Settings &settings, const QList<std::pai
     request.setTransferTimeout(std::chrono::milliseconds(kTokenTimeoutMs));
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
     m_busy = true;
+    m_answerTooLarge = false;
     m_reply = m_network->post(request, body.toString(QUrl::FullyEncoded).toLatin1());
     connect(m_reply, &QNetworkReply::finished, this, &OAuthClient::readToken);
+    connect(m_reply, &QNetworkReply::downloadProgress, this, [this](qint64 received, qint64) {
+        if (received > kMaxTokenAnswerBytes && m_reply) {
+            m_answerTooLarge = true;
+            m_reply->abort();
+        }
+    });
     return true;
 }
 
@@ -345,6 +368,11 @@ void OAuthClient::readToken()
     if (!reply)
         return;
     reply->deleteLater();
+    if (std::exchange(m_answerTooLarge, false)) {
+        finish(failure(tr("The authorization server's answer is larger than 1 MB; it is not read.")));
+        return;
+    }
+    const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     const QByteArray data = reply->readAll();
     const QJsonObject object = QJsonDocument::fromJson(data).object();
     const QString access = object.value(QLatin1StringView("access_token")).toString();
@@ -363,12 +391,15 @@ void OAuthClient::readToken()
     }
     const QString error = object.value(QLatin1StringView("error")).toString();
     const QString description = object.value(QLatin1StringView("error_description")).toString();
+    // The status says whether the server, a proxy, or the address is wrong.
+    const QString statusText = status > 0 ? tr(" (HTTP %1)").arg(status) : QString();
     if (!error.isEmpty())
-        finish(failure(tr("The authorization server refused the token: %1").arg(description.isEmpty() ? error : description)));
-    else if (reply->error() != QNetworkReply::NoError)
+        finish(failure(tr("The authorization server refused the token: %1").arg(description.isEmpty() ? error : description)
+                       + statusText));
+    else if (status == 0 && reply->error() != QNetworkReply::NoError)
         finish(failure(tr("The token could not be fetched: %1").arg(reply->errorString())));
     else
-        finish(failure(tr("The authorization server answered without a token.")));
+        finish(failure(tr("The authorization server answered without a token.") + statusText));
 }
 
 /*!

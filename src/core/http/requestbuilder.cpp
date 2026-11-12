@@ -3,6 +3,7 @@
 
 #include "core/http/requestbuilder.h"
 
+#include <QDir>
 #include <QFileInfo>
 #include <QHttpHeaders>
 #include <QRegularExpression>
@@ -99,6 +100,20 @@ QByteArray dispositionValue(const QString &text)
     QByteArray value = text.toUtf8();
     value.replace('"', "%22").replace('\r', "%0D").replace('\n', "%0A");
     return value;
+}
+
+/*!
+ * \internal
+ * \brief Returns \a path, made absolute against \a baseDirectory when it is relative.
+ *
+ * A workspace file moves with its folder, so a relative path in it means a
+ * file next to it, not one in whatever folder ReqDeck happened to start in.
+ */
+QString absoluteFile(const QString &path, const QString &baseDirectory)
+{
+    if (path.isEmpty() || baseDirectory.isEmpty() || !QDir::isRelativePath(path))
+        return path;
+    return QDir::cleanPath(QDir(baseDirectory).absoluteFilePath(path));
 }
 
 /*!
@@ -295,7 +310,7 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
         } else if (spec.body.mode == BodyMode::FormUrlEncoded) {
             built.body = encodeKeyValuePairs(resolvePairs(spec.body.form));
         } else if (spec.body.mode == BodyMode::File) {
-            const QString path = resolve(spec.body.filePath).trimmed();
+            const QString path = absoluteFile(resolve(spec.body.filePath).trimmed(), options.baseDirectory);
             if (const QString error = unreadableFile(path); !error.isEmpty())
                 return failure(std::move(built), error);
             built.segments.append({{}, QFileInfo(path).absoluteFilePath()});
@@ -314,7 +329,7 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
                 if (hasControlCharacter(partType))
                     return failure(std::move(built), QStringLiteral("The Content-Type of form field %1 is not valid.").arg(key));
                 if (part.isFile) {
-                    const QString path = value.trimmed();
+                    const QString path = absoluteFile(value.trimmed(), options.baseDirectory);
                     if (const QString error = unreadableFile(path); !error.isEmpty())
                         return failure(std::move(built), QStringLiteral("%1 (form field %2)").arg(error, key));
                     pending += "; filename=\"" + dispositionValue(QFileInfo(path).fileName()) + '"';

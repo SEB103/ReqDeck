@@ -42,6 +42,9 @@ public:
     /** Creates a stopped server. */
     explicit MockHttpServer(QObject *parent = nullptr);
 
+    /*! Disconnects open connections before the members they report into are gone. */
+    ~MockHttpServer() override;
+
     /** Starts listening on an ephemeral port of 127.0.0.1; true on success. */
     bool start();
 

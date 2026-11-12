@@ -7,6 +7,7 @@
 #include <QLocale>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QFileInfo>
 #include <QtTest>
 
 #include <memory>
@@ -272,6 +273,15 @@ private slots:
 
     /*! Verifies that response() reads the last response of another request in this workspace only. */
     void responseTemplateResolves();
+
+    /*! Verifies that variables in the OAuth fields are asked for and never go out literal. */
+    void oauthVariablesAreAskedFor();
+
+    /*! Verifies the warning when the token would travel over plain http. */
+    void oauthWarnsAboutPlainHttp();
+
+    /*! Verifies that a file is uploaded only after it was confirmed, and relative paths start at the workspace. */
+    void filesNeedConfirmation();
 
 private:
     /*! Waits until the running request has finished. */
@@ -995,6 +1005,96 @@ static void openTwoRequests(WorkspaceManager &manager, const QTemporaryDir &dir,
     const QString file = dir.filePath(QStringLiteral("tabs.reqdeck"));
     QVERIFY(WorkspaceSerializer::save(file, data));
     QVERIFY(manager.openWorkspace(file));
+}
+
+void RequestEditorTest::filesNeedConfirmation()
+{
+    openTwoRequests(*m_manager, *m_dir, m_server, QStringLiteral("/echo"), QStringLiteral("/echo"));
+    QFile file(m_dir->filePath(QStringLiteral("up.txt")));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("12345");
+    file.close();
+    m_editor->load(QStringLiteral("a"));
+    m_editor->setMethod(QStringLiteral("POST"));
+    m_editor->setBodyMode(int(BodyMode::File));
+    // Relative: next to tabs.reqdeck, whatever the working directory is.
+    m_editor->setBodyFilePath(QStringLiteral("up.txt"));
+    QCOMPARE(m_editor->bodyFileInfo(), QLocale().formattedDataSize(5));
+    const int before = m_server.requestCount();
+
+    const QStringList files = m_editor->unconfirmedFiles();
+    QCOMPARE(files.size(), 1);
+    QCOMPARE(QFileInfo(files.first()), QFileInfo(m_dir->filePath(QStringLiteral("up.txt"))));
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY2(m_response->errorText().contains(tr("Confirm the upload").left(18)), qPrintable(m_response->errorText()));
+    QCOMPARE(m_server.requestCount(), before);
+
+    m_editor->confirmFiles(files);
+    QVERIFY(m_editor->unconfirmedFiles().isEmpty());
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY2(m_response->bodyText().contains(QStringLiteral("12345")), qPrintable(m_response->bodyText()));
+
+    // Another workspace asks again.
+    openTwoRequests(*m_manager, *m_dir, m_server, QStringLiteral("/echo"), QStringLiteral("/echo"));
+    m_editor->load(QStringLiteral("a"));
+    m_editor->setMethod(QStringLiteral("POST"));
+    m_editor->setBodyMode(int(BodyMode::File));
+    m_editor->setBodyFilePath(QStringLiteral("up.txt"));
+    QCOMPARE(m_editor->unconfirmedFiles().size(), 1);
+}
+
+void RequestEditorTest::oauthVariablesAreAskedFor()
+{
+    openRequestAt(QStringLiteral("/echo"));
+    RequestSpec request = *m_collection->request(QStringLiteral("other"));
+    request.url = m_server.url(QStringLiteral("/echo")).toString();
+    request.auth.type = AuthType::OAuth2;
+    request.auth.oauth2.grant = OAuthGrant::ClientCredentials;
+    request.auth.oauth2.tokenUrl = m_server.url(QStringLiteral("/oauth/token")).toString();
+    request.auth.oauth2.clientId = QStringLiteral("{{clientId}}");
+    request.auth.oauth2.clientSecret = QStringLiteral("s3cret+&=");
+    QVERIFY(m_collection->updateRequest(QStringLiteral("other"), request));
+    m_editor->load(QStringLiteral("other"));
+    const int before = m_server.requestCount();
+
+    QVERIFY(m_editor->missingVariables().contains(QStringLiteral("clientId")));
+    m_editor->getToken();
+    QVERIFY2(m_editor->oauthStatus().contains(QStringLiteral("{{clientId}}")), qPrintable(m_editor->oauthStatus()));
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY2(m_response->errorText().contains(QStringLiteral("{{clientId}}")), qPrintable(m_response->errorText()));
+    QCOMPARE(m_server.requestCount(), before);
+
+    m_editor->sendWithValues({{QStringLiteral("clientId"), QStringLiteral("app")}});
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY2(m_response->bodyText().contains(QStringLiteral("Bearer cc-token")), qPrintable(m_response->bodyText()));
+}
+
+void RequestEditorTest::oauthWarnsAboutPlainHttp()
+{
+    openRequestAt(QStringLiteral("/echo"));
+    RequestSpec request = *m_collection->request(QStringLiteral("other"));
+    request.url = QStringLiteral("https://api.test/items");
+    request.auth.type = AuthType::OAuth2;
+    request.auth.oauth2.grant = OAuthGrant::ClientCredentials;
+    request.auth.oauth2.tokenUrl = QStringLiteral("https://id.test/token");
+    QVERIFY(m_collection->updateRequest(QStringLiteral("other"), request));
+    m_editor->load(QStringLiteral("other"));
+    QVERIFY(m_editor->oauthWarning().isEmpty());
+
+    m_editor->setProperty("url", QStringLiteral("http://api.test/items"));
+    QVERIFY(m_editor->oauthWarning().contains(QStringLiteral("plain http")));
+    // This computer itself is not a network.
+    m_editor->setProperty("url", QStringLiteral("http://127.0.0.1:8080/items"));
+    QVERIFY(m_editor->oauthWarning().isEmpty());
+
+    request = *m_collection->request(QStringLiteral("other"));
+    request.auth.oauth2.tokenUrl = QStringLiteral("http://id.test/token");
+    QVERIFY(m_collection->updateRequest(QStringLiteral("other"), request));
+    m_editor->load(QStringLiteral("other"));
+    QVERIFY(m_editor->oauthWarning().contains(QStringLiteral("client secret")));
 }
 
 void RequestEditorTest::responseTemplateResolves()

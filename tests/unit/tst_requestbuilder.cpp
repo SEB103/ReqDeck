@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QFile>
+#include <QFileInfo>
 #include <QHttpHeaders>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -135,6 +136,9 @@ private slots:
 
     /*! Verifies that a part's Content-Type with a line break fails the build. */
     void refusesBrokenPartType();
+
+    /*! Verifies that relative file paths start at the base directory, for the body and for form parts. */
+    void relativeFilesUseBaseDirectory();
 };
 
 void RequestBuilderTest::encodesPairs()
@@ -565,6 +569,32 @@ void RequestBuilderTest::refusesBrokenPartType()
     const BuiltRequest built = build(spec);
     QVERIFY(!built.ok);
     QVERIFY2(built.errorString.contains(QStringLiteral("form field a")), qPrintable(built.errorString));
+}
+
+void RequestBuilderTest::relativeFilesUseBaseDirectory()
+{
+    QTemporaryDir dir;
+    QFile file(dir.filePath(QStringLiteral("data.json")));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("{}");
+    file.close();
+
+    RequestSpec spec;
+    spec.method = HttpMethod::Put;
+    spec.url = QStringLiteral("http://h/");
+    spec.body.mode = BodyMode::File;
+    spec.body.filePath = QStringLiteral("data.json");
+    RequestBuilder::Options options;
+    options.baseDirectory = dir.path();
+    BuiltRequest built = RequestBuilder::build(spec, {}, options);
+    QVERIFY2(built.ok, qPrintable(built.errorString));
+    QCOMPARE(QFileInfo(built.segments.last().filePath), QFileInfo(file.fileName()));
+
+    spec.body.mode = BodyMode::FormData;
+    spec.body.parts = {{QStringLiteral("f"), QStringLiteral("data.json"), true, true, QString()}};
+    built = RequestBuilder::build(spec, {}, options);
+    QVERIFY2(built.ok, qPrintable(built.errorString));
+    QCOMPARE(QFileInfo(built.segments.at(1).filePath), QFileInfo(file.fileName()));
 }
 
 QTEST_GUILESS_MAIN(RequestBuilderTest)

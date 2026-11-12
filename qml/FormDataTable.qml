@@ -171,6 +171,8 @@ ColumnLayout {
         title: qsTr("Choose a file to upload")
         fileMode: FileDialog.OpenFile
         onAccepted: {
+            // A file the user picks is confirmed for upload.
+            cppRequestEditor.confirmFiles([selectedFile.toString()])
             if (row < 0)
                 table.model.addFile(selectedFile.toString())
             else

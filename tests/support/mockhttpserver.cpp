@@ -83,6 +83,22 @@ MockHttpServer::MockHttpServer(QObject *parent)
 }
 
 /*!
+ * \brief Disconnects the connections that are still open.
+ *
+ * A transfer the client stopped, such as an aborted /bytes/ download, may
+ * still be open; deleting it with the server would report its disconnect
+ * into m_buffers after that member is gone.
+ */
+MockHttpServer::~MockHttpServer()
+{
+    if (!m_server)
+        return;
+    const QList<QTcpSocket *> sockets = m_server->findChildren<QTcpSocket *>();
+    for (QTcpSocket *socket : sockets)
+        socket->disconnect(this);
+}
+
+/*!
  * \brief Starts listening on an ephemeral port of the loopback interface.
  * \return True when the server listens.
  */

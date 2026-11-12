@@ -122,6 +122,9 @@ private:
     /** Running token request, or null. */
     QPointer<QNetworkReply> m_reply;
 
+    /** Whether the running token request was stopped for an answer over the size limit. */
+    bool m_answerTooLarge {false};
+
     /** Loopback listener of the authorization code flow, or null. */
     QTcpServer *m_server {nullptr};
 
