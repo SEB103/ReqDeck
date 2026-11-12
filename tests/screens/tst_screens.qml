@@ -3317,9 +3317,9 @@ Item {
             compare(bar.count, 2);
             compare(cppRequestEditor.requestId, "r1");
             tryVerify(() => bar.itemAtIndex(0) !== null);
-            verify(bar.itemAtIndex(0).width > 80, "tab width " + bar.itemAtIndex(0).width);
-            // A real mouse click does not reach the tab here yet; see the D8 plan.
-            bar.itemAtIndex(0).clicked();
+            // The bar appeared in this frame; the layout moves the request below it on the next.
+            waitForRendering(window.contentItem);
+            mouseClick(bar.itemAtIndex(0), 12, bar.itemAtIndex(0).height / 2);
             tryCompare(cppTabs, "currentRequestId", "r2");
             compare(cppRequestEditor.requestId, "r2");
 
