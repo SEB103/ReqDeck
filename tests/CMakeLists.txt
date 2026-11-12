@@ -446,6 +446,18 @@ target_link_libraries(tst_cookiemodel
 
 add_test(NAME CookieModel.Unit COMMAND tst_cookiemodel)
 
+qt_add_executable(tst_formpartmodel
+    unit/tst_formpartmodel.cpp
+)
+
+target_link_libraries(tst_formpartmodel
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Test
+)
+
+add_test(NAME FormPartModel.Unit COMMAND tst_formpartmodel)
+
 qt_add_executable(tst_foldereditor
     unit/tst_foldereditor.cpp
 )

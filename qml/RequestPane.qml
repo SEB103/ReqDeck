@@ -6,6 +6,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Material
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import Base as Base
 
@@ -269,7 +270,7 @@ Item {
                         property string helpTopic: "request.bodyMode"
 
                         Layout.preferredWidth: 180
-                        model: [qsTr("No body"), qsTr("Raw"), qsTr("Form URL encoded")]
+                        model: [qsTr("No body"), qsTr("Raw"), qsTr("Form URL encoded"), qsTr("Form data"), qsTr("File")]
                         currentIndex: cppRequestEditor.bodyMode
                         onActivated: (index) => cppRequestEditor.bodyMode = index
                     }
@@ -380,6 +381,70 @@ Item {
                     model: cppRequestEditor.formModel
                     keyTitle: qsTr("Field")
                     emptyHint: qsTr("Add a field to send it in the body.")
+                }
+
+                FormDataTable {
+                    /*! Topic of the F1 help. */
+                    property string helpTopic: "request.formData"
+
+                    objectName: "formDataTable"
+
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    visible: cppRequestEditor.bodyMode === 3 // BodyMode::FormData
+                    model: cppRequestEditor.partsModel
+                }
+
+                ColumnLayout {
+                    /*! Topic of the F1 help. */
+                    property string helpTopic: "request.bodyFile"
+
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    visible: cppRequestEditor.bodyMode === 4 // BodyMode::File
+                    spacing: 6
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        TextField {
+                            objectName: "bodyFilePath"
+
+                            Layout.fillWidth: true
+                            placeholderText: qsTr("Path of the file to send")
+                            selectByMouse: true
+                            text: cppRequestEditor.bodyFilePath
+                            Accessible.name: qsTr("File to send as the body")
+                            onTextEdited: cppRequestEditor.bodyFilePath = text
+                        }
+
+                        Button {
+                            text: qsTr("Browse…")
+                            onClicked: bodyFileDialog.open()
+                        }
+                    }
+
+                    Label {
+                        objectName: "bodyFileInfo"
+
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        opacity: 0.7
+                        text: cppRequestEditor.bodyFileInfo
+                    }
+
+                    Item {
+                        Layout.fillHeight: true
+                    }
+
+                    FileDialog {
+                        id: bodyFileDialog
+
+                        title: qsTr("Choose the file to send")
+                        fileMode: FileDialog.OpenFile
+                        onAccepted: cppRequestEditor.bodyFilePath = selectedFile.toString()
+                    }
                 }
 
                 Item {

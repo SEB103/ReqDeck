@@ -4,8 +4,11 @@
 #include "qmlapi/requesteditor.h"
 
 #include <QClipboard>
+#include <QFileInfo>
 #include <QGuiApplication>
+#include <QLocale>
 #include <QRegularExpression>
+#include <QUrl>
 
 #include "core/http/curlconverter.h"
 #include "core/http/httpexecutor.h"
@@ -14,6 +17,7 @@
 #include "core/workspace/inheritance.h"
 #include "core/workspace/workspacedata.h"
 #include "qmlapi/collectiontreemodel.h"
+#include "qmlapi/formpartmodel.h"
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/responseview.h"
 #include "qmlapi/workspacemanager.h"
@@ -35,12 +39,14 @@ RequestEditor::RequestEditor(WorkspaceManager *manager, CollectionTreeModel *col
     , m_params(new KeyValueModel(this))
     , m_headers(new KeyValueModel(this))
     , m_form(new KeyValueModel(this))
+    , m_parts(new FormPartModel(this))
 {
     connect(m_collection, &CollectionTreeModel::collectionChanged, this,
             &RequestEditor::syncWithCollection);
     connect(m_params, &KeyValueModel::edited, this, &RequestEditor::storeTables);
     connect(m_headers, &KeyValueModel::edited, this, &RequestEditor::storeTables);
     connect(m_form, &KeyValueModel::edited, this, &RequestEditor::storeTables);
+    connect(m_parts, &FormPartModel::edited, this, &RequestEditor::storeTables);
 
     connect(m_manager, &WorkspaceManager::workspaceReplaced, this, &RequestEditor::dropResponse);
     connect(m_executor, &HttpExecutor::finished, this, &RequestEditor::showResponse);
@@ -127,7 +133,7 @@ int RequestEditor::bodyMode() const
 
 void RequestEditor::setBodyMode(int mode)
 {
-    if (mode >= int(BodyMode::None) && mode <= int(BodyMode::FormUrlEncoded))
+    if (mode >= int(BodyMode::None) && mode <= int(BodyMode::File))
         updateField(m_request.body.mode, BodyMode(mode));
 }
 
@@ -140,6 +146,51 @@ void RequestEditor::setRawBodyType(int type)
 {
     if (type >= int(RawBodyType::Json) && type <= int(RawBodyType::Xml))
         updateField(m_request.body.rawType, RawBodyType(type));
+}
+
+/*!
+ * \brief Returns the parts of a multipart/form-data body.
+ */
+FormPartModel *RequestEditor::partsModel() const
+{
+    return m_parts;
+}
+
+/*!
+ * \brief Returns the path of the file sent as the body.
+ */
+QString RequestEditor::bodyFilePath() const
+{
+    return m_request.body.filePath;
+}
+
+/*!
+ * \brief Sets the path of the file sent as the body.
+ * \param pathOrUrl A path, a path with {{variables}}, or a file URL from a file dialog.
+ */
+void RequestEditor::setBodyFilePath(const QString &pathOrUrl)
+{
+    const QUrl url(pathOrUrl);
+    updateField(m_request.body.filePath, url.isLocalFile() ? url.toLocalFile() : pathOrUrl);
+}
+
+/*!
+ * \brief Returns the size of the body file, or why it cannot be sent.
+ *
+ * A path with {{variables}} is checked only when sending, since its file
+ * depends on the environment.
+ */
+QString RequestEditor::bodyFileInfo() const
+{
+    const QString path = m_request.body.filePath.trimmed();
+    if (path.isEmpty())
+        return tr("No file chosen.");
+    if (path.contains(QLatin1StringView("{{")))
+        return QString();
+    const QFileInfo info(path);
+    if (!info.isFile())
+        return tr("The file was not found.");
+    return QLocale().formattedDataSize(info.size());
 }
 
 QString RequestEditor::rawBody() const
@@ -582,6 +633,7 @@ void RequestEditor::storeTables()
     m_request.queryParams = m_params->rows();
     m_request.headers = m_headers->rows();
     m_request.body.form = m_form->rows();
+    m_request.body.parts = m_parts->rows();
     store();
 }
 
@@ -623,6 +675,7 @@ void RequestEditor::showRequest()
     m_params->setRows(m_request.queryParams);
     m_headers->setRows(m_request.headers);
     m_form->setRows(m_request.body.form);
+    m_parts->setRows(m_request.body.parts);
     emit requestChanged();
     emit canSendChanged();
 }

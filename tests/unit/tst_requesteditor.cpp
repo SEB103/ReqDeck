@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <QClipboard>
+#include <QFile>
+#include <QGuiApplication>
+#include <QLocale>
 #include <QSignalSpy>
 #include <QTemporaryDir>
-#include <QClipboard>
-#include <QGuiApplication>
 #include <QtTest>
 
 #include <memory>
@@ -15,6 +17,7 @@
 #include "core/workspace/workspaceserializer.h"
 #include "mockhttpserver.h"
 #include "qmlapi/collectiontreemodel.h"
+#include "qmlapi/formpartmodel.h"
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/requesteditor.h"
 #include "qmlapi/responseview.h"
@@ -195,6 +198,12 @@ private slots:
 
     /*! Verifies that a send stores and sends the cookies of the workspace, and none when they are off. */
     void sendUsesWorkspaceCookies();
+
+    /*! Verifies that form data parts are stored with the request and sent. */
+    void formDataPartsAreStoredAndSent();
+
+    /*! Verifies the file body path, a file URL turned into a path, and the file info. */
+    void fileBodyPathAndInfo();
 
     /*! Verifies that Continue past a certificate sends with the one-time values again. */
     void trustingCertificateKeepsOneTimeValues();
@@ -444,7 +453,7 @@ void RequestEditorTest::invalidValuesAreIgnored()
 {
     m_editor->load(QStringLiteral("full"));
     m_editor->setProperty("method", QStringLiteral("FETCH"));
-    m_editor->setProperty("bodyMode", 3);
+    m_editor->setProperty("bodyMode", 5); // 4 is BodyMode::File
     m_editor->setProperty("rawBodyType", -1);
     m_editor->setProperty("authType", 5); // 4 is AuthType::Inherit
     m_editor->setProperty("timeoutMs", -1);
@@ -923,6 +932,45 @@ void RequestEditorTest::sendUsesWorkspaceCookies()
     m_editor->send();
     QVERIFY(waitForResponse(*m_response));
     QVERIFY2(!m_response->bodyText().contains(QStringLiteral("sid=server")), qPrintable(m_response->bodyText()));
+}
+
+void RequestEditorTest::formDataPartsAreStoredAndSent()
+{
+    openRequestAt(QStringLiteral("/echo"));
+    m_editor->setMethod(QStringLiteral("POST"));
+    m_editor->setBodyMode(int(BodyMode::FormData));
+    QCOMPARE(m_editor->bodyMode(), int(BodyMode::FormData));
+    FormPartModel *parts = m_editor->partsModel();
+    parts->addRow();
+    QVERIFY(parts->setField(0, FormPartModel::KeyRole, QStringLiteral("title")));
+    QVERIFY(parts->setField(0, FormPartModel::ValueRole, QStringLiteral("hello")));
+
+    QCOMPARE(m_collection->request(m_editor->requestId())->body.parts.size(), 1);
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY2(m_response->bodyText().contains(QStringLiteral("name=\\\"title\\\"")), qPrintable(m_response->bodyText()));
+}
+
+void RequestEditorTest::fileBodyPathAndInfo()
+{
+    openRequestAt(QStringLiteral("/echo"));
+    m_editor->setBodyMode(int(BodyMode::File));
+    QCOMPARE(m_editor->bodyFileInfo(), tr("No file chosen."));
+
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("up.txt"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("12345");
+    file.close();
+    m_editor->setBodyFilePath(QUrl::fromLocalFile(path).toString());
+
+    QCOMPARE(m_editor->bodyFilePath(), path);
+    QCOMPARE(m_editor->bodyFileInfo(), QLocale().formattedDataSize(5));
+    m_editor->setBodyFilePath(dir.filePath(QStringLiteral("missing.txt")));
+    QCOMPARE(m_editor->bodyFileInfo(), tr("The file was not found."));
+    m_editor->setBodyFilePath(QStringLiteral("{{dir}}/up.txt"));
+    QVERIFY(m_editor->bodyFileInfo().isEmpty());
 }
 
 void RequestEditorTest::trustingCertificateKeepsOneTimeValues()

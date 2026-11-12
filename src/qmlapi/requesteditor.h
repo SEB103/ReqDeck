@@ -14,6 +14,7 @@
 
 class CollectionTreeModel;
 class HttpExecutor;
+class FormPartModel;
 class KeyValueModel;
 class ResponseView;
 class WorkspaceManager;
@@ -101,6 +102,16 @@ class RequestEditor : public QObject
 
     /** Form field rows. */
     Q_PROPERTY(KeyValueModel *formModel READ formModel CONSTANT)
+
+    /** Parts of a multipart/form-data body. */
+    Q_PROPERTY(FormPartModel *partsModel READ partsModel CONSTANT)
+    Q_MOC_INCLUDE("qmlapi/formpartmodel.h")
+
+    /** Path of the file sent as the body. */
+    Q_PROPERTY(QString bodyFilePath READ bodyFilePath WRITE setBodyFilePath NOTIFY requestChanged)
+
+    /** Size of the body file, or why it cannot be sent; empty while the path holds variables. */
+    Q_PROPERTY(QString bodyFileInfo READ bodyFileInfo NOTIFY requestChanged)
 
 public:
     /** Creates an empty editor; \a manager, \a collection, and \a response must outlive it. */
@@ -224,6 +235,18 @@ public:
     /** Returns the form field rows. */
     KeyValueModel *formModel() const;
 
+    /** Returns the parts of a multipart/form-data body. */
+    FormPartModel *partsModel() const;
+
+    /** Returns the path of the file sent as the body. */
+    QString bodyFilePath() const;
+
+    /** Sets the path of the file sent as the body; a file URL is turned into a path. */
+    void setBodyFilePath(const QString &pathOrUrl);
+
+    /** Returns the size of the body file, or why it cannot be sent. */
+    QString bodyFileInfo() const;
+
     /** Opens the request \a id; a folder or an unknown id leaves the editor empty. */
     Q_INVOKABLE void load(const QString &id);
 
@@ -334,6 +357,9 @@ private:
 
     /** Form field rows; owned through the QObject tree. */
     KeyValueModel *m_form {nullptr};
+
+    /** Multipart parts; owned through the QObject tree. */
+    FormPartModel *m_parts {nullptr};
 
     /** Node id of the open request; empty when none is open. */
     QString m_requestId;

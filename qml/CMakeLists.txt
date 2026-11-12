@@ -15,6 +15,7 @@ qt_add_qml_module(MainQml
         CurlImportDialog.qml
         EnvironmentDialog.qml
         FolderSettingsDialog.qml
+        FormDataTable.qml
         HistoryPane.qml
         ImportDialog.qml
         LauncherScreen.qml

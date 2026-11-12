@@ -202,7 +202,7 @@
         },
         "request.bodyMode": {
             "title": "Kind of body",
-            "what": "Chooses how the content is sent: none, raw text, or form fields.",
+            "what": "Chooses how the content is sent: none, raw text, form fields, form data with files, or one file.",
             "why": "The server expects one form, and the API documentation names it.",
             "example": "Raw with JSON for most modern APIs; Form for classic web forms.",
             "next": "The matching Content-Type header is added for you.",
@@ -230,6 +230,22 @@
             "why": "Some servers expect data this way instead of JSON.",
             "example": "username = ann, remember = true",
             "next": "Clear the box at the start of a row to leave that field out.",
+            "chapter": "requests"
+        },
+        "request.formData": {
+            "title": "Form data",
+            "what": "Parts sent as multipart/form-data: text fields and files, as a web form with an upload sends them.",
+            "why": "Uploads of pictures and documents use this, often with a few text fields beside the file.",
+            "example": "title = Holiday, photo = File C:/Pictures/beach.jpg",
+            "next": "Add File… picks a file; the type of a part comes from its file name unless you type one.",
+            "chapter": "requests"
+        },
+        "request.bodyFile": {
+            "title": "File as the body",
+            "what": "Sends one file as the whole body, byte for byte.",
+            "why": "Some APIs take an upload as the raw body, for example a PUT of an image or a JSON file.",
+            "example": "PUT {{baseUrl}}/avatar with the file C:/Pictures/me.png",
+            "next": "The Content-Type comes from the file name unless a header sets it. The file is read while it is sent, so large files work.",
             "chapter": "requests"
         },
         "request.authType": {

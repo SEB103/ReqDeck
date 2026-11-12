@@ -3259,6 +3259,35 @@ Item {
             verify(findChild(dialog.contentItem, "noCookies").visible);
         }
 
+        /*! Verifies the form data and file body editors of the request pane. */
+        function test_formDataAndFileBodies() {
+            const pane = createRequest("r2");
+            cppRequestEditor.bodyMode = 3; // BodyMode::FormData
+            findChild(pane, "tabs").currentIndex = 2;
+            const table = findChild(pane, "formDataTable");
+            tryCompare(table, "visible", true);
+            verify(findChild(table, "formDataEmpty").visible);
+            findChild(table, "addTextPart").clicked();
+            const list = findChild(table, "formDataList");
+            tryCompare(list, "count", 1);
+            tryVerify(() => list.itemAtIndex(0) !== null);
+            const key = findChild(list.itemAtIndex(0), "partKey");
+            key.text = "title";
+            key.textEdited();
+            compare(cppRequestEditor.partsModel.data(cppRequestEditor.partsModel.index(0, 0), 257), "title");
+            findChild(list.itemAtIndex(0), "removePart").clicked();
+            tryCompare(list, "count", 0);
+
+            cppRequestEditor.bodyMode = 4; // BodyMode::File
+            const path = findChild(pane, "bodyFilePath");
+            tryCompare(path, "visible", true);
+            path.text = "Z:/missing/upload.bin";
+            path.textEdited();
+            compare(cppRequestEditor.bodyFilePath, "Z:/missing/upload.bin");
+            compare(findChild(pane, "bodyFileInfo").text, cppRequestEditor.bodyFileInfo);
+            verify(cppRequestEditor.bodyFileInfo.length > 0);
+        }
+
         /*! Verifies that a cancelled preview is gone when the import dialog opens again. */
         function test_importDialogForgetsCancelledPreview() {
             const host = createTemporaryObject(importComponent, root);
