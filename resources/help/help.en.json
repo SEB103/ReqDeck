@@ -820,6 +820,22 @@
                 {
                     "type": "tip",
                     "text": "A password, token, or key you type into a request is saved in the workspace file. ReqDeck then offers Move to a secret: the value goes into a secret variable, encrypted on this computer, and the field shows {{token}} instead."
+                },
+                {
+                    "type": "p",
+                    "text": "Some APIs want an OAuth 2.0 token. Choose OAuth 2.0 as the authentication and fill in what the API's documentation names: the token URL, the client ID, the scope, and for a login in the browser the authorization URL."
+                },
+                {
+                    "type": "steps",
+                    "items": [
+                        "Pick the grant: Authorization code logs you in in the browser, Client credentials logs in the application itself.",
+                        "Press Get Token. For Authorization code the browser opens; log in there and come back.",
+                        "Send the request: it carries the token. ReqDeck renews an expired token by itself when the server allows it."
+                    ]
+                },
+                {
+                    "type": "tip",
+                    "text": "Set OAuth 2.0 on a folder to use one login for all its requests. Reset forgets the token. Tokens are kept encrypted for your Windows user, never in the workspace file."
                 }
             ]
         },

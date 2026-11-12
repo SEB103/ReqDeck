@@ -117,6 +117,10 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
   click, an edit, or a send keeps it; each tab keeps its own last response, and
   requests in different tabs run at once. Ctrl+Tab and Ctrl+W, tabs that come
   back with their workspace, and Settings > Show tabs to turn them off.
+- OAuth 2.0 for requests and folders: Authorization Code with PKCE through the
+  browser and a local callback, and Client Credentials; tokens are renewed or
+  fetched by themselves where no login is needed, kept encrypted apart from the
+  workspace, and can be reset. Imports bring OAuth 2.0 settings along.
 
 ### Fixed
 - Responses over HTTP/2 show the name of their status, for example 200 OK.
