@@ -94,6 +94,9 @@ private slots:
     /*! Verifies the warning about unknown variables. */
     void unresolvedVariablesBecomeWarning();
 
+    /*! Verifies that stored cookies left out for a typed Cookie header give a warning. */
+    void skippedCookiesBecomeWarning();
+
     /*! Verifies that find ignores case and reports positions in the shown text. */
     void findIsCaseInsensitive();
     /*! Verifies that find stops at its limit. */
@@ -381,6 +384,16 @@ void ResponseViewTest::buildErrorShowsMessageWithoutStatus()
     QVERIFY(!view.property("busy").toBool());
     QCOMPARE(view.property("statusCode").toInt(), 0);
     QCOMPARE(view.property("errorText").toString(), QStringLiteral("URL is empty."));
+}
+
+void ResponseViewTest::skippedCookiesBecomeWarning()
+{
+    ResponseView view;
+    ResponseData response = makeResponse("{}", QStringLiteral("application/json"));
+    response.storedCookiesSkipped = true;
+    view.setResponse(response, {});
+    QVERIFY2(view.property("warningText").toString().contains(QStringLiteral("Stored cookies were not sent")),
+             qPrintable(view.property("warningText").toString()));
 }
 
 void ResponseViewTest::unresolvedVariablesBecomeWarning()

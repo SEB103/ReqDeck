@@ -824,7 +824,7 @@ Item {
                 ++actionCount;
                 verify(!item.enabled, "request action " + item.text + " is enabled");
             }
-            compare(actionCount, 6);
+            compare(actionCount, 7);
         }
 
         /*! Verifies that the workspace-scoped File items follow the workspace state. */

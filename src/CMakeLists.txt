@@ -105,6 +105,8 @@ target_sources(ReqDeckQmlApi
         qmlapi/bodyhighlighter.cpp
         qmlapi/bodyhighlighter.h
         qmlapi/collectiontreemodel.cpp
+        qmlapi/cookiemodel.cpp
+        qmlapi/cookiemodel.h
         qmlapi/collectiontreemodel.h
         qmlapi/environmentmodel.cpp
         qmlapi/foldereditor.cpp

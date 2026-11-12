@@ -600,6 +600,14 @@
             "next": "Right-click a folder > Folder Settings…. Inherit from parent folder passes the question up; No authentication stops it.",
             "chapter": "auth"
         },
+        "dialog.cookies": {
+            "title": "Cookies",
+            "what": "The cookies of this workspace: those servers set, sent back to them with the next requests.",
+            "why": "After a login the server knows you by a cookie; ReqDeck keeps it so the requests after the login work.",
+            "example": "Send the login request, then the next one: its Cookie header carries the session the login set.",
+            "next": "Change a value, delete a cookie, or turn cookies off for this workspace. A Cookie header typed in a request wins over the stored cookies.",
+            "chapter": "requests"
+        },
         "dialog.import": {
             "title": "Import a collection",
             "what": "Brings a Postman collection or environment, an Insomnia export, or an OpenAPI 3 document into this workspace.",

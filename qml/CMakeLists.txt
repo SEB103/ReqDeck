@@ -11,6 +11,7 @@ qt_add_qml_module(MainQml
     QML_FILES
         AboutDialog.qml
         CollectionPane.qml
+        CookieDialog.qml
         CurlImportDialog.qml
         EnvironmentDialog.qml
         FolderSettingsDialog.qml

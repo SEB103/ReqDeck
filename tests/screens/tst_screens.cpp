@@ -29,6 +29,7 @@
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/environmentmodel.h"
 #include "qmlapi/foldereditor.h"
+#include "qmlapi/cookiemodel.h"
 #include "qmlapi/importcontroller.h"
 #include "qmlapi/environmentvariablesmodel.h"
 #include "qmlapi/helplibrary.h"
@@ -137,6 +138,7 @@ public:
         context->setContextProperty(QStringLiteral("cppRequestEditor"), &m_editor);
         context->setContextProperty(QStringLiteral("cppFolderEditor"), &m_folderEditor);
         context->setContextProperty(QStringLiteral("cppImport"), &m_import);
+        context->setContextProperty(QStringLiteral("cppCookies"), &m_cookies);
         context->setContextProperty(QStringLiteral("cppResponse"), &m_response);
         context->setContextProperty(QStringLiteral("cppTestHost"), this);
         publishMainStubs(context);
@@ -534,6 +536,9 @@ private:
 
     /*! Real import controller. */
     ImportController m_import {&m_collection, &m_environments};
+
+    /*! Real cookie model. */
+    CookieModel m_cookies {&m_manager};
 };
 
 /*! Quick Test setup that installs the facades on the test engine. */

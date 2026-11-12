@@ -96,6 +96,9 @@ MenuBar {
     /*! Emitted to import a file of another tool, such as a Postman collection. */
     signal importFileRequested()
 
+    /*! Emitted to show the cookies of the workspace. */
+    signal cookiesRequested()
+
     /*! Emitted when the user selects Quit. */
     signal quitRequested()
 
@@ -341,6 +344,15 @@ MenuBar {
             icon.source: "qrc:/images/svg/code.svg"
             enabled: appMenuBar.hasRequest
             onTriggered: appMenuBar.copyCurlRequested()
+        }
+
+        MenuSeparator {}
+
+        BsMenuItem {
+            text: qsTr("Coo&kies…")
+            icon.source: "qrc:/images/svg/description.svg"
+            enabled: appMenuBar.hasWorkspace
+            onTriggered: appMenuBar.cookiesRequested()
         }
     }
 

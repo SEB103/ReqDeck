@@ -422,6 +422,18 @@ target_link_libraries(tst_environmentmodel
 
 add_test(NAME EnvironmentModel.Unit COMMAND tst_environmentmodel)
 
+qt_add_executable(tst_cookiemodel
+    unit/tst_cookiemodel.cpp
+)
+
+target_link_libraries(tst_cookiemodel
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Test
+)
+
+add_test(NAME CookieModel.Unit COMMAND tst_cookiemodel)
+
 qt_add_executable(tst_foldereditor
     unit/tst_foldereditor.cpp
 )

@@ -455,6 +455,8 @@ void ResponseView::setResponse(const ResponseData &response, const QStringList &
                                 .arg(check.server(), check.messages.join(QStringLiteral("; "))));
         }
     }
+    if (response.storedCookiesSkipped)
+        warnings.append(tr("Stored cookies were not sent: the request has a Cookie header of its own."));
     if (!unresolvedVariables.isEmpty())
         warnings.append(unresolvedWarning(unresolvedVariables));
     m_warningText = warnings.join(u'\n');

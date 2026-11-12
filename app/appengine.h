@@ -18,6 +18,7 @@ class LicenseModel;
 class LocaleController;
 class LogModel;
 class FolderEditor;
+class CookieModel;
 class ImportController;
 class RequestEditor;
 class ResponseView;
@@ -115,6 +116,9 @@ private:
 
     /** Import of other tools' files exposed to QML as \c cppImport; owned by this engine. */
     ImportController* m_import = nullptr;
+
+    /** Cookies of the workspace exposed to QML as \c cppCookies; owned by this engine. */
+    CookieModel* m_cookies = nullptr;
 
     /** Application/build metadata exposed to QML as \c cppAppInfo; owned by this engine. */
     AppInfo* m_appInfo = nullptr;

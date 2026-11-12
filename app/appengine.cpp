@@ -36,6 +36,7 @@
 #include "qmlapi/environmentmodel.h"
 #include "qmlapi/environmentvariablesmodel.h"
 #include "qmlapi/foldereditor.h"
+#include "qmlapi/cookiemodel.h"
 #include "qmlapi/importcontroller.h"
 #include "qmlapi/helplibrary.h"
 #include "qmlapi/helplocator.h"
@@ -282,6 +283,7 @@ AppEngine::AppEngine(QObject* parent)
     , m_requestEditor(new RequestEditor(m_workspaceManager, m_collection, m_response, this))
     , m_folderEditor(new FolderEditor(m_collection, this))
     , m_import(new ImportController(m_collection, m_environments, this))
+    , m_cookies(new CookieModel(m_workspaceManager, this))
     , m_appInfo(new AppInfo(this))
     , m_licenseModel(new LicenseModel(this))
     , m_logModel(new LogModel(2000, this))
@@ -329,6 +331,7 @@ AppEngine::AppEngine(QObject* parent)
     rootContext()->setContextProperty("cppFolderEditor", m_folderEditor);
     qmlRegisterUncreatableType<ImportController>("Cpp.WorkspaceManager", 1, 0, "ImportController", QStringLiteral("ImportController should not be created in QML."));
     rootContext()->setContextProperty("cppImport", m_import);
+    rootContext()->setContextProperty("cppCookies", m_cookies);
     rootContext()->setContextProperty("cppResponse", m_response);
 
     RequestBuilder::Options builderOptions;

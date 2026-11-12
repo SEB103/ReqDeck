@@ -328,6 +328,10 @@ ApplicationWindow {
             importDialog.open()
         }
 
+        function onCookiesRequested() {
+            cookieDialog.open()
+        }
+
         function onImportCurlRequested() {
             curlImportDialog.parentId = cppCollection.parentForNewItem(mainScreen.collectionPane.selectedId)
             curlImportDialog.open()
@@ -889,6 +893,10 @@ ApplicationWindow {
                 mainScreen.collectionPane.revealNode(id)
             }
         }
+    }
+
+    CookieDialog {
+        id: cookieDialog
     }
 
     CurlImportDialog {

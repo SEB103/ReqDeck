@@ -95,6 +95,23 @@ Item {
     }
 
     Component {
+        id: cookieComponent
+
+        Item {
+            property alias dialog: cookieDialog
+
+            anchors.fill: parent
+
+            CookieDialog {
+                id: cookieDialog
+
+                width: 760
+                height: 480
+            }
+        }
+    }
+
+    Component {
         id: importComponent
 
         Item {
@@ -3199,6 +3216,47 @@ Item {
             verify(importedSpy.signalArguments[0][0].length > 0);
             compare(cppCollection.rowCount(), rows + 1);
             compare(cppWorkspaceManager.dirty, true);
+        }
+
+        /*! Verifies that the cookie dialog lists, edits, adds, and deletes cookies, and turns them off. */
+        function test_cookieDialogEditsCookies() {
+            cppCookies.removeAll()
+            cppCookies.add("shop.test", "sid", "abc", "/")
+            const host = createTemporaryObject(cookieComponent, root);
+            const dialog = host.dialog;
+            dialog.open();
+            tryCompare(dialog, "opened", true);
+            const list = findChild(dialog.contentItem, "cookieList");
+            verify(list.visible);
+            compare(list.count, 1);
+
+            const value = findChild(list.itemAtIndex(0), "cookieValue");
+            compare(value.text, "abc");
+            value.text = "changed";
+            value.editingFinished();
+            compare(cppCookies.data(cppCookies.index(0, 0), 259), "changed"); // CookieModel::ValueRole
+
+            findChild(dialog.contentItem, "newCookieDomain").text = "api.test";
+            findChild(dialog.contentItem, "newCookieName").text = "token";
+            findChild(dialog.contentItem, "newCookieValue").text = "t1";
+            const add = findChild(dialog.contentItem, "addCookie");
+            verify(add.enabled);
+            add.clicked();
+            compare(cppCookies.count, 2);
+
+            findChild(list.itemAtIndex(0), "deleteCookie").clicked();
+            compare(cppCookies.count, 1);
+
+            const enabled = findChild(dialog.contentItem, "cookiesEnabled");
+            verify(enabled.checked);
+            enabled.toggle();
+            enabled.toggled();
+            compare(cppWorkspaceManager.cookiesEnabled, false);
+            cppWorkspaceManager.cookiesEnabled = true;
+
+            findChild(dialog.contentItem, "deleteAllCookies").clicked();
+            compare(cppCookies.count, 0);
+            verify(findChild(dialog.contentItem, "noCookies").visible);
         }
 
         /*! Verifies that a cancelled preview is gone when the import dialog opens again. */
