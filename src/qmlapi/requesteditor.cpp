@@ -400,7 +400,8 @@ KeyValueModel *RequestEditor::formModel() const
  */
 void RequestEditor::load(const QString &id)
 {
-    // With tabs the request opens in the preview tab, which then loads it.
+    // With tabs the request opens in the preview tab, which then loads it; a
+    // folder or nothing leaves the current tab shown.
     if (m_tabs && m_collection->request(id)) {
         if (m_tabs->currentRequestId() != id)
             m_tabs->preview(id);
@@ -408,6 +409,8 @@ void RequestEditor::load(const QString &id)
             loadRequest(id);
         return;
     }
+    if (m_tabs && m_tabs->rowCount() > 0)
+        return;
     loadRequest(id);
 }
 
@@ -663,7 +666,7 @@ RequestEditor::TabSend &RequestEditor::sendOf(int key)
 
 /*!
  * \internal
- * \brief Keeps the result of the send of \a key and shows it when its tab is current.
+ * \brief Keeps \a response of the send of \a key and shows it when its tab is current.
  *
  * Every result goes to the history, also one of a tab in the background.
  */
@@ -826,7 +829,7 @@ void RequestEditor::syncWithCollection()
     const QString name =
         m_collection->indexOfNode(m_requestId).data(CollectionTreeModel::NameRole).toString();
     if (*stored != m_request) {
-        load(m_requestId);
+        loadRequest(m_requestId);
     } else if (name != m_name) {
         m_name = name;
         emit requestChanged();

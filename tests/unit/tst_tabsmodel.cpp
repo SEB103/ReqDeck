@@ -74,6 +74,18 @@ private slots:
     /*! Verifies that hidden tabs leave one preview tab, and the choice is kept. */
     void hiddenTabsKeepOnePreview();
 
+    /*! Verifies that switching workspaces through the manager keeps each one's tabs. */
+    void workspaceSwitchKeepsSavedTabs();
+
+    /*! Verifies that closing a tab before the current one saves the right current tab. */
+    void closingBeforeCurrentSavesCurrent();
+
+    /*! Verifies that hidden tabs reuse the one tab even while it runs, and restore one tab. */
+    void hiddenTabsStayOne();
+
+    /*! Verifies that a method changed in the request shows on its tab. */
+    void methodChangeShowsOnTab();
+
 private:
     /*! Directory of the workspace. */
     std::unique_ptr<QTemporaryDir> m_dir;
@@ -316,6 +328,84 @@ void TabsModelTest::hiddenTabsKeepOnePreview()
     TabsModel other(m_collection.get());
     other.setSettings(&settings);
     QVERIFY(!other.showTabs());
+}
+
+void TabsModelTest::workspaceSwitchKeepsSavedTabs()
+{
+    QSettings settings(m_dir->filePath(QStringLiteral("ui.ini")), QSettings::IniFormat);
+    m_tabs->setSettings(&settings);
+    m_tabs->setWorkspaceIdSource([this]() { return m_manager->workspaceData().id; });
+    connect(m_manager.get(), &WorkspaceManager::workspaceReplaced, m_tabs.get(),
+            [this]() { m_tabs->attachWorkspace(m_manager->workspaceData().id); });
+    const QString first = m_manager->activeWorkspacePath();
+    m_tabs->attachWorkspace(m_manager->workspaceData().id);
+    m_tabs->open(QStringLiteral("r1"));
+    m_tabs->open(QStringLiteral("r2"));
+
+    WorkspaceData other;
+    other.id = newItemId();
+    other.displayName = QStringLiteral("Other");
+    other.collection = {requestNode(QStringLiteral("o1"))};
+    const QString second = m_dir->filePath(QStringLiteral("other.reqdeck"));
+    QVERIFY(WorkspaceSerializer::save(second, other));
+    QVERIFY(m_manager->openWorkspace(second));
+    QCOMPARE(m_tabs->rowCount(), 0);
+    m_tabs->open(QStringLiteral("o1"));
+
+    QVERIFY(m_manager->openWorkspace(first));
+    QCOMPARE(m_tabs->requestIds(), QStringList({QStringLiteral("r1"), QStringLiteral("r2")}));
+    QCOMPARE(m_tabs->currentRequestId(), QStringLiteral("r2"));
+
+    m_manager->closeWorkspace();
+    QCOMPARE(m_tabs->rowCount(), 0);
+    QVERIFY(m_manager->openWorkspace(second));
+    QCOMPARE(m_tabs->requestIds(), QStringList({QStringLiteral("o1")}));
+}
+
+void TabsModelTest::closingBeforeCurrentSavesCurrent()
+{
+    QSettings settings(m_dir->filePath(QStringLiteral("ui.ini")), QSettings::IniFormat);
+    m_tabs->setSettings(&settings);
+    const QString id = m_manager->workspaceData().id;
+    m_tabs->attachWorkspace(id);
+    for (const char *request : {"r1", "r2", "r3"})
+        m_tabs->open(QString::fromLatin1(request));
+    QSignalSpy current(m_tabs.get(), &TabsModel::currentChanged);
+
+    m_tabs->close(0);
+
+    QVERIFY(current.count() > 0);
+    QCOMPARE(m_tabs->currentIndex(), 1);
+    QCOMPARE(settings.value(QStringLiteral("Tabs/%1/current").arg(id)).toString(), QStringLiteral("r3"));
+    m_tabs->move(1, 0);
+    QCOMPARE(m_tabs->currentIndex(), 0);
+    QCOMPARE(m_tabs->currentRequestId(), QStringLiteral("r3"));
+}
+
+void TabsModelTest::hiddenTabsStayOne()
+{
+    m_tabs->setShowTabs(false);
+    m_tabs->preview(QStringLiteral("r1"));
+    m_tabs->setBusy(m_tabs->currentTabId(), true);
+    m_tabs->preview(QStringLiteral("r2"));
+    QCOMPARE(m_tabs->requestIds(), QStringList({QStringLiteral("r2")}));
+
+    m_tabs->restore({QStringLiteral("r1"), QStringLiteral("r2"), QStringLiteral("r3")}, QString(), QStringLiteral("r2"));
+    QCOMPARE(m_tabs->requestIds(), QStringList({QStringLiteral("r2")}));
+    QCOMPARE(m_tabs->previewRequestId(), QStringLiteral("r2"));
+}
+
+void TabsModelTest::methodChangeShowsOnTab()
+{
+    m_tabs->open(QStringLiteral("r1"));
+    QSignalSpy changed(m_tabs.get(), &QAbstractItemModel::dataChanged);
+    RequestSpec request = *m_collection->request(QStringLiteral("r1"));
+    request.method = HttpMethod::Delete;
+
+    QVERIFY(m_collection->updateRequest(QStringLiteral("r1"), request));
+
+    QVERIFY(changed.count() > 0);
+    QCOMPARE(m_tabs->index(0).data(TabsModel::MethodRole).toString(), QStringLiteral("DELETE"));
 }
 
 QTEST_GUILESS_MAIN(TabsModelTest)

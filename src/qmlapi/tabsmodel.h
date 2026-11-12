@@ -10,6 +10,8 @@
 #include <QString>
 #include <QStringList>
 
+#include <functional>
+
 class CollectionTreeModel;
 QT_BEGIN_NAMESPACE
 class QSettings;
@@ -132,6 +134,9 @@ public:
     /** Switches to the tabs of the workspace \a workspaceId, as kept in the settings; empty for none. */
     void attachWorkspace(const QString &workspaceId);
 
+    /** Sets \a source, which returns the id of the open workspace, so tabs save only for the attached one. */
+    void setWorkspaceIdSource(std::function<QString()> source);
+
 signals:
     /** Emitted when the current tab or its request changes. */
     void currentChanged();
@@ -157,8 +162,11 @@ private:
     /** Inserts a tab for \a requestId after the current one and makes it current. */
     void insertTab(const QString &requestId, bool preview);
 
-    /** Removes the tab at \a row without choosing a new current tab. */
-    void removeTab(int row);
+    /** Removes the tab at \a row with \a nextCurrent as the current row afterwards. */
+    void removeTab(int row, int nextCurrent);
+
+    /** Keeps only the current tab, as the preview tab. */
+    void reduceToPreview();
 
     /** Closes tabs of requests that left the collection and refreshes names. */
     void followCollection();
@@ -180,6 +188,9 @@ private:
 
     /** Whether the tab bar shows. */
     bool m_showTabs {true};
+
+    /** Returns the id of the open workspace, or nothing to save always. */
+    std::function<QString()> m_workspaceIdSource;
 
     /** Collection of the requests; not owned. */
     CollectionTreeModel *m_collection {nullptr};

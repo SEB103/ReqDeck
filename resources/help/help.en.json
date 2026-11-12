@@ -248,7 +248,7 @@
             "next": "The Content-Type comes from the file name unless a header sets it. The file is read while it is sent, so large files work.",
             "chapter": "requests"
         },
-        "request.tabs": {
+        "request.openTabs": {
             "title": "Open requests",
             "what": "The requests open in tabs. A click in the tree shows a request in the preview tab, in italics; a double click or an edit keeps it.",
             "why": "To work on several requests at once: each tab keeps the response of its own last send, and requests in different tabs can run at the same time.",

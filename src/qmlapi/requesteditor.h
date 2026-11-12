@@ -348,8 +348,9 @@ private:
         HttpExecutor *executor {nullptr};
         /** The request as it was sent, which outlives switching to another one. */
         RequestSpec sent;
-        /** Name and id of the request sent. */
+        /** Name of the request sent. */
         QString name;
+        /** Id of the request sent. */
         QString requestId;
         /** Variables of the send that had no value. */
         QStringList unresolved;

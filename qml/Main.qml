@@ -453,19 +453,28 @@ ApplicationWindow {
     Shortcut {
         sequence: "Ctrl+W"
         enabled: cppTabs.count > 0
-        onActivated: cppTabs.close(cppTabs.currentIndex)
+        onActivated: {
+            mainWindow.commitFocusedEdit()
+            cppTabs.close(cppTabs.currentIndex)
+        }
     }
 
     Shortcut {
         sequence: "Ctrl+Tab"
         enabled: cppTabs.count > 1
-        onActivated: cppTabs.cycle(1)
+        onActivated: {
+            mainWindow.commitFocusedEdit()
+            cppTabs.cycle(1)
+        }
     }
 
     Shortcut {
         sequence: "Ctrl+Shift+Tab"
         enabled: cppTabs.count > 1
-        onActivated: cppTabs.cycle(-1)
+        onActivated: {
+            mainWindow.commitFocusedEdit()
+            cppTabs.cycle(-1)
+        }
     }
 
     Shortcut {
@@ -877,8 +886,6 @@ ApplicationWindow {
                 onClicked: settingsFolderDialog.open()
             }
 
-            // Automatic startup update check; disabled until the update feature is
-            // enabled in the product configuration.
             Label { text: qsTr("Tabs:"); Layout.preferredWidth: 180 }
             CheckBox {
                 /*! Topic of the F1 help. */
@@ -893,6 +900,8 @@ ApplicationWindow {
                 onToggled: cppTabs.showTabs = checked
             }
 
+            // Automatic startup update check; disabled until the update feature is
+            // enabled in the product configuration.
             Label { text: qsTr("Updates:"); Layout.preferredWidth: 180 }
             CheckBox {
                 Layout.fillWidth: true

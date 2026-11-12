@@ -212,6 +212,9 @@ private slots:
     /*! Verifies that closing a running tab cancels its send without touching the current tab. */
     void closingARunningTabCancelsIt();
 
+    /*! Verifies that selecting a folder leaves the current tab's request in the editor. */
+    void folderSelectionKeepsTheTab();
+
     /*! Verifies the file body path, a file URL turned into a path, and the file info. */
     void fileBodyPathAndInfo();
 
@@ -1047,6 +1050,20 @@ void RequestEditorTest::closingARunningTabCancelsIt()
     m_editor->send();
     QVERIFY(waitForResponse(*m_response));
     QCOMPARE(m_response->statusCode(), 200);
+}
+
+void RequestEditorTest::folderSelectionKeepsTheTab()
+{
+    TabsModel tabs(m_collection.get());
+    m_editor->setTabs(&tabs);
+    openTwoRequests(*m_manager, *m_dir, m_server, QStringLiteral("/echo"), QStringLiteral("/status/200"));
+    m_editor->load(QStringLiteral("a"));
+
+    m_editor->load(QStringLiteral("no-such-node"));
+    m_editor->load(QString());
+
+    QCOMPARE(m_editor->requestId(), QStringLiteral("a"));
+    QVERIFY(m_editor->hasRequest());
 }
 
 void RequestEditorTest::fileBodyPathAndInfo()

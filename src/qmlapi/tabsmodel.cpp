@@ -22,10 +22,19 @@ TabsModel::TabsModel(CollectionTreeModel *collection, QObject *parent)
     , m_collection(collection)
 {
     connect(m_collection, &CollectionTreeModel::collectionChanged, this, &TabsModel::followCollection);
+    // A method or name changed in the editor shows on its tab too.
+    connect(m_collection, &QAbstractItemModel::dataChanged, this, [this]() {
+        if (!m_tabs.isEmpty())
+            emit dataChanged(index(0), index(int(m_tabs.size()) - 1), {NameRole, MethodRole});
+    });
     connect(this, &TabsModel::countChanged, this, &TabsModel::save);
     connect(this, &TabsModel::currentChanged, this, &TabsModel::save);
-    connect(this, &QAbstractItemModel::dataChanged, this, &TabsModel::save);
     connect(this, &QAbstractItemModel::rowsMoved, this, &TabsModel::save);
+    connect(this, &QAbstractItemModel::dataChanged, this,
+            [this](const QModelIndex &, const QModelIndex &, const QList<int> &roles) {
+                if (roles.isEmpty() || roles.contains(PreviewRole) || roles.contains(RequestIdRole))
+                    save();
+            });
 }
 
 /*!
@@ -40,6 +49,19 @@ void TabsModel::setSettings(QSettings *settings)
     m_settings = settings;
     if (m_settings && !m_settings->value(QStringLiteral("Tabs/show"), true).toBool())
         setShowTabs(false);
+}
+
+/*!
+ * \brief Tells the model which workspace is open right now, through \a source.
+ *
+ * Tabs are saved only while it is the attached workspace: when another
+ * workspace opens, the collection empties before attachWorkspace() runs, and
+ * the tabs closing then must not overwrite what the old workspace kept.
+ * \param source Returns the id of the open workspace.
+ */
+void TabsModel::setWorkspaceIdSource(std::function<QString()> source)
+{
+    m_workspaceIdSource = std::move(source);
 }
 
 /*!
@@ -65,11 +87,8 @@ void TabsModel::setShowTabs(bool show)
     m_showTabs = show;
     if (m_settings)
         m_settings->setValue(QStringLiteral("Tabs/show"), show);
-    if (!show && m_current >= 0) {
-        closeOthers(m_current);
-        m_tabs[0].preview = true;
-        emit dataChanged(index(0), index(0), {PreviewRole});
-    }
+    if (!show)
+        reduceToPreview();
     emit showTabsChanged();
 }
 
@@ -103,6 +122,8 @@ void TabsModel::attachWorkspace(const QString &workspaceId)
 void TabsModel::save() const
 {
     if (!m_settings || m_workspaceId.isEmpty() || m_restoring)
+        return;
+    if (m_workspaceIdSource && m_workspaceIdSource() != m_workspaceId)
         return;
     const QString group = QStringLiteral("Tabs/") + m_workspaceId + u'/';
     m_settings->setValue(group + QStringLiteral("requests"), requestIds());
@@ -182,7 +203,6 @@ void TabsModel::setCurrentIndex(int row)
  */
 QString TabsModel::currentRequestId() const
 {
-    // Slots of tabClosed() run while a removal has not chosen the new current tab.
     return m_current < 0 || m_current >= m_tabs.size() ? QString() : m_tabs.at(m_current).requestId;
 }
 
@@ -198,7 +218,9 @@ int TabsModel::currentTabId() const
  * \brief Shows \a requestId in the preview tab, as a single click in the tree does.
  *
  * A request that already has a tab goes to that tab. Otherwise the preview
- * tab shows it, or a new preview tab opens after the current one.
+ * tab shows it, or a new preview tab opens after the current one. A running
+ * preview tab stays, unless the tabs are hidden: then the one tab always
+ * shows the request, and the running send ends in it, as before tabs.
  * \param requestId The request; a folder or an unknown id is ignored.
  */
 void TabsModel::preview(const QString &requestId)
@@ -210,10 +232,10 @@ void TabsModel::preview(const QString &requestId)
         return;
     }
     for (int row = 0; row < m_tabs.size(); ++row) {
-        if (m_tabs.at(row).preview && !m_busy.contains(m_tabs.at(row).id)) {
+        if (m_tabs.at(row).preview && (!m_showTabs || !m_busy.contains(m_tabs.at(row).id))) {
             m_tabs[row].requestId = requestId;
-            emit dataChanged(index(row), index(row));
             m_current = row;
+            emit dataChanged(index(row), index(row));
             emit currentChanged();
             return;
         }
@@ -223,6 +245,8 @@ void TabsModel::preview(const QString &requestId)
 
 /*!
  * \brief Shows \a requestId in a tab that stays, as a double click does.
+ *
+ * With the tabs hidden this is a preview.
  * \param requestId The request; a folder or an unknown id is ignored.
  */
 void TabsModel::open(const QString &requestId)
@@ -244,12 +268,12 @@ void TabsModel::open(const QString &requestId)
 /*!
  * \brief Keeps the current tab, when it is the preview tab, as a normal tab.
  *
- * Called when the request is edited, so an edit is never replaced by the
- * next preview.
+ * Called when the request is edited or sent, so it is never replaced by the
+ * next preview. Nothing is kept while the tabs are hidden.
  */
 void TabsModel::keepCurrent()
 {
-    if (!m_showTabs || m_current < 0 || !m_tabs.at(m_current).preview)
+    if (!m_showTabs || m_current < 0 || m_current >= m_tabs.size() || !m_tabs.at(m_current).preview)
         return;
     m_tabs[m_current].preview = false;
     emit dataChanged(index(m_current), index(m_current), {PreviewRole});
@@ -265,14 +289,15 @@ void TabsModel::close(int row)
 {
     if (row < 0 || row >= m_tabs.size())
         return;
-    const bool wasCurrent = row == m_current;
-    const int before = m_current;
-    removeTab(row);
-    if (wasCurrent)
-        m_current = m_tabs.isEmpty() ? -1 : std::min(row, int(m_tabs.size()) - 1);
-    else if (before > row)
-        m_current = before - 1;
-    if (wasCurrent)
+    const int oldId = currentTabId();
+    const int oldRow = m_current;
+    int next = m_current;
+    if (row == m_current)
+        next = m_tabs.size() == 1 ? -1 : std::min(row, int(m_tabs.size()) - 2);
+    else if (m_current > row)
+        next = m_current - 1;
+    removeTab(row, next);
+    if (currentTabId() != oldId || m_current != oldRow)
         emit currentChanged();
 }
 
@@ -284,13 +309,15 @@ void TabsModel::closeOthers(int row)
     if (row < 0 || row >= m_tabs.size())
         return;
     const int keep = m_tabs.at(row).id;
-    const bool changed = row != m_current;
+    const int oldId = currentTabId();
+    const int oldRow = m_current;
     for (int i = int(m_tabs.size()) - 1; i >= 0; --i) {
-        if (m_tabs.at(i).id != keep)
-            removeTab(i);
+        if (m_tabs.at(i).id == keep)
+            continue;
+        const int keptRow = rowOfTab(keep);
+        removeTab(i, i < keptRow ? keptRow - 1 : keptRow);
     }
-    m_current = 0;
-    if (changed)
+    if (currentTabId() != oldId || m_current != oldRow)
         emit currentChanged();
 }
 
@@ -302,10 +329,13 @@ void TabsModel::move(int from, int to)
     if (from < 0 || from >= m_tabs.size() || to < 0 || to >= m_tabs.size() || from == to)
         return;
     const int currentId = currentTabId();
+    const int oldRow = m_current;
     beginMoveRows({}, from, from, {}, to > from ? to + 1 : to);
     m_tabs.move(from, to);
-    endMoveRows();
     m_current = rowOfTab(currentId);
+    endMoveRows();
+    if (m_current != oldRow)
+        emit currentChanged();
 }
 
 /*!
@@ -334,7 +364,8 @@ int TabsModel::rowOfTab(int tabId) const
 /*!
  * \brief Marks the tab \a tabId as running a send when \a busy is true.
  *
- * A running tab is never replaced by a preview or closed by the tab limit.
+ * A running tab is never replaced by a preview or closed by the tab limit
+ * while the tabs show.
  */
 void TabsModel::setBusy(int tabId, bool busy)
 {
@@ -373,7 +404,8 @@ QString TabsModel::previewRequestId() const
  *
  * Ids the collection no longer has, repeated ids, and ids past kMaxTabs are
  * left out. \a preview names the preview tab and \a current the current one;
- * without a match the first tab is current.
+ * without a match the first tab is current. With the tabs hidden only the
+ * current one stays, as the preview tab.
  */
 void TabsModel::restore(const QStringList &requestIds, const QString &preview, const QString &current)
 {
@@ -384,8 +416,10 @@ void TabsModel::restore(const QStringList &requestIds, const QString &preview, c
             continue;
         m_tabs.append({m_nextId++, id, id == preview});
     }
-    endResetModel();
     m_current = m_tabs.isEmpty() ? -1 : std::max(0, rowOfRequest(current));
+    endResetModel();
+    if (!m_showTabs)
+        reduceToPreview();
     emit countChanged();
     emit currentChanged();
 }
@@ -401,12 +435,27 @@ void TabsModel::clear()
     beginResetModel();
     m_tabs.clear();
     m_busy.clear();
-    endResetModel();
     m_current = -1;
+    endResetModel();
     for (const Tab &tab : closed)
         emit tabClosed(tab.id);
     emit countChanged();
     emit currentChanged();
+}
+
+/*!
+ * \internal
+ * \brief Keeps only the current tab, as the preview tab.
+ */
+void TabsModel::reduceToPreview()
+{
+    if (m_current < 0)
+        return;
+    closeOthers(m_current);
+    if (!m_tabs.at(0).preview) {
+        m_tabs[0].preview = true;
+        emit dataChanged(index(0), index(0), {PreviewRole});
+    }
 }
 
 /*!
@@ -420,9 +469,7 @@ void TabsModel::insertTab(const QString &requestId, bool preview)
     if (m_tabs.size() >= kMaxTabs) {
         for (int row = 0; row < m_tabs.size(); ++row) {
             if (row != m_current && !m_busy.contains(m_tabs.at(row).id)) {
-                removeTab(row);
-                if (m_current > row)
-                    --m_current;
+                removeTab(row, m_current > row ? m_current - 1 : m_current);
                 break;
             }
         }
@@ -430,21 +477,25 @@ void TabsModel::insertTab(const QString &requestId, bool preview)
     const int row = m_current < 0 ? int(m_tabs.size()) : m_current + 1;
     beginInsertRows({}, row, row);
     m_tabs.insert(row, {m_nextId++, requestId, preview});
-    endInsertRows();
     m_current = row;
+    endInsertRows();
     emit countChanged();
     emit currentChanged();
 }
 
 /*!
  * \internal
- * \brief Removes the tab at \a row and announces it, without choosing a current tab.
+ * \brief Removes the tab at \a row, makes \a nextCurrent the current row, and announces it.
+ *
+ * The current row is set before the removal is announced, so slots of
+ * tabClosed() and countChanged(), saving among them, see a consistent model.
  */
-void TabsModel::removeTab(int row)
+void TabsModel::removeTab(int row, int nextCurrent)
 {
     const int id = m_tabs.at(row).id;
     beginRemoveRows({}, row, row);
     m_tabs.removeAt(row);
+    m_current = nextCurrent;
     endRemoveRows();
     m_busy.remove(id);
     emit tabClosed(id);
@@ -457,24 +508,21 @@ void TabsModel::removeTab(int row)
  */
 void TabsModel::followCollection()
 {
-    const QString currentRequest = currentRequestId();
-    bool currentClosed = false;
+    const int oldId = currentTabId();
+    const int oldRow = m_current;
     for (int row = int(m_tabs.size()) - 1; row >= 0; --row) {
         if (m_collection->request(m_tabs.at(row).requestId))
             continue;
+        int next = m_current;
         if (row == m_current)
-            currentClosed = true;
-        removeTab(row);
-        if (m_current > row)
-            --m_current;
-    }
-    if (currentClosed || m_current >= m_tabs.size()) {
-        m_current = m_tabs.isEmpty() ? -1 : std::min(std::max(m_current, 0), int(m_tabs.size()) - 1);
-        emit currentChanged();
+            next = m_tabs.size() == 1 ? -1 : std::min(row, int(m_tabs.size()) - 2);
+        else if (m_current > row)
+            next = m_current - 1;
+        removeTab(row, next);
     }
     if (!m_tabs.isEmpty())
         emit dataChanged(index(0), index(int(m_tabs.size()) - 1), {NameRole, MethodRole});
-    if (!currentClosed && currentRequestId() != currentRequest)
+    if (currentTabId() != oldId || m_current != oldRow)
         emit currentChanged();
 }
 

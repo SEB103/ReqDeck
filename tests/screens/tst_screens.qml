@@ -980,8 +980,9 @@ Item {
             const tree = findChild(host.collection, "tree");
             mouseClick(tree, tree.width / 2, tree.height - 10);
 
+            // The request stays open in its tab; only the tree selection goes.
             compare(host.collection.selectedId, "");
-            compare(cppRequestEditor.hasRequest, false);
+            compare(cppRequestEditor.hasRequest, true);
         }
 
         /*! Creates the history pane and waits until its list is laid out. */

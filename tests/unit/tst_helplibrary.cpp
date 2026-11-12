@@ -68,6 +68,9 @@ private slots:
 
     /*! Verifies the chapters, their screenshots, and the committed PDF files. */
     void guideChaptersExist();
+
+    /*! Verifies that no topic id appears twice in a help file, since JSON keeps only one. */
+    void topicIdsAreUnique();
 };
 
 void HelpLibraryTest::loadsTopics()
@@ -217,6 +220,20 @@ void HelpLibraryTest::linksAreWebAddresses()
         }
     }
     QVERIFY(russian.links().value(QStringLiteral("statusCodes")).toString().contains(QStringLiteral("/ru/")));
+}
+
+void HelpLibraryTest::topicIdsAreUnique()
+{
+    for (const QString &language : {QStringLiteral("en"), QStringLiteral("ru")}) {
+        QFile file(QDir(QStringLiteral(REQDECK_HELP_DIR)).filePath(QStringLiteral("help.%1.json").arg(language)));
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QString text = QString::fromUtf8(file.readAll());
+        const QJsonObject topics = QJsonDocument::fromJson(text.toUtf8()).object().value(QStringLiteral("topics")).toObject();
+        for (const QString &key : topics.keys()) {
+            const QString declaration = QStringLiteral("\n        \"%1\": {").arg(key);
+            QVERIFY2(text.count(declaration) == 1, qPrintable(language + u' ' + key));
+        }
+    }
 }
 
 void HelpLibraryTest::guideChaptersExist()

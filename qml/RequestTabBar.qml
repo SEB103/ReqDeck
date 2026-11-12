@@ -21,7 +21,7 @@ ListView {
     id: bar
 
     /*! Topic of the F1 help. */
-    property string helpTopic: "request.tabs"
+    property string helpTopic: "request.openTabs"
 
     objectName: "requestTabBar"
     implicitHeight: 30
@@ -53,7 +53,8 @@ ListView {
         leftPadding: 8
         rightPadding: 2
         highlighted: tab.index === cppTabs.currentIndex
-        Accessible.name: tab.method + " " + tab.name
+        Accessible.role: Accessible.PageTab
+        Accessible.name: tab.method + " " + tab.name + (tab.preview ? qsTr(", preview") : "")
         ToolTip.visible: hovered && tab.name.length > 24
         ToolTip.text: tab.name
         onClicked: cppTabs.currentIndex = tab.index
