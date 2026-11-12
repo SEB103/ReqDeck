@@ -726,6 +726,14 @@
                 {
                     "type": "tip",
                     "text": "Ctrl+K finds any request by a few words of its name or address, and any menu command. In the tree, Ctrl+click or Shift+click selects several items, F2 renames, Delete deletes, and right-click > Sort A–Z orders a folder."
+                },
+                {
+                    "type": "p",
+                    "text": "Requests open in tabs above the request. A click in the tree shows a request in the preview tab, whose name is in italics; the next click replaces it. A double click, an edit, or a send keeps the tab."
+                },
+                {
+                    "type": "tip",
+                    "text": "Each tab keeps the response of its own last send, and a slow request in one tab does not hold up the others. Ctrl+Tab switches tabs and Ctrl+W closes one. Settings > Show tabs turns the tabs off if you prefer one request at a time."
                 }
             ]
         },

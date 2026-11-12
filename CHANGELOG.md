@@ -113,6 +113,10 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
   sends the body again. Imports and cURL (-F, --data-binary @file, -T) bring
   them along.
 - Guide chapter "Logging in and uploading".
+- Tabs: a click in the tree shows a request in one preview tab, and a double
+  click, an edit, or a send keeps it; each tab keeps its own last response, and
+  requests in different tabs run at once. Ctrl+Tab and Ctrl+W, tabs that come
+  back with their workspace, and Settings > Show tabs to turn them off.
 
 ### Fixed
 - Responses over HTTP/2 show the name of their status, for example 200 OK.
