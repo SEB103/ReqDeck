@@ -336,8 +336,9 @@ AppEngine::AppEngine(QObject* parent)
     rootContext()->setContextProperty("cppCookies", m_cookies);
     rootContext()->setContextProperty("cppTabs", m_tabs);
     m_requestEditor->setTabs(m_tabs);
-    // Tabs belong to their workspace.
-    connect(m_workspaceManager, &WorkspaceManager::workspaceReplaced, m_tabs, &TabsModel::clear);
+    // Tabs belong to their workspace and come back with it.
+    connect(m_workspaceManager, &WorkspaceManager::workspaceReplaced, m_tabs,
+            [this]() { m_tabs->attachWorkspace(m_workspaceManager->workspaceData().id); });
     rootContext()->setContextProperty("cppResponse", m_response);
 
     RequestBuilder::Options builderOptions;
@@ -438,6 +439,8 @@ void AppEngine::setSettings(QSettings* settings)
 {
     if (m_workspaceManager)
         m_workspaceManager->setSettings(settings);
+    if (m_tabs)
+        m_tabs->setSettings(settings);
 }
 
 /*!

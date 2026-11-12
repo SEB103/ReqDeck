@@ -3,6 +3,8 @@
 
 #include "qmlapi/tabsmodel.h"
 
+#include <QSettings>
+
 #include "core/http/requestspec.h"
 #include "qmlapi/collectiontreemodel.h"
 
@@ -20,6 +22,59 @@ TabsModel::TabsModel(CollectionTreeModel *collection, QObject *parent)
     , m_collection(collection)
 {
     connect(m_collection, &CollectionTreeModel::collectionChanged, this, &TabsModel::followCollection);
+    connect(this, &TabsModel::countChanged, this, &TabsModel::save);
+    connect(this, &TabsModel::currentChanged, this, &TabsModel::save);
+    connect(this, &QAbstractItemModel::dataChanged, this, &TabsModel::save);
+    connect(this, &QAbstractItemModel::rowsMoved, this, &TabsModel::save);
+}
+
+/*!
+ * \brief Keeps the tabs of each workspace in \a settings.
+ *
+ * The tabs are UI state of this computer, not part of the workspace, so
+ * opening a tab never makes the workspace dirty.
+ * \param settings The settings store, or null to keep nothing.
+ */
+void TabsModel::setSettings(QSettings *settings)
+{
+    m_settings = settings;
+}
+
+/*!
+ * \brief Switches to the tabs of the workspace \a workspaceId.
+ *
+ * Called after another workspace opened: the old tabs were saved as they
+ * changed, so they are only closed; the new workspace's tabs come back with
+ * restore(), which leaves out requests the workspace no longer has.
+ * \param workspaceId The id of the open workspace, or empty for none.
+ */
+void TabsModel::attachWorkspace(const QString &workspaceId)
+{
+    m_restoring = true;
+    m_workspaceId.clear();
+    clear();
+    if (m_settings && !workspaceId.isEmpty()) {
+        const QString group = QStringLiteral("Tabs/") + workspaceId + u'/';
+        restore(m_settings->value(group + QStringLiteral("requests")).toStringList(),
+                m_settings->value(group + QStringLiteral("preview")).toString(),
+                m_settings->value(group + QStringLiteral("current")).toString());
+    }
+    m_workspaceId = workspaceId;
+    m_restoring = false;
+}
+
+/*!
+ * \internal
+ * \brief Writes the tabs of the attached workspace to the settings.
+ */
+void TabsModel::save() const
+{
+    if (!m_settings || m_workspaceId.isEmpty() || m_restoring)
+        return;
+    const QString group = QStringLiteral("Tabs/") + m_workspaceId + u'/';
+    m_settings->setValue(group + QStringLiteral("requests"), requestIds());
+    m_settings->setValue(group + QStringLiteral("preview"), previewRequestId());
+    m_settings->setValue(group + QStringLiteral("current"), currentRequestId());
 }
 
 /*!

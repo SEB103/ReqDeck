@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QAbstractItemModelTester>
+#include <QSettings>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -66,6 +67,9 @@ private slots:
 
     /*! Verifies that folders and unknown ids open no tab. */
     void ignoresFoldersAndUnknownIds();
+
+    /*! Verifies that the tabs of a workspace are kept in the settings and come back with it. */
+    void tabsComeBackWithTheirWorkspace();
 
 private:
     /*! Directory of the workspace. */
@@ -265,6 +269,27 @@ void TabsModelTest::ignoresFoldersAndUnknownIds()
     m_tabs->open(QStringLiteral("nothing"));
     QCOMPARE(m_tabs->rowCount(), 0);
     QCOMPARE(m_tabs->currentIndex(), -1);
+}
+
+void TabsModelTest::tabsComeBackWithTheirWorkspace()
+{
+    QSettings settings(m_dir->filePath(QStringLiteral("ui.ini")), QSettings::IniFormat);
+    m_tabs->setSettings(&settings);
+    const QString id = m_manager->workspaceData().id;
+    m_tabs->attachWorkspace(id);
+    m_tabs->open(QStringLiteral("r1"));
+    m_tabs->open(QStringLiteral("r3"));
+    m_tabs->preview(QStringLiteral("r4"));
+    m_tabs->setCurrentIndex(1);
+    QVERIFY(!m_manager->dirty());
+
+    m_tabs->attachWorkspace(QStringLiteral("another"));
+    QCOMPARE(m_tabs->rowCount(), 0);
+    m_tabs->attachWorkspace(id);
+
+    QCOMPARE(m_tabs->requestIds(), QStringList({QStringLiteral("r1"), QStringLiteral("r3"), QStringLiteral("r4")}));
+    QCOMPARE(m_tabs->previewRequestId(), QStringLiteral("r4"));
+    QCOMPARE(m_tabs->currentRequestId(), QStringLiteral("r3"));
 }
 
 QTEST_GUILESS_MAIN(TabsModelTest)

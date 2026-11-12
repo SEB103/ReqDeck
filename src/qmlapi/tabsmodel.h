@@ -11,6 +11,9 @@
 #include <QStringList>
 
 class CollectionTreeModel;
+QT_BEGIN_NAMESPACE
+class QSettings;
+QT_END_NAMESPACE
 
 /**
  * The open request tabs of the active workspace.
@@ -114,6 +117,12 @@ public:
     /** Closes every tab. */
     Q_INVOKABLE void clear();
 
+    /** Keeps the tabs of each workspace in \a settings, which is not owned; null keeps nothing. */
+    void setSettings(QSettings *settings);
+
+    /** Switches to the tabs of the workspace \a workspaceId, as kept in the settings; empty for none. */
+    void attachWorkspace(const QString &workspaceId);
+
 signals:
     /** Emitted when the current tab or its request changes. */
     void currentChanged();
@@ -144,6 +153,18 @@ private:
 
     /** Returns the row of the first tab of \a requestId, or -1. */
     int rowOfRequest(const QString &requestId) const;
+
+    /** Writes the tabs of the attached workspace to the settings. */
+    void save() const;
+
+    /** Settings the tabs are kept in, or null; not owned. */
+    QSettings *m_settings {nullptr};
+
+    /** Workspace whose tabs these are; empty for none. */
+    QString m_workspaceId;
+
+    /** Whether tabs are being restored, so nothing is saved meanwhile. */
+    bool m_restoring {false};
 
     /** Collection of the requests; not owned. */
     CollectionTreeModel *m_collection {nullptr};
