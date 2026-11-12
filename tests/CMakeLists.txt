@@ -202,6 +202,19 @@ target_link_libraries(tst_bodysource
 
 add_test(NAME BodySource.Unit COMMAND tst_bodysource)
 
+qt_add_executable(tst_oauthclient
+    unit/tst_oauthclient.cpp
+)
+
+target_link_libraries(tst_oauthclient
+    PRIVATE
+        ReqDeckCore
+        ReqDeckTestSupport
+        Qt6::Test
+)
+
+add_test(NAME OAuthClient.Unit COMMAND tst_oauthclient)
+
 # Local HTTP/1.1 server for network tests; tests never contact external hosts.
 qt_add_library(ReqDeckTestSupport STATIC
     support/mockhttpserver.cpp

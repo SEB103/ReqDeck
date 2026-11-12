@@ -14,6 +14,7 @@
 #include <QJsonObject>
 #include <QTcpSocket>
 #include <QTimer>
+#include <QUrlQuery>
 
 #include <utility>
 
@@ -333,6 +334,35 @@ void MockHttpServer::route(QTcpSocket *socket, const Request &request)
         // The target is passed percent-encoded as "url=<absolute URL>".
         const QByteArray target = QByteArray::fromPercentEncoding(request.query.mid(4));
         writeResponse(socket, 302, {{"Location", target}}, {}, head);
+        return;
+    }
+
+    if (path == "/oauth/token") {
+        // A tiny authorization server; "scope" echoes the PKCE verifier it got.
+        const QUrlQuery form(QString::fromLatin1(request.body));
+        const QString grant = form.queryItemValue(QStringLiteral("grant_type"), QUrl::FullyDecoded);
+        const auto field = [&form](const char *name) {
+            return form.queryItemValue(QString::fromLatin1(name), QUrl::FullyDecoded);
+        };
+        QJsonObject answer;
+        int status = 200;
+        if (grant == QLatin1StringView("client_credentials") && field("client_id") == QLatin1StringView("app")
+            && field("client_secret") == QLatin1StringView("s3cret+&=")) {
+            answer = {{QStringLiteral("access_token"), QStringLiteral("cc-token")},
+                      {QStringLiteral("token_type"), QStringLiteral("Bearer")}, {QStringLiteral("expires_in"), 3600}};
+        } else if (grant == QLatin1StringView("authorization_code") && field("code") == QLatin1StringView("abc")) {
+            answer = {{QStringLiteral("access_token"), QStringLiteral("ac-token")},
+                      {QStringLiteral("refresh_token"), QStringLiteral("r1")}, {QStringLiteral("expires_in"), 60},
+                      {QStringLiteral("scope"), field("code_verifier")}};
+        } else if (grant == QLatin1StringView("refresh_token") && field("refresh_token") == QLatin1StringView("r1")) {
+            answer = {{QStringLiteral("access_token"), QStringLiteral("refreshed")}, {QStringLiteral("expires_in"), 120}};
+        } else {
+            status = 400;
+            answer = {{QStringLiteral("error"), QStringLiteral("invalid_grant")},
+                      {QStringLiteral("error_description"), QStringLiteral("The grant is not valid.")}};
+        }
+        writeResponse(socket, status, {{"Content-Type", "application/json"}},
+                      QJsonDocument(answer).toJson(QJsonDocument::Compact), head);
         return;
     }
 

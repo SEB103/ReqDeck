@@ -27,7 +27,9 @@ QT_END_NAMESPACE
  * URL), /delay/<ms>, /response-headers (repeated X-Dup header), /set-cookie
  * (Set-Cookie: sid=server), /set-cookies (two Set-Cookie headers, a=1 and b=2),
  * /login (302 to /echo with Set-Cookie: sid=login), /count (size and SHA-256 of
- * the request body and its Content-Length as JSON), /truncated (announces 100 body bytes, sends 10),
+ * the request body and its Content-Length as JSON), /oauth/token (a token
+ * endpoint for client credentials app / s3cret+&=, code "abc", and refresh
+ * token "r1"; the code grant's "scope" echoes the PKCE verifier), /truncated (announces 100 body bytes, sends 10),
  * /binary (eight bytes with NUL bytes), /markup (an img tag as header value),
  * /long/<n> (n unbroken characters), /json/<n> (a JSON array of n objects);
  * anything else is 404. Every response carries Connection: close.
