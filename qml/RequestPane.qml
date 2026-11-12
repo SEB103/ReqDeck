@@ -409,6 +409,9 @@ Item {
                         spacing: 6
 
                         TextField {
+                            /*! Topic of the F1 help. */
+                            property string helpTopic: "request.bodyFile"
+
                             objectName: "bodyFilePath"
 
                             Layout.fillWidth: true
@@ -420,6 +423,9 @@ Item {
                         }
 
                         Button {
+                            /*! Topic of the F1 help. */
+                            property string helpTopic: "request.bodyFile"
+
                             text: qsTr("Browse…")
                             onClicked: bodyFileDialog.open()
                         }
