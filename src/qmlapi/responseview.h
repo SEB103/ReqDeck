@@ -56,6 +56,9 @@ class ResponseView : public QObject
     /** Warning about the request that was sent; empty when there is none. */
     Q_PROPERTY(QString warningText READ warningText NOTIFY responseChanged)
 
+    /** What was sent, hop by hop, with credentials masked; empty without a response. */
+    Q_PROPERTY(QString sentText READ sentText NOTIFY responseChanged)
+
     /** Duration of the request in milliseconds. */
     Q_PROPERTY(qint64 elapsedMs READ elapsedMs NOTIFY responseChanged)
 
@@ -143,6 +146,9 @@ public:
 
     /** Returns the warning text. */
     QString warningText() const;
+
+    /** Returns what was sent, hop by hop, with credentials masked. */
+    QString sentText() const;
 
     /** Returns the JSONPath of the filter. */
     QString filterText() const;

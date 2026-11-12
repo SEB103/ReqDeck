@@ -300,6 +300,10 @@ Item {
             Base.BsTabButton {
                 text: qsTr("Headers")
             }
+
+            Base.BsTabButton {
+                text: qsTr("Sent")
+            }
         }
 
         StackLayout {
@@ -587,6 +591,27 @@ Item {
                         textFormat: Text.PlainText
                         text: headerRow.value
                     }
+                }
+            }
+
+            ScrollView {
+                /*! Topic of the F1 help. */
+                property string helpTopic: "response.sent"
+
+                objectName: "sentView"
+
+                clip: true
+
+                TextArea {
+                    objectName: "sentText"
+
+                    readOnly: true
+                    selectByMouse: true
+                    wrapMode: TextEdit.WrapAnywhere
+                    textFormat: TextEdit.PlainText
+                    font.family: "Consolas"
+                    text: cppResponse.sentText
+                    Accessible.name: qsTr("What was sent")
                 }
             }
         }

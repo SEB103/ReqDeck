@@ -80,6 +80,23 @@ struct TlsCheck
     }
 };
 
+/** One request as it went to the server; credentials are masked. */
+struct SentHop
+{
+    /** Request verb, for example "GET". */
+    QString method;
+    /** URL of the hop; a password and an API key in the query are masked. */
+    QUrl url;
+    /** Headers in sent order; values of credential headers are masked. */
+    QList<std::pair<QString, QString>> headers;
+    /** Size of the body in bytes; 0 without a body. */
+    qint64 bodySize {0};
+    /** Status code of the answer to this hop; 0 when none arrived. */
+    int statusCode {0};
+    /** Reason phrase of the answer to this hop. */
+    QString reasonPhrase;
+};
+
 /** Result of one executed request. */
 struct ResponseData
 {
@@ -109,6 +126,8 @@ struct ResponseData
     QString errorString;
     /** Servers whose certificate had errors, in the order the request reached them. */
     QList<TlsCheck> tlsChecks;
+    /** What was sent, one entry per hop, redirects included. */
+    QList<SentHop> sent;
 
     /** Returns whether an HTTP response with a status code was received. */
     bool hasStatus() const { return statusCode > 0; }

@@ -35,6 +35,8 @@ struct BuiltRequest
     bool followRedirects {true};
     /** Headers carrying credentials; removed when a redirect leaves the origin. */
     QList<QByteArray> credentialHeaders;
+    /** Name of a query parameter carrying an API key; empty for none. */
+    QString credentialQueryName;
     /** A failed check whose server and errors this request accepts; empty for none. Never stored. */
     TlsCheck tlsException;
 };

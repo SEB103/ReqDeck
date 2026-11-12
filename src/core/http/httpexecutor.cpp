@@ -10,10 +10,12 @@
 #include <QHttpHeaders>
 #include <QNetworkAccessManager>
 #include <QNetworkProxyFactory>
+#include <QUrlQuery>
 #if QT_CONFIG(ssl)
 #include <QSslError>
 #endif
 
+#include <algorithm>
 #include <utility>
 
 namespace {
@@ -122,6 +124,38 @@ public:
  * \internal
  * \brief Returns whether \a lhs and \a rhs share scheme, host, and effective port.
  */
+/*!
+ * \internal
+ * \brief Text shown in place of a secret.
+ */
+constexpr QStringView kMask = u"\u2022\u2022\u2022\u2022\u2022\u2022";
+
+/*!
+ * \internal
+ * \brief Returns \a value of the credential header \a name with the secret masked.
+ *
+ * A Cookie header keeps the cookie names; an Authorization value keeps its
+ * scheme, for example "Bearer", so the view still says what kind was sent.
+ */
+QString maskedCredential(const QString &name, const QString &value)
+{
+    if (name.compare(QLatin1StringView("Cookie"), Qt::CaseInsensitive) == 0) {
+        QStringList cookies;
+        for (const QString &cookie : value.split(u';', Qt::SkipEmptyParts)) {
+            const QString trimmed = cookie.trimmed();
+            const qsizetype equals = trimmed.indexOf(u'=');
+            cookies.append(equals < 0 ? kMask.toString() : trimmed.left(equals + 1) + kMask);
+        }
+        return cookies.join(QLatin1StringView("; "));
+    }
+    const qsizetype space = value.indexOf(u' ');
+    if (space > 0 && (name.compare(QLatin1StringView("Authorization"), Qt::CaseInsensitive) == 0
+                      || name.compare(QLatin1StringView("Proxy-Authorization"), Qt::CaseInsensitive) == 0)) {
+        return value.left(space + 1) + kMask;
+    }
+    return kMask.toString();
+}
+
 bool isSameOrigin(const QUrl &lhs, const QUrl &rhs)
 {
     const auto defaultPort = [](const QUrl &url) {
@@ -320,6 +354,7 @@ bool HttpExecutor::send(const BuiltRequest &request)
     m_redirectCount = 0;
     m_abortRequested = false;
     m_tlsChecks.clear();
+    m_sent.clear();
     m_timer.start();
     startReply();
 
@@ -399,6 +434,7 @@ void HttpExecutor::startReply()
     }
 
     if (m_current.verb == "HEAD") {
+        recordHop(0);
         m_reply = m_network->head(m_current.request);
     } else if (!m_current.segments.isEmpty()) {
         // A fresh device per hop, so a 307 or 308 sends the whole body again.
@@ -411,9 +447,11 @@ void HttpExecutor::startReply()
         }
         QNetworkRequest request = m_current.request;
         request.setHeader(QNetworkRequest::ContentLengthHeader, device->size());
+        recordHop(device->size());
         m_reply = m_network->sendCustomRequest(request, m_current.verb, device);
         device->setParent(m_reply);
     } else {
+        recordHop(m_current.body.size());
         m_reply = m_network->sendCustomRequest(m_current.request, m_current.verb, m_current.body);
     }
 
@@ -446,6 +484,50 @@ void HttpExecutor::startReply()
 
 /*!
  * \internal
+ * \brief Appends the current hop to m_sent, with \a bodySize bytes of body.
+ *
+ * Only masked values are kept: the headers in BuiltRequest::credentialHeaders,
+ * the password of the URL, and the API key query parameter. Headers the network
+ * layer adds itself, such as Host or Accept-Encoding, are not in the request
+ * and so not in the hop.
+ */
+void HttpExecutor::recordHop(qint64 bodySize)
+{
+    SentHop hop;
+    hop.method = QString::fromLatin1(m_current.verb);
+    hop.url = m_current.request.url();
+    if (!hop.url.password().isEmpty())
+        hop.url.setPassword(kMask.toString());
+    if (!m_current.credentialQueryName.isEmpty()) {
+        QUrlQuery query(hop.url);
+        const QString name = m_current.credentialQueryName;
+        if (query.hasQueryItem(name)) {
+            const int count = query.allQueryItemValues(name).size();
+            query.removeAllQueryItems(name);
+            for (int i = 0; i < count; ++i)
+                query.addQueryItem(name, kMask.toString());
+            hop.url.setQuery(query);
+        }
+    }
+    const QHttpHeaders headers = m_current.request.headers();
+    for (qsizetype i = 0; i < headers.size(); ++i) {
+        const QString name = QString::fromLatin1(headers.nameAt(i));
+        QString value = QString::fromUtf8(headers.valueAt(i));
+        const bool credential = std::any_of(m_current.credentialHeaders.cbegin(), m_current.credentialHeaders.cend(),
+                                            [&name](const QByteArray &credentialName) {
+                                                return name.compare(QLatin1StringView(credentialName),
+                                                                    Qt::CaseInsensitive) == 0;
+                                            });
+        if (credential)
+            value = maskedCredential(name, value);
+        hop.headers.append({name, value});
+    }
+    hop.bodySize = bodySize;
+    m_sent.append(std::move(hop));
+}
+
+/*!
+ * \internal
  * \brief Ends the running request without a reply, with the error \a message.
  *
  * Used when a hop cannot even start, for example when a file of the body
@@ -460,6 +542,7 @@ void HttpExecutor::finishWithoutReply(const QString &message)
     response.errorString = message;
     response.finalUrl = m_current.request.url();
     response.tlsChecks = std::exchange(m_tlsChecks, {});
+    response.sent = std::exchange(m_sent, {});
     // As in handleFinished(): an accepted certificate must not outlive its request.
     if (response.tlsErrorsIgnored())
         m_network->clearConnectionCache();
@@ -590,6 +673,10 @@ void HttpExecutor::handleFinished()
     response.sizeBytes = std::exchange(m_bodySize, 0);
     response.finalUrl = reply->url();
     response.storedCookiesSkipped = m_storedCookiesSkipped;
+    if (!m_sent.isEmpty()) {
+        m_sent.last().statusCode = response.statusCode;
+        m_sent.last().reasonPhrase = response.reasonPhrase;
+    }
     // A cancelled reply may belong to a workspace that was just closed.
     if (m_cookies && !m_abortRequested) {
         const auto cookies = reply->header(QNetworkRequest::SetCookieHeader).value<QList<QNetworkCookie>>();
@@ -640,6 +727,7 @@ void HttpExecutor::handleFinished()
     if (response.error != ResponseError::None && response.errorString.isEmpty())
         response.errorString = reply->errorString();
     response.tlsChecks = std::exchange(m_tlsChecks, {});
+    response.sent = std::exchange(m_sent, {});
     // An accepted certificate must not outlive its request: a connection kept
     // alive would let the next request through without any check.
     if (response.tlsErrorsIgnored())

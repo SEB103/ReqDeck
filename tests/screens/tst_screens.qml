@@ -3352,6 +3352,20 @@ Item {
             cppRequestEditor.authType = 0;
         }
 
+        /*! Verifies that the Sent tab lists the request with its masked credentials. */
+        function test_responseSentTab() {
+            const host = createSender(cppTestHost.serverUrl("/redirect"));
+            sendAndWait(host);
+            const tabs = findChild(host.response, "responseTabs");
+            tabs.currentIndex = 2;
+            const sent = findChild(host.response, "sentText");
+            tryCompare(sent, "visible", true);
+            verify(sent.text.indexOf("GET ") === 0, sent.text);
+            verify(sent.text.indexOf("/redirect") > 0, sent.text);
+            verify(sent.text.indexOf("/echo") > 0, sent.text);
+            tabs.currentIndex = 0;
+        }
+
         /*! Verifies the JSONPath filter field of the response. */
         function test_responseFilterShowsMatches() {
             const host = createSender(cppTestHost.serverUrl("/json/3"));

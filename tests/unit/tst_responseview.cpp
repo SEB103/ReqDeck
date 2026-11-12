@@ -102,6 +102,9 @@ private slots:
     /*! Verifies the JSONPath filter: matches, no match, errors, and that it stays for the next response. */
     void filterShowsMatches();
 
+    /*! Verifies that the sent hops read as request lines, headers, and answers. */
+    void sentTextListsHops();
+
     /*! Verifies that find ignores case and reports positions in the shown text. */
     void findIsCaseInsensitive();
     /*! Verifies that find stops at its limit. */
@@ -389,6 +392,34 @@ void ResponseViewTest::buildErrorShowsMessageWithoutStatus()
     QVERIFY(!view.property("busy").toBool());
     QCOMPARE(view.property("statusCode").toInt(), 0);
     QCOMPARE(view.property("errorText").toString(), QStringLiteral("URL is empty."));
+}
+
+void ResponseViewTest::sentTextListsHops()
+{
+    ResponseView view;
+    QVERIFY(view.sentText().isEmpty());
+
+    ResponseData response = makeResponse("{}", QStringLiteral("application/json"));
+    SentHop first;
+    first.method = QStringLiteral("POST");
+    first.url = QUrl(QStringLiteral("https://example.com/a"));
+    first.headers = {{QStringLiteral("Authorization"), QStringLiteral("Bearer xxx")}};
+    first.bodySize = 5;
+    first.statusCode = 307;
+    first.reasonPhrase = QStringLiteral("Temporary Redirect");
+    SentHop second = first;
+    second.url = QUrl(QStringLiteral("https://example.com/b"));
+    second.statusCode = 200;
+    second.reasonPhrase = QStringLiteral("OK");
+    response.sent = {first, second};
+    view.setResponse(response, {});
+
+    const QString text = view.sentText();
+    QVERIFY(text.startsWith(QStringLiteral("POST https://example.com/a\nAuthorization: Bearer xxx\n")));
+    QVERIFY(text.contains(QStringLiteral("307 Temporary Redirect")));
+    QVERIFY(text.contains(QStringLiteral("POST https://example.com/b")));
+    QVERIFY(text.indexOf(QStringLiteral("/a")) < text.indexOf(QStringLiteral("/b")));
+    QVERIFY(text.contains(QStringLiteral("200 OK")));
 }
 
 void ResponseViewTest::filterShowsMatches()

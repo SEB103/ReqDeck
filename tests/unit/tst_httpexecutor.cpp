@@ -10,6 +10,7 @@
 #include <QTcpServer>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QUrlQuery>
 #include <QtTest>
 
 #include <memory>
@@ -268,6 +269,12 @@ private slots:
 
     /*! Verifies that non-ASCII header values arrive as UTF-8. */
     void utf8HeaderValueArrives();
+
+    /*! Verifies that every hop is recorded with its answer, credentials masked. */
+    void sentViewMasksCredentials();
+
+    /*! Verifies that an API key in the query and a URL password are masked in the hop. */
+    void sentHopMasksQueryKeyAndPassword();
 
 private:
     /*! Server shared by all test functions. */
@@ -1248,6 +1255,69 @@ void HttpExecutorTest::abortFromFinishedSlotIsNoOp()
     QTRY_COMPARE_WITH_TIMEOUT(finishedCount, 1, 5000);
     QTest::qWait(200);
     QCOMPARE(finishedCount, 1);
+}
+
+void HttpExecutorTest::sentViewMasksCredentials()
+{
+    RequestSpec spec = specFor(m_server.url(QStringLiteral("/redirect307")), HttpMethod::Post);
+    spec.body.mode = BodyMode::Raw;
+    spec.body.raw = QStringLiteral("hello");
+    spec.headers.append({QStringLiteral("Cookie"), QStringLiteral("sid=abc; theme=dark"), true});
+    spec.headers.append({QStringLiteral("X-Trace"), QStringLiteral("t1"), true});
+    spec.auth.type = AuthType::Bearer;
+    spec.auth.token = QStringLiteral("secret-token");
+
+    HttpExecutor executor;
+    const auto response = sendAndWait(executor, buildRequest(spec));
+    QVERIFY(response);
+    QCOMPARE(response->sent.size(), 2);
+
+    const SentHop &first = response->sent.at(0);
+    QCOMPARE(first.method, QStringLiteral("POST"));
+    QCOMPARE(first.url, m_server.url(QStringLiteral("/redirect307")));
+    QCOMPARE(first.bodySize, 5);
+    QCOMPARE(first.statusCode, 307);
+    QCOMPARE(response->sent.at(1).url, m_server.url(QStringLiteral("/echo")));
+    QCOMPARE(response->sent.at(1).statusCode, 200);
+
+    const auto valueOf = [&first](const QString &name) {
+        for (const auto &[headerName, value] : first.headers) {
+            if (headerName.compare(name, Qt::CaseInsensitive) == 0)
+                return value;
+        }
+        return QString();
+    };
+    const QString mask = QStringLiteral("\u2022\u2022\u2022\u2022\u2022\u2022");
+    QCOMPARE(valueOf(QStringLiteral("Authorization")), QStringLiteral("Bearer ") + mask);
+    QCOMPARE(valueOf(QStringLiteral("Cookie")), QStringLiteral("sid=%1; theme=%1").arg(mask));
+    QCOMPARE(valueOf(QStringLiteral("X-Trace")), QStringLiteral("t1"));
+    for (const SentHop &hop : response->sent) {
+        for (const auto &[name, value] : hop.headers)
+            QVERIFY2(!value.contains(QLatin1StringView("secret")), qPrintable(name));
+    }
+}
+
+void HttpExecutorTest::sentHopMasksQueryKeyAndPassword()
+{
+    QUrl url = m_server.url(QStringLiteral("/echo?a=1"));
+    url.setUserName(QStringLiteral("user"));
+    url.setPassword(QStringLiteral("pw"));
+    RequestSpec spec = specFor(url);
+    spec.auth.type = AuthType::ApiKey;
+    spec.auth.apiKeyLocation = ApiKeyLocation::Query;
+    spec.auth.apiKeyName = QStringLiteral("key");
+    spec.auth.apiKeyValue = QStringLiteral("k-secret");
+
+    HttpExecutor executor;
+    const auto response = sendAndWait(executor, buildRequest(spec));
+    QVERIFY(response);
+    QCOMPARE(response->sent.size(), 1);
+    const QUrl sent = response->sent.at(0).url;
+    QVERIFY(!sent.toString().contains(QLatin1StringView("k-secret")));
+    QVERIFY(!sent.toString().contains(QLatin1StringView("pw")));
+    QCOMPARE(sent.userName(), QStringLiteral("user"));
+    QCOMPARE(QUrlQuery(sent).queryItemValue(QStringLiteral("a")), QStringLiteral("1"));
+    QVERIFY(QUrlQuery(sent).hasQueryItem(QStringLiteral("key")));
 }
 
 void HttpExecutorTest::utf8HeaderValueArrives()

@@ -12,6 +12,8 @@
 #include <QRegularExpression>
 #include <QSaveFile>
 
+#include <limits>
+
 #include "core/http/jsonpath.h"
 #include "qmlapi/bodyhighlighter.h"
 
@@ -112,6 +114,33 @@ QString ResponseView::errorText() const
 QString ResponseView::warningText() const
 {
     return m_warningText;
+}
+
+/*!
+ * \brief Returns what was sent, hop by hop, with credentials masked.
+ *
+ * Each hop shows the request line, the headers of the request, the body size,
+ * and the answer it got, so a redirect chain reads from top to bottom. The
+ * executor masked the secrets before they got here.
+ */
+QString ResponseView::sentText() const
+{
+    if (!m_hasResponse || m_response.sent.isEmpty())
+        return {};
+    QStringList blocks;
+    for (const SentHop &hop : std::as_const(m_response.sent)) {
+        QStringList lines;
+        lines.append(hop.method + u' ' + hop.url.toString(QUrl::FullyEncoded));
+        for (const auto &[name, value] : hop.headers)
+            lines.append(name + QLatin1StringView(": ") + value);
+        if (hop.bodySize > 0)
+            lines.append(tr("Body: %n byte(s)", nullptr, int(qMin<qint64>(hop.bodySize, std::numeric_limits<int>::max()))));
+        lines.append(hop.statusCode > 0 ? tr("Answer: %1 %2").arg(hop.statusCode).arg(hop.reasonPhrase).trimmed()
+                                        : tr("No answer."));
+        blocks.append(lines.join(u'\n'));
+    }
+    blocks.append(tr("The network layer also adds headers of its own, such as Host and Accept-Encoding."));
+    return blocks.join(QLatin1StringView("\n\n"));
 }
 
 qint64 ResponseView::elapsedMs() const

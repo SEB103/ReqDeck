@@ -188,8 +188,10 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
         unresolved.append(name);
 
     QList<KeyValue> queryPairs = resolvePairs(spec.queryParams);
-    if (spec.auth.type == AuthType::ApiKey && spec.auth.apiKeyLocation == ApiKeyLocation::Query)
-        queryPairs.append({resolve(spec.auth.apiKeyName), resolve(spec.auth.apiKeyValue), true});
+    if (spec.auth.type == AuthType::ApiKey && spec.auth.apiKeyLocation == ApiKeyLocation::Query) {
+        built.credentialQueryName = resolve(spec.auth.apiKeyName);
+        queryPairs.append({built.credentialQueryName, resolve(spec.auth.apiKeyValue), true});
+    }
 
     if (urlText.isEmpty())
         return failure(std::move(built), QStringLiteral("URL is empty."));

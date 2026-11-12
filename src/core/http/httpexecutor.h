@@ -105,6 +105,9 @@ private:
     /** Sends the current hop of m_current and connects the reply. */
     void startReply();
 
+    /** Appends the current hop, with \a bodySize bytes of body, to m_sent with credentials masked. */
+    void recordHop(qint64 bodySize);
+
     /** Ends the running request without a reply, reporting \a message. */
     void finishWithoutReply(const QString &message);
 
@@ -149,6 +152,9 @@ private:
 
     /** Certificate checks with errors of the running request, one per server. */
     QList<TlsCheck> m_tlsChecks;
+
+    /** Hops of the running request sent so far. */
+    QList<SentHop> m_sent;
 
     /** Whether abort() was called for the running request. */
     bool m_abortRequested {false};
