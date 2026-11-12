@@ -123,6 +123,12 @@ private:
     /** Whether the store had cookies for the first hop that the typed header replaced. */
     bool m_storedCookiesSkipped {false};
 
+    /** Whether a request that could not start waits for its queued finished(). */
+    bool m_finishPending {false};
+
+    /** The response finishWithoutReply() will emit. */
+    ResponseData m_pendingResponse;
+
     /** Network manager owned through the QObject tree; it has no cookie jar. */
     QNetworkAccessManager *m_network {nullptr};
 

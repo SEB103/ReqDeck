@@ -236,6 +236,9 @@ private slots:
     /*! Verifies that a file removed after building fails the send with its path. */
     void vanishedFileFailsTheSend();
 
+    /*! Verifies that a send that could not start stays busy until its finish, and abort() ends it. */
+    void failedStartStaysBusyUntilFinished();
+
     /*! Verifies that a typed Cookie header is sent as typed, without the stored cookies. */
     void typedCookieHeaderWins();
 
@@ -1090,6 +1093,36 @@ void HttpExecutorTest::vanishedFileFailsTheSend()
     QCOMPARE(response->error, ResponseError::Network);
     QVERIFY2(response->errorString.contains(QStringLiteral("gone.txt")), qPrintable(response->errorString));
     QVERIFY(!executor.isBusy());
+}
+
+void HttpExecutorTest::failedStartStaysBusyUntilFinished()
+{
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("gone.txt"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("x");
+    file.close();
+    RequestSpec spec = specFor(m_server.url(QStringLiteral("/echo")), HttpMethod::Post);
+    spec.body.mode = BodyMode::File;
+    spec.body.filePath = path;
+    const BuiltRequest built = buildRequest(spec);
+    QVERIFY(QFile::remove(path));
+
+    HttpExecutor executor;
+    QList<ResponseError> finished;
+    connect(&executor, &HttpExecutor::finished, this,
+            [&finished](const ResponseData &response) { finished.append(response.error); });
+    QVERIFY(executor.send(built));
+    QVERIFY(executor.isBusy());
+    QVERIFY(!executor.send(buildRequest(specFor(m_server.url(QStringLiteral("/echo"))))));
+
+    executor.abort();
+
+    QCOMPARE(finished, QList<ResponseError>({ResponseError::Aborted}));
+    QVERIFY(!executor.isBusy());
+    QTest::qWait(50);
+    QCOMPARE(finished.size(), 1);
 }
 
 void HttpExecutorTest::crossOriginRedirectDropsCredentials()

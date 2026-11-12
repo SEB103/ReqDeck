@@ -237,7 +237,7 @@ HttpExecutor::~HttpExecutor()
  */
 bool HttpExecutor::isBusy() const
 {
-    return m_reply != nullptr;
+    return m_reply != nullptr || m_finishPending;
 }
 
 /*!
@@ -300,7 +300,7 @@ void HttpExecutor::setCookieStore(CookieStore *store)
  */
 bool HttpExecutor::send(const BuiltRequest &request)
 {
-    if (m_reply || !request.ok)
+    if (isBusy() || !request.ok)
         return false;
 
     m_current = request;
@@ -324,6 +324,16 @@ bool HttpExecutor::send(const BuiltRequest &request)
  */
 void HttpExecutor::abort()
 {
+    if (m_finishPending) {
+        // The pending error gives way to the cancel, as a reply's abort does.
+        m_finishPending = false;
+        ResponseData response = std::exchange(m_pendingResponse, {});
+        response.error = ResponseError::Aborted;
+        response.errorString = QStringLiteral("Operation canceled");
+        emit busyChanged(false);
+        emit finished(response);
+        return;
+    }
     if (!m_reply)
         return;
     m_abortRequested = true;
@@ -439,9 +449,19 @@ void HttpExecutor::finishWithoutReply(const QString &message)
     response.errorString = message;
     response.finalUrl = m_current.request.url();
     response.tlsChecks = std::exchange(m_tlsChecks, {});
-    QMetaObject::invokeMethod(this, [this, response]() {
+    // As in handleFinished(): an accepted certificate must not outlive its request.
+    if (response.tlsErrorsIgnored())
+        m_network->clearConnectionCache();
+    // Busy until the queued finish, so no second send starts in between.
+    m_pendingResponse = response;
+    m_finishPending = true;
+    QMetaObject::invokeMethod(this, [this]() {
+        if (!m_finishPending)
+            return;
+        m_finishPending = false;
+        const ResponseData pending = std::exchange(m_pendingResponse, {});
         emit busyChanged(false);
-        emit finished(response);
+        emit finished(pending);
     }, Qt::QueuedConnection);
 }
 
@@ -559,7 +579,8 @@ void HttpExecutor::handleFinished()
     response.sizeBytes = std::exchange(m_bodySize, 0);
     response.finalUrl = reply->url();
     response.storedCookiesSkipped = m_storedCookiesSkipped;
-    if (m_cookies) {
+    // A cancelled reply may belong to a workspace that was just closed.
+    if (m_cookies && !m_abortRequested) {
         const auto cookies = reply->header(QNetworkRequest::SetCookieHeader).value<QList<QNetworkCookie>>();
         if (!cookies.isEmpty())
             m_cookies->storeCookies(cookies, reply->url());

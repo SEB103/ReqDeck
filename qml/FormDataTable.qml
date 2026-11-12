@@ -63,9 +63,9 @@ ColumnLayout {
             id: part
 
             required property int index
+            required property var model
             required property string key
             required property string value
-            required property bool enabled
             required property bool isFile
             required property string contentType
 
@@ -73,7 +73,8 @@ ColumnLayout {
             spacing: 4
 
             CheckBox {
-                checked: part.enabled
+                // The role is read through model: "enabled" would hide Item.enabled.
+                checked: part.model.enabled
                 Accessible.name: qsTr("Send %1").arg(part.key)
                 onToggled: table.model.setField(part.index, table.enabledRole, checked)
             }

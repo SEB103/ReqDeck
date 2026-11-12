@@ -129,6 +129,12 @@ private slots:
 
     /*! Verifies a file body: one segment and a type from the name unless typed. */
     void buildsFileBody();
+
+    /*! Verifies that a typed multipart Content-Type, boundary or not, gives way to the real one. */
+    void replacesTypedMultipartType();
+
+    /*! Verifies that a part's Content-Type with a line break fails the build. */
+    void refusesBrokenPartType();
 };
 
 void RequestBuilderTest::encodesPairs()
@@ -530,6 +536,35 @@ void RequestBuilderTest::buildsFileBody()
     built = build(spec, variables);
     QCOMPARE(built.request.headers().value(QHttpHeaders::WellKnownHeader::ContentType).toByteArray(),
              QByteArray("text/plain"));
+}
+
+void RequestBuilderTest::replacesTypedMultipartType()
+{
+    RequestSpec spec;
+    spec.method = HttpMethod::Post;
+    spec.url = QStringLiteral("https://h.test/up");
+    spec.headers = {{QStringLiteral("Content-Type"), QStringLiteral("multipart/form-data; boundary=OLD"), true}};
+    spec.body.mode = BodyMode::FormData;
+    spec.body.parts = {{QStringLiteral("a"), QStringLiteral("1"), true, false, QString()}};
+    const BuiltRequest built = build(spec);
+
+    QVERIFY2(built.ok, qPrintable(built.errorString));
+    const QByteArray type = built.request.headers().value(QHttpHeaders::WellKnownHeader::ContentType).toByteArray();
+    QVERIFY2(!type.contains("OLD"), type);
+    QVERIFY(built.body.startsWith("--" + type.mid(type.indexOf("boundary=") + 9)));
+    QCOMPARE(built.request.headers().values(QHttpHeaders::WellKnownHeader::ContentType).size(), 1);
+}
+
+void RequestBuilderTest::refusesBrokenPartType()
+{
+    RequestSpec spec;
+    spec.method = HttpMethod::Post;
+    spec.url = QStringLiteral("https://h.test/up");
+    spec.body.mode = BodyMode::FormData;
+    spec.body.parts = {{QStringLiteral("a"), QStringLiteral("1"), true, false, QStringLiteral("text/plain\r\nX-Evil: 1")}};
+    const BuiltRequest built = build(spec);
+    QVERIFY(!built.ok);
+    QVERIFY2(built.errorString.contains(QStringLiteral("form field a")), qPrintable(built.errorString));
 }
 
 QTEST_GUILESS_MAIN(RequestBuilderTest)

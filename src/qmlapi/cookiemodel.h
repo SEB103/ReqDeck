@@ -80,6 +80,9 @@ private:
     /** Reloads the rows from the store. */
     void reload();
 
+    /** Returns whether \a value can be a cookie value: no ';' and no control character. */
+    static bool isValidValue(const QString &value);
+
     /** Workspace manager owning the store; not owned. */
     WorkspaceManager *m_manager {nullptr};
 

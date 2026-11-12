@@ -247,6 +247,9 @@ private slots:
     /*! Verifies that the cookie setting is stored in the workspace and survives a reopen. */
     void cookieSettingIsStored();
 
+    /*! Verifies that a cookies file that cannot be read is kept aside, not overwritten. */
+    void unreadableCookiesFileIsKept();
+
 private:
     /*! Builds a settings store inside \a dir for one test. */
     static QSettings *makeSettings(QTemporaryDir &dir, QObject *parent);
@@ -1298,6 +1301,30 @@ void WorkspaceManagerTest::cookieSettingIsStored()
     QVERIFY(!manager.cookiesEnabled());
     manager.setCookiesEnabled(true);
     QVERIFY(manager.cookiesEnabled());
+}
+
+void WorkspaceManagerTest::unreadableCookiesFileIsKept()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    TestableWorkspaceManager manager;
+    manager.setSettings(makeSettings(dir, &manager));
+    manager.setSecretsDir(dir.filePath(QStringLiteral("secrets")));
+    QVERIFY(manager.createWorkspace(QStringLiteral("One"), dir.path()));
+    const QString path = manager.activeWorkspacePath();
+    const QString cookies = QDir(dir.filePath(QStringLiteral("secrets")))
+                                .filePath(manager.workspaceData().id + QStringLiteral(".cookies.json"));
+    manager.closeWorkspace();
+    QVERIFY(QDir().mkpath(QFileInfo(cookies).path()));
+    QFile file(cookies);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("{\"schema\": 99}");
+    file.close();
+
+    QVERIFY(manager.openWorkspace(path));
+    manager.closeWorkspace();
+
+    QCOMPARE(readFile(cookies + QStringLiteral(".corrupt")), QByteArray("{\"schema\": 99}"));
 }
 
 void WorkspaceManagerTest::backupBeforeSchemaChange()

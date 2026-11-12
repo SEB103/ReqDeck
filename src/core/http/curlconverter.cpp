@@ -14,6 +14,17 @@
 namespace {
 /*!
  * \internal
+ * \brief Returns \a value double-quoted for curl -F, so ';', '@', and '<' stay text.
+ */
+QString formQuoted(const QString &value)
+{
+    QString escaped = value;
+    escaped.replace(u'\\', QStringLiteral("\\\\")).replace(u'"', QStringLiteral("\\\""));
+    return u'"' + escaped + u'"';
+}
+
+/*!
+ * \internal
  * \brief Returns the value of hexadecimal digit \a c, or -1.
  */
 int hexDigit(QChar c)
@@ -493,6 +504,8 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
             const std::optional<QString> value = takeValue();
             if (!value)
                 return missingValue();
+            if (name == QLatin1StringView("--data-binary") && *value == QLatin1StringView("@-"))
+                return failure(QStringLiteral("Data from standard input (@-) is not supported."));
             if (name == QLatin1StringView("--data-binary") && value->startsWith(u'@') && value->size() > 1) {
                 // Sent byte for byte, which is what a file body does.
                 if (uploadFile)
@@ -549,7 +562,21 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
             if (name != QLatin1StringView("--form-string")) {
                 if (content.startsWith(u'<'))
                     return failure(QStringLiteral("Form text read from a file (name=<file) is not supported."));
-                // curl reads ";type=" and ";filename=" after the content.
+                // curl reads ";type=" and ";filename=" after the content, which
+                // may be double-quoted to hold ';' or a leading '@' or '<'.
+                QString quoted;
+                const bool isQuoted = content.startsWith(u'"');
+                if (isQuoted) {
+                    qsizetype i = 1;
+                    for (; i < content.size() && content.at(i) != u'"'; ++i) {
+                        if (content.at(i) == u'\\' && i + 1 < content.size())
+                            ++i;
+                        quoted.append(content.at(i));
+                    }
+                    if (i >= content.size())
+                        return failure(QStringLiteral("Unterminated quote in form field %1.").arg(part.key));
+                    content = content.mid(i + 1);
+                }
                 QStringList pieces = content.split(u';');
                 content = pieces.takeFirst();
                 for (const QString &piece : std::as_const(pieces)) {
@@ -558,7 +585,9 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
                     else
                         result.ignoredOptions.append(name + u' ' + part.key + u';' + piece);
                 }
-                if (content.startsWith(u'@')) {
+                if (isQuoted) {
+                    content = quoted;
+                } else if (content.startsWith(u'@')) {
                     part.isFile = true;
                     content = content.mid(1);
                 }
@@ -763,7 +792,7 @@ QString CurlConverter::toCurl(const RequestSpec &spec, bool followRedirects, int
                 else if (type.isEmpty())
                     lines.append(QStringLiteral("--form-string ") + shellQuote(part.key + u'=' + part.value));
                 else
-                    lines.append(QStringLiteral("-F ") + shellQuote(part.key + u'=' + part.value + type));
+                    lines.append(QStringLiteral("-F ") + shellQuote(part.key + u'=' + formQuoted(part.value) + type));
             }
         } else {
             // curl would send its form type for --data-binary; ReqDeck sends one from the name.

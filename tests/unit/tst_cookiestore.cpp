@@ -38,6 +38,9 @@ private slots:
 
     /*! Verifies that the store keeps at most kMaxCookies, dropping those that expire first. */
     void limitsTheCount();
+
+    /*! Verifies that plain HTTP neither sets a Secure cookie nor replaces one. */
+    void plainHttpLeavesSecureCookiesAlone();
 };
 
 void CookieStoreTest::cookiesStayWithTheirHost()
@@ -82,8 +85,10 @@ void CookieStoreTest::expiryRemoves()
     store.storeFromResponse({"token=1; Max-Age=3600"}, url);
     QCOMPARE(store.cookies().size(), 1);
 
-    store.storeFromResponse({"token=; Expires=Thu, 01 Jan 1970 00:00:00 GMT"}, url);
+    QSignalSpy changed(&store, &CookieStore::changed);
+    QCOMPARE(store.storeFromResponse({"token=; Expires=Thu, 01 Jan 1970 00:00:00 GMT"}, url), 1);
 
+    QCOMPARE(changed.count(), 1);
     QCOMPARE(store.cookies().size(), 0);
     QCOMPARE(store.cookieHeader(url), QByteArray());
 }
@@ -170,6 +175,19 @@ void CookieStoreTest::limitsTheCount()
         return cookie.name() == "c0";
     });
     QVERIFY(earliestDropped);
+}
+
+void CookieStoreTest::plainHttpLeavesSecureCookiesAlone()
+{
+    CookieStore store;
+    QCOMPARE(store.storeFromResponse({"flag=1; Secure"}, QUrl(QStringLiteral("http://a.test/"))), 0);
+    QVERIFY(store.cookies().isEmpty());
+
+    QCOMPARE(store.storeFromResponse({"sid=good; Secure; Path=/"}, QUrl(QStringLiteral("https://a.test/"))), 1);
+    QCOMPARE(store.storeFromResponse({"sid=evil; Path=/"}, QUrl(QStringLiteral("http://a.test/"))), 0);
+    QCOMPARE(store.cookies().size(), 1);
+    QCOMPARE(store.cookies().at(0).value(), QByteArray("good"));
+    QCOMPARE(store.storeFromResponse({"other=1; Path=/"}, QUrl(QStringLiteral("http://a.test/"))), 1);
 }
 
 QTEST_GUILESS_MAIN(CookieStoreTest)

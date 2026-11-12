@@ -89,10 +89,6 @@ bool hasScheme(const QString &url)
 
 /*!
  * \internal
- * \brief Returns a failed BuiltRequest carrying \a message.
- */
-/*!
- * \internal
  * \brief Returns \a text for a quoted Content-Disposition parameter.
  *
  * As browsers do, a double quote becomes %22 and line breaks %0D and %0A, so
@@ -121,6 +117,19 @@ QString unreadableFile(const QString &path)
     return {};
 }
 
+/*!
+ * \internal
+ * \brief Returns whether \a text holds a control character, which no header value may.
+ */
+bool hasControlCharacter(const QString &text)
+{
+    return std::any_of(text.cbegin(), text.cend(), [](QChar c) { return c.unicode() < 0x20 || c.unicode() == 0x7F; });
+}
+
+/*!
+ * \internal
+ * \brief Returns a failed BuiltRequest carrying \a message.
+ */
 BuiltRequest failure(BuiltRequest built, const QString &message)
 {
     built.ok = false;
@@ -299,6 +308,8 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
                 const QString value = resolve(part.value);
                 pending += "--" + boundary + "\r\nContent-Disposition: form-data; name=\"" + dispositionValue(key) + '"';
                 QString partType = resolve(part.contentType).trimmed();
+                if (hasControlCharacter(partType))
+                    return failure(std::move(built), QStringLiteral("The Content-Type of form field %1 is not valid.").arg(key));
                 if (part.isFile) {
                     const QString path = value.trimmed();
                     if (const QString error = unreadableFile(path); !error.isEmpty())
@@ -322,9 +333,9 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
             else
                 built.segments.append({pending, {}});
             contentType += "; boundary=" + boundary;
-            // A typed multipart Content-Type cannot know the boundary, so ours replaces it.
+            // A typed multipart Content-Type cannot know this boundary, so ours replaces it.
             const QByteArray typed = headers.value(QHttpHeaders::WellKnownHeader::ContentType).toByteArray();
-            if (typed.trimmed().toLower().startsWith("multipart/form-data") && !typed.contains("boundary="))
+            if (typed.trimmed().toLower().startsWith("multipart/form-data"))
                 headers.removeAll(QHttpHeaders::WellKnownHeader::ContentType);
         }
         if (!headers.contains(QHttpHeaders::WellKnownHeader::ContentType) && !contentType.isEmpty())

@@ -6,6 +6,8 @@
 #include <QLocale>
 #include <QRegularExpression>
 
+#include <algorithm>
+
 #include "core/http/cookiestore.h"
 #include "qmlapi/workspacemanager.h"
 
@@ -99,11 +101,11 @@ void CookieModel::setEnabled(bool enabled)
  * \brief Sets the value of the cookie at \a row to \a value.
  *
  * Domain, path, expiry, and flags stay as they were.
- * \return False for a row that does not exist.
+ * \return False for a row that does not exist, or a value with ';' or a control character.
  */
 bool CookieModel::setValue(int row, const QString &value)
 {
-    if (row < 0 || row >= m_cookies.size())
+    if (row < 0 || row >= m_cookies.size() || !isValidValue(value))
         return false;
     QNetworkCookie cookie = m_cookies.at(row);
     if (cookie.value() == value.toUtf8())
@@ -126,7 +128,7 @@ bool CookieModel::add(const QString &domain, const QString &name, const QString 
     const QString trimmedName = name.trimmed();
     const QString trimmedDomain = domain.trimmed().toLower();
     if (trimmedName.isEmpty() || trimmedDomain.isEmpty()
-        || trimmedName.contains(QRegularExpression(QStringLiteral(R"([\s;=,])"))))
+        || trimmedName.contains(QRegularExpression(QStringLiteral(R"([\s;=,])"))) || !isValidValue(value))
         return false;
     QNetworkCookie cookie(trimmedName.toUtf8(), value.toUtf8());
     cookie.setDomain(trimmedDomain);
@@ -151,6 +153,20 @@ bool CookieModel::remove(int row)
 void CookieModel::removeAll()
 {
     m_manager->cookieStore()->clear();
+}
+
+/*!
+ * \internal
+ * \brief Returns whether \a value can be a cookie value.
+ *
+ * A ';' would start another cookie in the Cookie header, and a control
+ * character would break the header or the saved file.
+ */
+bool CookieModel::isValidValue(const QString &value)
+{
+    return std::none_of(value.cbegin(), value.cend(), [](QChar c) {
+        return c == u';' || c.unicode() < 0x20 || c.unicode() == 0x7F;
+    });
 }
 
 /*!

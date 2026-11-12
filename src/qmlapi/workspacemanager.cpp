@@ -3,6 +3,7 @@
 
 #include "qmlapi/workspacemanager.h"
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -750,8 +751,16 @@ void WorkspaceManager::switchCookies(const QString &workspaceId)
         return;
     }
     QString error;
-    if (!m_cookies->load(cookiesFilePath(workspaceId), SecretCipher(), &error))
-        notify(Diagnostics::Level::Warning, [error]() { return error; });
+    if (!m_cookies->load(cookiesFilePath(workspaceId), SecretCipher(), &error)) {
+        // Kept as "<file>.corrupt", so the next save cannot destroy it.
+        const bool kept = setAsideCorruptFile(cookiesFilePath(workspaceId));
+        notify(Diagnostics::Level::Warning, [error, kept]() {
+            return kept ? QCoreApplication::translate("WorkspaceManager", "%1 The file was kept with the suffix .corrupt.").arg(error)
+                        : error;
+        });
+        if (!kept)
+            return;
+    }
     m_cookiesWorkspaceId = workspaceId;
 }
 

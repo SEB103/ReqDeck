@@ -61,6 +61,7 @@ static QStringList validFixtures()
         QStringLiteral("curl -G -d 'q=1' -d 'r=2' 'https://h/x?a=0'"),
         QStringLiteral("curl --oauth2-bearer tok https://h"),
         QStringLiteral("curl https://h/up -F 'title=hello' -F 'doc=@C:/x.png;type=image/png'"),
+        QStringLiteral("curl https://h/up -F 'note=\"@x;y\";type=text/plain'"),
         QStringLiteral("curl -X PUT https://h/up -H 'Content-Type: image/png' --data-binary @C:/x.png"),
     };
 }
@@ -364,6 +365,8 @@ void CurlConverterTest::rejectsInvalidInput_data()
                                   << QStringLiteral("Invalid form field: =1");
     QTest::newRow("form-and-data") << QStringLiteral("curl -F 'a=1' -d 'b=2' http://h")
                                    << QStringLiteral("Form fields (-F), a file body, and data (-d) cannot be combined.");
+    QTest::newRow("binary-stdin") << QStringLiteral("curl --data-binary @- http://h")
+                                  << QStringLiteral("Data from standard input (@-) is not supported.");
     QTest::newRow("upload-stdin") << QStringLiteral("curl -T - http://h")
                                   << QStringLiteral("Uploads from standard input or of several files (-T) are not supported.");
     QTest::newRow("cmd") << QStringLiteral("curl ^\"https://h^\" -H ^\"A: b^\"")
@@ -446,6 +449,12 @@ void CurlConverterTest::parsesFormDataAndFiles()
     QCOMPARE(parts.at(1).value, QStringLiteral("C:/Docs/a b.pdf"));
     QVERIFY(!parts.at(2).isFile);
     QCOMPARE(parts.at(2).value, QStringLiteral("@x;y"));
+
+    result = CurlConverter::parse(QStringLiteral("curl https://h/up -F 'note=\"@a;b \\\"c\\\"\";type=text/plain'"));
+    QVERIFY2(result.ok, qPrintable(result.errorString));
+    QCOMPARE(result.request.body.parts.at(0).value, QStringLiteral("@a;b \"c\""));
+    QVERIFY(!result.request.body.parts.at(0).isFile);
+    QCOMPARE(result.request.body.parts.at(0).contentType, QStringLiteral("text/plain"));
 
     result = CurlConverter::parse(QStringLiteral("curl https://h/up --data-binary @photo.png"));
     QVERIFY2(result.ok, qPrintable(result.errorString));

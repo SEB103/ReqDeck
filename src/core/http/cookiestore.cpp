@@ -101,9 +101,30 @@ int CookieStore::storeFromResponse(const QList<QByteArray> &values, const QUrl &
  */
 int CookieStore::storeCookies(const QList<QNetworkCookie> &cookies, const QUrl &url)
 {
+    const bool secureOrigin = url.scheme().compare(QLatin1StringView("https"), Qt::CaseInsensitive) == 0;
     int taken = 0;
     for (const QNetworkCookie &cookie : cookies) {
-        if (setCookiesFromUrl({cookie}, url))
+        if (!secureOrigin) {
+            // RFC 6265bis 5.7: plain HTTP neither sets Secure cookies nor replaces them.
+            if (cookie.isSecure())
+                continue;
+            const QList<QNetworkCookie> stored = allCookies();
+            QNetworkCookie candidate = cookie;
+            if (candidate.domain().isEmpty())
+                candidate.setDomain(url.host());
+            if (candidate.path().isEmpty())
+                candidate.setPath(QStringLiteral("/"));
+            const bool shadowsSecure = std::any_of(stored.cbegin(), stored.cend(), [&](const QNetworkCookie &other) {
+                return other.isSecure() && other.name() == candidate.name()
+                       && QString(other.domain()).remove(0, other.domain().startsWith(u'.') ? 1 : 0)
+                              == QString(candidate.domain()).remove(0, candidate.domain().startsWith(u'.') ? 1 : 0);
+            });
+            if (shadowsSecure)
+                continue;
+        }
+        // Qt reports a removal by an expired cookie as false; the count shows it.
+        const qsizetype before = allCookies().size();
+        if (setCookiesFromUrl({cookie}, url) || allCookies().size() != before)
             ++taken;
     }
     if (taken > 0) {

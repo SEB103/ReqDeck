@@ -114,7 +114,12 @@ void CookieModelTest::refusesBadCookies()
     QVERIFY(!m_model->add(QStringLiteral("a.test"), QString(), QStringLiteral("1"), QString()));
     QVERIFY(!m_model->add(QStringLiteral("a.test"), QStringLiteral("a b"), QStringLiteral("1"), QString()));
     QVERIFY(!m_model->add(QStringLiteral("a.test"), QStringLiteral("a=b"), QStringLiteral("1"), QString()));
+    QVERIFY(!m_model->add(QStringLiteral("a.test"), QStringLiteral("a"), QStringLiteral("1; b=2"), QString()));
+    QVERIFY(!m_model->add(QStringLiteral("a.test"), QStringLiteral("a"), QStringLiteral("1\nb"), QString()));
     QCOMPARE(m_model->rowCount(), 0);
+    QVERIFY(m_model->add(QStringLiteral("a.test"), QStringLiteral("a"), QStringLiteral("1"), QString()));
+    QVERIFY(!m_model->setValue(0, QStringLiteral("x; y=z")));
+    QCOMPARE(m_model->index(0).data(CookieModel::ValueRole).toString(), QStringLiteral("1"));
 }
 
 void CookieModelTest::enabledFollowsTheWorkspace()
