@@ -660,3 +660,15 @@ add_test(NAME ReqDeck.Screens COMMAND tst_screens -o "${CMAKE_CURRENT_BINARY_DIR
 set_tests_properties(ReqDeck.Screens PROPERTIES
     ENVIRONMENT "QML2_IMPORT_PATH=${QT_QML_OUTPUT_DIRECTORY};QT_QUICK_CONTROLS_CONF=${CMAKE_SOURCE_DIR}/resources/qtquickcontrols2.conf"
 )
+
+# Measurements for packaging/measure.ps1. Not a test, so it is not in CTest.
+qt_add_executable(reqdeck_bench
+    bench/bench.cpp
+)
+
+target_link_libraries(reqdeck_bench
+    PRIVATE
+        ReqDeckQmlApi
+        ReqDeckTestSupport
+        $<$<PLATFORM_ID:Windows>:psapi>
+)
