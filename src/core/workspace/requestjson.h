@@ -15,6 +15,12 @@
 /** Returns the JSON form of \a row; "enabled" is written only when false. */
 QJsonObject keyValueToJson(const KeyValue &row);
 
+/** Returns the JSON form of the multipart form part \a part. */
+QJsonObject formPartToJson(const FormPart &part);
+
+/** Parses one multipart form part; nothing for a malformed one. */
+std::optional<FormPart> formPartFromJson(const QJsonValue &value);
+
 /** Parses one key/value row; nullopt when \a value is not a valid row. */
 std::optional<KeyValue> keyValueFromJson(const QJsonValue &value);
 

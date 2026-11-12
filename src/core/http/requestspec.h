@@ -48,7 +48,11 @@ enum class BodyMode {
     /** Free text sent as typed (see RawBodyType). */
     Raw,
     /** Key/value fields encoded as application/x-www-form-urlencoded. */
-    FormUrlEncoded
+    FormUrlEncoded,
+    /** Parts sent as multipart/form-data; a part is text or a file. */
+    FormData,
+    /** One file sent as the body, as it is on disk. */
+    File
 };
 
 /** Content flavor of a raw body; selects the default Content-Type. */
@@ -56,6 +60,23 @@ enum class RawBodyType {
     Json,
     Text,
     Xml
+};
+
+/** One part of a multipart/form-data body. */
+struct FormPart
+{
+    /** Field name. */
+    QString key;
+    /** Text of the field, or the path of the file; may contain {{variable}} references. */
+    QString value;
+    /** Whether the part is sent. */
+    bool enabled {true};
+    /** Whether value is the path of a file to send. */
+    bool isFile {false};
+    /** Content-Type of the part; empty picks one from the file name, or none for text. */
+    QString contentType;
+
+    bool operator==(const FormPart &) const = default;
 };
 
 /** Request body definition. */
@@ -69,6 +90,10 @@ struct RequestBody
     QString raw;
     /** Form fields; used only in BodyMode::FormUrlEncoded. */
     QList<KeyValue> form;
+    /** Parts; used only in BodyMode::FormData. */
+    QList<FormPart> parts;
+    /** Path of the file sent as the body; used only in BodyMode::File; may contain {{variable}} references. */
+    QString filePath;
 
     bool operator==(const RequestBody &) const = default;
 };

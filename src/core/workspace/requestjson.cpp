@@ -24,10 +24,12 @@ using Token = std::pair<Enum, QLatin1StringView>;
  * \internal
  * \brief Tokens of BodyMode.
  */
-constexpr std::array<Token<BodyMode>, 3> kBodyModeTokens {{
+constexpr std::array<Token<BodyMode>, 5> kBodyModeTokens {{
     {BodyMode::None, QLatin1StringView("none")},
     {BodyMode::Raw, QLatin1StringView("raw")},
     {BodyMode::FormUrlEncoded, QLatin1StringView("form")},
+    {BodyMode::FormData, QLatin1StringView("formData")},
+    {BodyMode::File, QLatin1StringView("file")},
 }};
 
 /*!
@@ -161,6 +163,29 @@ bool readRows(const QJsonObject &object, QLatin1StringView key, QList<KeyValue> 
 
 /*!
  * \internal
+ * \brief Reads the optional array of form parts \a key into \a target.
+ * \return False when the member is not an array of valid parts.
+ */
+bool readParts(const QJsonObject &object, QLatin1StringView key, QList<FormPart> &target)
+{
+    const QJsonValue value = object.value(key);
+    if (value.isUndefined())
+        return true;
+    if (!value.isArray())
+        return false;
+    QList<FormPart> parts;
+    for (const QJsonValue &entry : value.toArray()) {
+        const std::optional<FormPart> part = formPartFromJson(entry);
+        if (!part)
+            return false;
+        parts.append(*part);
+    }
+    target = std::move(parts);
+    return true;
+}
+
+/*!
+ * \internal
  * \brief Reads the optional non-negative integer member \a key into \a target.
  * \return False when the member is anything else.
  */
@@ -191,6 +216,13 @@ QJsonObject bodyToJson(const RequestBody &body)
         object.insert(QLatin1StringView("rawType"), tokenOf(body.rawType, kRawTypeTokens));
     insertText(object, QLatin1StringView("raw"), body.raw);
     insertRows(object, QLatin1StringView("form"), body.form);
+    if (!body.parts.isEmpty()) {
+        QJsonArray parts;
+        for (const FormPart &part : body.parts)
+            parts.append(formPartToJson(part));
+        object.insert(QLatin1StringView("parts"), parts);
+    }
+    insertText(object, QLatin1StringView("file"), body.filePath);
     return object;
 }
 
@@ -226,6 +258,52 @@ std::nullopt_t invalidMember(QString *errorString, const QString &member)
     return std::nullopt;
 }
 } // namespace
+
+/*!
+ * \brief Returns the JSON form of the form part \a part; defaults are left out.
+ * \param part The part of a multipart/form-data body.
+ */
+QJsonObject formPartToJson(const FormPart &part)
+{
+    QJsonObject object;
+    object.insert(QLatin1StringView("key"), part.key);
+    object.insert(QLatin1StringView("value"), part.value);
+    if (!part.enabled)
+        object.insert(QLatin1StringView("enabled"), false);
+    if (part.isFile)
+        object.insert(QLatin1StringView("file"), true);
+    if (!part.contentType.isEmpty())
+        object.insert(QLatin1StringView("contentType"), part.contentType);
+    return object;
+}
+
+/*!
+ * \brief Parses one form part.
+ * \param value An object with "key" and "value" strings and optional
+ *        "enabled" and "file" booleans and a "contentType" string.
+ * \return The part, or std::nullopt for anything else.
+ */
+std::optional<FormPart> formPartFromJson(const QJsonValue &value)
+{
+    if (!value.isObject())
+        return std::nullopt;
+    const QJsonObject object = value.toObject();
+    const QJsonValue key = object.value(QLatin1StringView("key"));
+    const QJsonValue text = object.value(QLatin1StringView("value"));
+    const QJsonValue enabled = object.value(QLatin1StringView("enabled"));
+    const QJsonValue file = object.value(QLatin1StringView("file"));
+    const QJsonValue contentType = object.value(QLatin1StringView("contentType"));
+    if (!key.isString() || !text.isString() || (!enabled.isUndefined() && !enabled.isBool())
+        || (!file.isUndefined() && !file.isBool()) || (!contentType.isUndefined() && !contentType.isString()))
+        return std::nullopt;
+    FormPart part;
+    part.key = key.toString();
+    part.value = text.toString();
+    part.enabled = enabled.toBool(true);
+    part.isFile = file.toBool(false);
+    part.contentType = contentType.toString();
+    return part;
+}
 
 /*!
  * \brief Returns the JSON form of \a row.
@@ -340,6 +418,10 @@ std::optional<RequestSpec> requestFromJson(const QJsonObject &object, QString *e
         return invalidMember(errorString, QStringLiteral("body.raw"));
     if (!readRows(body, QLatin1StringView("form"), request.body.form))
         return invalidMember(errorString, QStringLiteral("body.form"));
+    if (!readParts(body, QLatin1StringView("parts"), request.body.parts))
+        return invalidMember(errorString, QStringLiteral("body.parts"));
+    if (!readText(body, QLatin1StringView("file"), request.body.filePath))
+        return invalidMember(errorString, QStringLiteral("body.file"));
 
     const QJsonValue authValue = object.value(QLatin1StringView("auth"));
     if (!authValue.isUndefined() && !authValue.isObject())

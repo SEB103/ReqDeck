@@ -45,6 +45,12 @@ QByteArray defaultContentType(BodyMode mode, RawBodyType rawType)
         return {};
     case BodyMode::FormUrlEncoded:
         return QByteArrayLiteral("application/x-www-form-urlencoded");
+    case BodyMode::FormData:
+        // RequestBuilder adds the boundary.
+        return QByteArrayLiteral("multipart/form-data");
+    case BodyMode::File:
+        // RequestBuilder picks one from the file name.
+        return {};
     case BodyMode::Raw:
         break;
     }

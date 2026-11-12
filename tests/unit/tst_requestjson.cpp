@@ -25,6 +25,10 @@ static RequestSpec makeFullRequest(HttpMethod method)
     spec.body.rawType = RawBodyType::Xml;
     spec.body.raw = QStringLiteral("<a/>");
     spec.body.form = {{QStringLiteral("f"), QStringLiteral("v"), false}};
+    spec.body.parts = {{QStringLiteral("note"), QStringLiteral("hi"), true, false, QString()},
+                       {QStringLiteral("photo"), QStringLiteral("C:/Pictures/{{name}}.png"), false, true,
+                        QStringLiteral("image/png")}};
+    spec.body.filePath = QStringLiteral("D:/data/upload.bin");
     spec.auth.type = AuthType::ApiKey;
     spec.auth.username = QStringLiteral("user");
     spec.auth.password = QStringLiteral("pass");
@@ -116,6 +120,8 @@ void RequestJsonTest::roundTripPreservesBodyAndAuthModes_data()
     QTest::newRow("text-bearer") << BodyMode::Raw << RawBodyType::Text << AuthType::Bearer;
     QTest::newRow("json-none") << BodyMode::Raw << RawBodyType::Json << AuthType::None;
     QTest::newRow("xml-inherit") << BodyMode::Raw << RawBodyType::Xml << AuthType::Inherit;
+    QTest::newRow("formdata-bearer") << BodyMode::FormData << RawBodyType::Json << AuthType::Bearer;
+    QTest::newRow("file-none") << BodyMode::File << RawBodyType::Json << AuthType::None;
 }
 
 void RequestJsonTest::roundTripPreservesBodyAndAuthModes()
@@ -200,6 +206,10 @@ void RequestJsonTest::rejectsInvalidMembers_data()
     QTest::newRow("body-string") << QByteArray("{\"body\":\"x\"}");
     QTest::newRow("body-mode") << QByteArray("{\"body\":{\"mode\":\"multipart\"}}");
     QTest::newRow("raw-type") << QByteArray("{\"body\":{\"rawType\":\"yaml\"}}");
+    QTest::newRow("parts-object") << QByteArray("{\"body\":{\"parts\":{}}}");
+    QTest::newRow("part-file-string") << QByteArray("{\"body\":{\"parts\":[{\"key\":\"a\",\"value\":\"b\",\"file\":\"yes\"}]}}");
+    QTest::newRow("part-no-value") << QByteArray("{\"body\":{\"parts\":[{\"key\":\"a\"}]}}");
+    QTest::newRow("file-number") << QByteArray("{\"body\":{\"file\":3}}");
     QTest::newRow("auth-type") << QByteArray("{\"auth\":{\"type\":\"digest\"}}");
     QTest::newRow("key-location") << QByteArray("{\"auth\":{\"apiKeyLocation\":\"cookie\"}}");
     QTest::newRow("timeout-negative") << QByteArray("{\"timeoutMs\":-1}");
