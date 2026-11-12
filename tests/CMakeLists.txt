@@ -215,6 +215,18 @@ target_link_libraries(tst_oauthclient
 
 add_test(NAME OAuthClient.Unit COMMAND tst_oauthclient)
 
+qt_add_executable(tst_jsonpath
+    unit/tst_jsonpath.cpp
+)
+
+target_link_libraries(tst_jsonpath
+    PRIVATE
+        ReqDeckCore
+        Qt6::Test
+)
+
+add_test(NAME JsonPath.Unit COMMAND tst_jsonpath)
+
 qt_add_executable(tst_oauthtokenstore
     unit/tst_oauthtokenstore.cpp
 )

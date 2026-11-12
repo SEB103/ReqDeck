@@ -39,6 +39,8 @@ target_sources(ReqDeckCore
         core/http/bodysource.h
         core/http/cookiestore.cpp
         core/http/cookiestore.h
+        core/http/jsonpath.cpp
+        core/http/jsonpath.h
         core/http/oauthclient.cpp
         core/http/oauthclient.h
         core/http/oauthfields.cpp
