@@ -22,6 +22,7 @@ qt_add_qml_module(MainQml
         Main.qml
         MainScreen.ui.qml
         RequestPane.qml
+        RequestTabBar.qml
         ResponsePane.qml
         UpdateDialog.qml
 )

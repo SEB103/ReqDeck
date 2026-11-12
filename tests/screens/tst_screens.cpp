@@ -31,6 +31,7 @@
 #include "qmlapi/foldereditor.h"
 #include "qmlapi/cookiemodel.h"
 #include "qmlapi/importcontroller.h"
+#include "qmlapi/tabsmodel.h"
 #include "qmlapi/environmentvariablesmodel.h"
 #include "qmlapi/helplibrary.h"
 #include "qmlapi/helplocator.h"
@@ -139,6 +140,9 @@ public:
         context->setContextProperty(QStringLiteral("cppFolderEditor"), &m_folderEditor);
         context->setContextProperty(QStringLiteral("cppImport"), &m_import);
         context->setContextProperty(QStringLiteral("cppCookies"), &m_cookies);
+        context->setContextProperty(QStringLiteral("cppTabs"), &m_tabs);
+        m_editor.setTabs(&m_tabs);
+        QObject::connect(&m_manager, &WorkspaceManager::workspaceReplaced, &m_tabs, &TabsModel::clear);
         context->setContextProperty(QStringLiteral("cppResponse"), &m_response);
         context->setContextProperty(QStringLiteral("cppTestHost"), this);
         publishMainStubs(context);
@@ -539,6 +543,9 @@ private:
 
     /*! Real cookie model. */
     CookieModel m_cookies {&m_manager};
+
+    /*! Real tabs model. */
+    TabsModel m_tabs {&m_collection};
 };
 
 /*! Quick Test setup that installs the facades on the test engine. */

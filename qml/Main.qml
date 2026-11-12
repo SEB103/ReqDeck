@@ -451,6 +451,24 @@ ApplicationWindow {
     }
 
     Shortcut {
+        sequence: "Ctrl+W"
+        enabled: cppTabs.count > 0
+        onActivated: cppTabs.close(cppTabs.currentIndex)
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Tab"
+        enabled: cppTabs.count > 1
+        onActivated: cppTabs.cycle(1)
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Shift+Tab"
+        enabled: cppTabs.count > 1
+        onActivated: cppTabs.cycle(-1)
+    }
+
+    Shortcut {
         sequence: "Ctrl+N"
         enabled: cppWorkspaceManager.hasActiveWorkspace
         onActivated: {
@@ -522,6 +540,10 @@ ApplicationWindow {
 
         function onNodeSelected(id) {
             cppRequestEditor.load(id)
+        }
+
+        function onNodeOpened(id) {
+            cppTabs.open(id)
         }
 
         function onDepthLimitReached() {

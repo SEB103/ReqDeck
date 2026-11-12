@@ -236,12 +236,23 @@ Pane {
                 SplitView.fillHeight: true
                 title: qsTr("Request")
 
-                RequestPane {
-                    id: requestPane
-
-                    objectName: "requestPane"
-
+                ColumnLayout {
                     anchors.fill: parent
+                    spacing: 0
+
+                    RequestTabBar {
+                        Layout.fillWidth: true
+                        visible: count > 0
+                    }
+
+                    RequestPane {
+                        id: requestPane
+
+                        objectName: "requestPane"
+
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                    }
                 }
             }
 

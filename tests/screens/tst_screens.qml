@@ -2717,12 +2717,17 @@ Item {
         function test_responseLabelUsesRequestIdentity() {
             const host = createPrettyBody(3);
             const label = findChild(host.response, "requestNameLabel");
+            const sender = cppTabs.currentIndex;
             verify(cppCollection.rename("r1", "List items"));
 
             cppRequestEditor.load("r1");
 
+            // The sent request keeps its tab, so r1 opens in a new one, without a response.
             compare(cppRequestEditor.name, "List items");
-            compare(label.visible, true);
+            compare(cppResponse.hasResponse, false);
+            compare(label.visible, false);
+            cppTabs.currentIndex = sender;
+            compare(cppResponse.hasResponse, true);
         }
 
         /*! Verifies that many short lines show as fast as without numbers. */
@@ -2769,10 +2774,15 @@ Item {
             const label = findChild(host.response, "requestNameLabel");
             compare(label.visible, false);
 
+            const sender = cppTabs.currentIndex;
             cppRequestEditor.load("r1");
 
-            compare(label.visible, true);
-            compare(label.text, "List items");
+            // A response belongs to its tab: the new tab shows none, the sender's tab its own.
+            compare(cppResponse.hasResponse, false);
+            compare(label.visible, false);
+            cppTabs.currentIndex = sender;
+            compare(cppResponse.hasResponse, true);
+            compare(label.visible, false);
         }
 
         /*! Verifies that a value being typed counts when Send is clicked. */
@@ -3286,6 +3296,39 @@ Item {
             compare(cppRequestEditor.bodyFilePath, "Z:/missing/upload.bin");
             compare(findChild(pane, "bodyFileInfo").text, cppRequestEditor.bodyFileInfo);
             verify(cppRequestEditor.bodyFileInfo.length > 0);
+        }
+
+        /*! Verifies the tab bar: preview from the tree, keep by double click, switch, and close. */
+        function test_tabBarFollowsTheTree() {
+            const window = createMain();
+            cppTabs.clear();
+            const bar = findChild(window.contentItem, "requestTabBar");
+            verify(bar !== null);
+            compare(bar.visible, false);
+
+            cppRequestEditor.load("r1");
+            tryCompare(bar, "visible", true);
+            compare(bar.count, 1);
+            cppRequestEditor.load("r2");
+            compare(bar.count, 1);
+            compare(cppTabs.currentRequestId, "r2");
+
+            cppTabs.open("r1");
+            compare(bar.count, 2);
+            compare(cppRequestEditor.requestId, "r1");
+            tryVerify(() => bar.itemAtIndex(0) !== null);
+            verify(bar.itemAtIndex(0).width > 80, "tab width " + bar.itemAtIndex(0).width);
+            // A real mouse click does not reach the tab here yet; see the D8 plan.
+            bar.itemAtIndex(0).clicked();
+            tryCompare(cppTabs, "currentRequestId", "r2");
+            compare(cppRequestEditor.requestId, "r2");
+
+            keyClick(Qt.Key_W, Qt.ControlModifier);
+            tryCompare(cppTabs, "count", 1);
+            compare(cppRequestEditor.requestId, "r1");
+            findChild(bar.itemAtIndex(0), "closeTab").clicked();
+            tryCompare(bar, "visible", false);
+            compare(cppRequestEditor.hasRequest, false);
         }
 
         /*! Verifies that a cancelled preview is gone when the import dialog opens again. */

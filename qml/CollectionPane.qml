@@ -29,6 +29,9 @@ Item {
     /*! Emitted when the selection changes to \a id, which is empty for none. */
     signal nodeSelected(string id)
 
+    /*! Emitted when the request \a id is opened to stay, by a double click. */
+    signal nodeOpened(string id)
+
     /*! Emitted when a new item would be nested too deeply. */
     signal depthLimitReached()
 
@@ -321,6 +324,7 @@ Item {
                 acceptedButtons: Qt.LeftButton
                 onPressed: tree.forceActiveFocus(Qt.MouseFocusReason)
                 onClicked: (mouse) => root.clickNode(nodeDelegate.nodeId, mouse.modifiers)
+                onDoubleClicked: root.nodeOpened(nodeDelegate.nodeId)
             }
 
             TapHandler {

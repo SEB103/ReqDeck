@@ -38,6 +38,7 @@
 #include "qmlapi/foldereditor.h"
 #include "qmlapi/cookiemodel.h"
 #include "qmlapi/importcontroller.h"
+#include "qmlapi/tabsmodel.h"
 #include "qmlapi/helplibrary.h"
 #include "qmlapi/helplocator.h"
 #include "qmlapi/historymodel.h"
@@ -284,6 +285,7 @@ AppEngine::AppEngine(QObject* parent)
     , m_folderEditor(new FolderEditor(m_collection, this))
     , m_import(new ImportController(m_collection, m_environments, this))
     , m_cookies(new CookieModel(m_workspaceManager, this))
+    , m_tabs(new TabsModel(m_collection, this))
     , m_appInfo(new AppInfo(this))
     , m_licenseModel(new LicenseModel(this))
     , m_logModel(new LogModel(2000, this))
@@ -332,6 +334,10 @@ AppEngine::AppEngine(QObject* parent)
     qmlRegisterUncreatableType<ImportController>("Cpp.WorkspaceManager", 1, 0, "ImportController", QStringLiteral("ImportController should not be created in QML."));
     rootContext()->setContextProperty("cppImport", m_import);
     rootContext()->setContextProperty("cppCookies", m_cookies);
+    rootContext()->setContextProperty("cppTabs", m_tabs);
+    m_requestEditor->setTabs(m_tabs);
+    // Tabs belong to their workspace.
+    connect(m_workspaceManager, &WorkspaceManager::workspaceReplaced, m_tabs, &TabsModel::clear);
     rootContext()->setContextProperty("cppResponse", m_response);
 
     RequestBuilder::Options builderOptions;

@@ -112,7 +112,7 @@ public:
     void restore(const QStringList &requestIds, const QString &preview, const QString &current);
 
     /** Closes every tab. */
-    void clear();
+    Q_INVOKABLE void clear();
 
 signals:
     /** Emitted when the current tab or its request changes. */

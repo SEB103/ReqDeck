@@ -19,6 +19,7 @@ class LocaleController;
 class LogModel;
 class FolderEditor;
 class CookieModel;
+class TabsModel;
 class ImportController;
 class RequestEditor;
 class ResponseView;
@@ -119,6 +120,9 @@ private:
 
     /** Cookies of the workspace exposed to QML as \c cppCookies; owned by this engine. */
     CookieModel* m_cookies = nullptr;
+
+    /** Open request tabs exposed to QML as \c cppTabs; owned by this engine. */
+    TabsModel* m_tabs = nullptr;
 
     /** Application/build metadata exposed to QML as \c cppAppInfo; owned by this engine. */
     AppInfo* m_appInfo = nullptr;

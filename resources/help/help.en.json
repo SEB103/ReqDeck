@@ -248,6 +248,14 @@
             "next": "The Content-Type comes from the file name unless a header sets it. The file is read while it is sent, so large files work.",
             "chapter": "requests"
         },
+        "request.tabs": {
+            "title": "Open requests",
+            "what": "The requests open in tabs. A click in the tree shows a request in the preview tab, in italics; a double click or an edit keeps it.",
+            "why": "To work on several requests at once: each tab keeps the response of its own last send, and requests in different tabs can run at the same time.",
+            "example": "Send a slow report in one tab and keep testing in another.",
+            "next": "Ctrl+Tab goes to the next tab, Ctrl+W closes one; a middle click on a tab closes it too.",
+            "chapter": "requests"
+        },
         "request.authType": {
             "title": "Authentication",
             "what": "Chooses how the request proves who you are.",
