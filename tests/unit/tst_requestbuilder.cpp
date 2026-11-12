@@ -595,6 +595,14 @@ void RequestBuilderTest::relativeFilesUseBaseDirectory()
     built = RequestBuilder::build(spec, {}, options);
     QVERIFY2(built.ok, qPrintable(built.errorString));
     QCOMPARE(QFileInfo(built.segments.at(1).filePath), QFileInfo(file.fileName()));
+
+    // Form data without a field sends no body and no multipart type.
+    spec.body.parts.clear();
+    built = RequestBuilder::build(spec, {}, options);
+    QVERIFY2(built.ok, qPrintable(built.errorString));
+    QVERIFY(built.body.isEmpty());
+    QVERIFY(built.segments.isEmpty());
+    QVERIFY(!built.request.headers().contains(QHttpHeaders::WellKnownHeader::ContentType));
 }
 
 QTEST_GUILESS_MAIN(RequestBuilderTest)

@@ -27,15 +27,13 @@
  * it. Only a JSON body of at most kMaxJsonBytes in memory is kept, parsed, so
  * a template does not parse it again and large downloads are not held.
  * \param requestId Id of the request that was sent.
- * \param requestName Name of the request when it was sent.
  * \param response The response.
  */
-void ResponseCache::store(const QString &requestId, const QString &requestName, const ResponseData &response)
+void ResponseCache::store(const QString &requestId, const ResponseData &response)
 {
     if (requestId.isEmpty() || response.error != ResponseError::None || !response.hasStatus())
         return;
     Entry entry;
-    entry.name = requestName;
     entry.headers = response.headers;
     if (!response.bodyFile && !response.body.isEmpty() && response.body.size() <= kMaxJsonBytes) {
         const QByteArray trimmed = response.body.trimmed();
@@ -68,36 +66,34 @@ bool ResponseCache::isEmpty() const
 }
 
 /*!
- * \brief Returns the value \a selector picks from the last response of \a request.
- *
- * \a request is a request id or, failing that, a request name; when several
- * requests have that name, the one sent last counts, other than \a exceptRequestId. \a selector is either
- * "header:Name", the first header of that name, or a JSONPath into a JSON body,
- * whose first match is returned (object members come sorted by name, as Qt keeps
- * them): a string as it is, any other value as compact
- * JSON. A missing response, header, or match gives nothing, and so does the
- * request \a exceptRequestId, so a request never reads its own response.
- * \param request Id or name of the request whose response is read.
- * \param selector What to read from it.
- * \param exceptRequestId Id of the request that is being sent.
+ * \brief Returns whether a response of the request \a requestId is kept.
  */
-std::optional<QString> ResponseCache::value(const QString &request, const QString &selector,
-                                            const QString &exceptRequestId) const
+bool ResponseCache::contains(const QString &requestId) const
+{
+    return m_entries.contains(requestId);
+}
+
+/*!
+ * \brief Returns the value \a selector picks from the newest kept response of \a requestIds.
+ *
+ * The caller maps a request name to the ids that have it now, so a renamed
+ * request is found by its new name. \a selector is either "header:Name", the
+ * first header of that name, or a JSONPath into a JSON body, whose first match
+ * is returned (object members come sorted by name, as Qt keeps them): a string
+ * as it is, any other value as compact JSON. A missing response, header, or
+ * match gives nothing.
+ * \param requestIds Ids of the requests whose newest response is read.
+ * \param selector What to read from it.
+ */
+std::optional<QString> ResponseCache::value(const QStringList &requestIds, const QString &selector) const
 {
     const Entry *entry = nullptr;
-    QString entryId;
-    if (const auto byId = m_entries.constFind(request); byId != m_entries.cend()) {
-        entry = &byId.value();
-        entryId = byId.key();
-    } else {
-        for (auto it = m_entries.cbegin(); it != m_entries.cend(); ++it) {
-            if (it.key() != exceptRequestId && it->name == request && (!entry || it->order > entry->order)) {
-                entry = &it.value();
-                entryId = it.key();
-            }
-        }
+    for (const QString &id : requestIds) {
+        const auto it = m_entries.constFind(id);
+        if (it != m_entries.cend() && (!entry || it->order > entry->order))
+            entry = &it.value();
     }
-    if (!entry || entryId == exceptRequestId)
+    if (!entry)
         return std::nullopt;
 
     const QString trimmed = selector.trimmed();
@@ -135,24 +131,25 @@ std::optional<QString> ResponseCache::value(const QString &request, const QStrin
 }
 
 /*!
- * \brief Returns the names of the requests with a kept response, newest first.
- *
- * Each name appears once; the request \a exceptRequestId is left out, as a
- * request cannot read its own response.
- * \param exceptRequestId Id of the request that is open.
+ * \brief Returns the ids of the requests with a kept response, newest first.
  */
-QStringList ResponseCache::requestNames(const QString &exceptRequestId) const
+QStringList ResponseCache::requestIds() const
 {
     QList<std::pair<quint64, QString>> ordered;
-    for (auto it = m_entries.cbegin(); it != m_entries.cend(); ++it) {
-        if (it.key() != exceptRequestId && !it->name.isEmpty())
-            ordered.append({it->order, it->name});
-    }
+    for (auto it = m_entries.cbegin(); it != m_entries.cend(); ++it)
+        ordered.append({it->order, it.key()});
     std::sort(ordered.begin(), ordered.end(), [](const auto &lhs, const auto &rhs) { return lhs.first > rhs.first; });
-    QStringList names;
-    for (const auto &[order, name] : ordered) {
-        if (!names.contains(name))
-            names.append(name);
-    }
-    return names;
+    QStringList ids;
+    for (const auto &[order, id] : ordered)
+        ids.append(id);
+    return ids;
+}
+
+/*!
+ * \brief Forgets the responses of requests not in \a requestIds.
+ * \param requestIds Ids of the requests that still exist.
+ */
+void ResponseCache::retain(const QSet<QString> &requestIds)
+{
+    m_entries.removeIf([&requestIds](const auto &entry) { return !requestIds.contains(entry.key()); });
 }

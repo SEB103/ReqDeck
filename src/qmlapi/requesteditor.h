@@ -524,6 +524,9 @@ private:
     /** Returns a resolver over \a rows whose response() templates read m_responses. */
     VariableResolver resolverFor(const QList<KeyValue> &rows) const;
 
+    /** Forgets the responses of requests that no longer exist. */
+    void pruneResponses();
+
     /** Defaults requests are built with. */
     RequestBuilder::Options m_builderOptions;
 

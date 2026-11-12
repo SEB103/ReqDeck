@@ -48,7 +48,10 @@ Popup {
             return
         }
         const before = completer.target.text.slice(0, completer.target.cursorPosition)
-        const open = before.lastIndexOf("{{")
+        // Only the current line counts: a long body is not searched back to its start.
+        const lineStart = before.lastIndexOf("\n") + 1
+        const lineOpen = before.slice(lineStart).lastIndexOf("{{")
+        const open = lineOpen < 0 ? -1 : lineStart + lineOpen
         const prefix = open < 0 ? "" : before.slice(open + 2).replace(/^\s+/, "")
         if (open < 0 || before.indexOf("}}", open) >= 0 || !/^[A-Za-z0-9_.\-]*$/.test(prefix)) {
             completer.close()

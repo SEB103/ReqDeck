@@ -73,7 +73,7 @@ private slots:
     /*! Verifies the selectors of the response cache: JSONPath, header, and what gives nothing. */
     void responseCacheSelectors();
 
-    /*! Verifies that the cache finds a request by id or name and never reads the excluded request. */
+    /*! Verifies that the cache picks the newest of several requests and forgets the ones not retained. */
     void responseCacheFindsRequests();
 };
 
@@ -247,10 +247,10 @@ void VariableResolverTest::responseCacheSelectors()
     response.headers = {{QByteArrayLiteral("x-token"), QByteArrayLiteral("h-1")}};
     response.body = R"({"token":"t-1","n":2.5,"ok":true,"list":[1,2],"obj":{"a":null}})";
     ResponseCache cache;
-    cache.store(QStringLiteral("login"), QStringLiteral("Login"), response);
+    cache.store(QStringLiteral("login"), response);
 
     const auto value = [&cache](const QString &selector) {
-        return cache.value(QStringLiteral("login"), selector, QString());
+        return cache.value({QStringLiteral("login")}, selector);
     };
     QCOMPARE(value(QStringLiteral("$.token")), std::optional<QString>(QStringLiteral("t-1")));
     QCOMPARE(value(QStringLiteral("$.n")), std::optional<QString>(QStringLiteral("2.5")));
@@ -266,15 +266,15 @@ void VariableResolverTest::responseCacheSelectors()
     // A body that is not JSON keeps only the headers.
     ResponseData html = response;
     html.body = "<html></html>";
-    cache.store(QStringLiteral("page"), QStringLiteral("Page"), html);
-    QVERIFY(!cache.value(QStringLiteral("page"), QStringLiteral("$"), QString()));
-    QCOMPARE(cache.value(QStringLiteral("page"), QStringLiteral("header:x-token"), QString()),
+    cache.store(QStringLiteral("page"), html);
+    QVERIFY(!cache.value({QStringLiteral("page")}, QStringLiteral("$")));
+    QCOMPARE(cache.value({QStringLiteral("page")}, QStringLiteral("header:x-token")),
              std::optional<QString>(QStringLiteral("h-1")));
 
     // A failed send keeps the earlier response.
     ResponseData failed;
     failed.error = ResponseError::Timeout;
-    cache.store(QStringLiteral("login"), QStringLiteral("Login"), failed);
+    cache.store(QStringLiteral("login"), failed);
     QCOMPARE(value(QStringLiteral("$.token")), std::optional<QString>(QStringLiteral("t-1")));
 }
 
@@ -287,22 +287,24 @@ void VariableResolverTest::responseCacheFindsRequests()
     second.body = R"({"v":"new"})";
     ResponseCache cache;
     QVERIFY(cache.isEmpty());
-    cache.store(QStringLiteral("a"), QStringLiteral("Same"), first);
-    cache.store(QStringLiteral("b"), QStringLiteral("Same"), second);
+    cache.store(QStringLiteral("a"), first);
+    cache.store(QStringLiteral("b"), second);
 
-    QCOMPARE(cache.value(QStringLiteral("a"), QStringLiteral("$.v"), QString()), std::optional<QString>(QStringLiteral("old")));
-    QCOMPARE(cache.value(QStringLiteral("Same"), QStringLiteral("$.v"), QString()), std::optional<QString>(QStringLiteral("new")));
-    QVERIFY(!cache.value(QStringLiteral("b"), QStringLiteral("$.v"), QStringLiteral("b")));
-    // By name, the excluded request gives way to the other one of that name.
-    QCOMPARE(cache.value(QStringLiteral("Same"), QStringLiteral("$.v"), QStringLiteral("b")),
-             std::optional<QString>(QStringLiteral("old")));
-    QVERIFY(!cache.value(QStringLiteral("Other"), QStringLiteral("$.v"), QString()));
-    QCOMPARE(cache.requestNames(QString()), QStringList({QStringLiteral("Same")}));
-    QCOMPARE(cache.requestNames(QStringLiteral("b")), QStringList({QStringLiteral("Same")}));
+    QVERIFY(cache.contains(QStringLiteral("a")));
+    QCOMPARE(cache.value({QStringLiteral("a")}, QStringLiteral("$.v")), std::optional<QString>(QStringLiteral("old")));
+    // Of several requests, the one answered last counts.
+    QCOMPARE(cache.value({QStringLiteral("a"), QStringLiteral("b")}, QStringLiteral("$.v")),
+             std::optional<QString>(QStringLiteral("new")));
+    QVERIFY(!cache.value({QStringLiteral("other")}, QStringLiteral("$.v")));
+    QVERIFY(!cache.value({}, QStringLiteral("$.v")));
+    QCOMPARE(cache.requestIds(), QStringList({QStringLiteral("b"), QStringLiteral("a")}));
+
+    cache.retain({QStringLiteral("a")});
+    QCOMPARE(cache.requestIds(), QStringList({QStringLiteral("a")}));
 
     cache.clear();
     QVERIFY(cache.isEmpty());
-    QVERIFY(!cache.value(QStringLiteral("a"), QStringLiteral("$.v"), QString()));
+    QVERIFY(!cache.value({QStringLiteral("a")}, QStringLiteral("$.v")));
 }
 
 QTEST_GUILESS_MAIN(VariableResolverTest)

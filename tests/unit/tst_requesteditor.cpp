@@ -1128,6 +1128,19 @@ void RequestEditorTest::responseTemplateResolves()
     QCOMPARE(m_editor->missingVariables(),
              QStringList({VariableResolver::responseTemplate(QStringLiteral("Nobody"), QStringLiteral("$"))}));
 
+    // A renamed request is found by its new name only.
+    QVERIFY(m_collection->rename(QStringLiteral("a"), QStringLiteral("Login")));
+    QCOMPARE(m_editor->responseTemplates(), QStringList({QStringLiteral(R"(response("Login", "$"))")}));
+    m_editor->setProperty("url", m_server.url(QStringLiteral("/echo?v=")).toString()
+                                     + QStringLiteral(R"({{response("Login", "$[0].id")}})"));
+    QVERIFY(m_editor->missingVariables().isEmpty());
+    m_editor->setProperty("url", m_server.url(QStringLiteral("/echo?v=")).toString() + fromA);
+    QCOMPARE(m_editor->missingVariables(), QStringList({missing}));
+
+    // A deleted request's response is gone.
+    QVERIFY(m_collection->remove(QStringLiteral("a")));
+    QVERIFY(m_editor->responseTemplates().isEmpty());
+
     // Another workspace starts without responses.
     openTwoRequests(*m_manager, *m_dir, m_server, QStringLiteral("/json/2"), QStringLiteral("/echo"));
     m_editor->load(QStringLiteral("b"));

@@ -12,6 +12,8 @@
 #include <QRegularExpression>
 #include <QUrl>
 
+#include <functional>
+
 #include "core/http/bodysource.h"
 #include "core/http/oauthfields.h"
 #include "core/http/curlconverter.h"
@@ -53,6 +55,8 @@ RequestEditor::RequestEditor(WorkspaceManager *manager, CollectionTreeModel *col
     connect(this, &RequestEditor::requestChanged, this, &RequestEditor::oauthChanged);
     connect(m_collection, &CollectionTreeModel::collectionChanged, this,
             &RequestEditor::syncWithCollection);
+    // Renamed or deleted requests change what response() templates find.
+    connect(m_collection, &CollectionTreeModel::collectionChanged, this, &RequestEditor::pruneResponses);
     connect(m_params, &KeyValueModel::edited, this, &RequestEditor::storeTables);
     connect(m_headers, &KeyValueModel::edited, this, &RequestEditor::storeTables);
     connect(m_form, &KeyValueModel::edited, this, &RequestEditor::storeTables);
@@ -1086,7 +1090,7 @@ void RequestEditor::finishSend(int key, const ResponseData &response)
         }
     }
     it->response = response;
-    m_responses.store(it->requestId, it->name, response);
+    m_responses.store(it->requestId, response);
     const RequestSpec sent = it->sent;
     if (key == currentKey())
         m_response->setResponse(response, it->unresolved);
@@ -1098,17 +1102,50 @@ void RequestEditor::finishSend(int key, const ResponseData &response)
  * \internal
  * \brief Returns a resolver over \a rows whose response() templates read the responses of this run.
  *
- * The open request never reads its own response, so a template cannot make a
- * request depend on itself; a template without a response stays unresolved,
- * and Send asks for it.
+ * A template names a request by id or by its current name; with several of
+ * that name, the one answered last counts. The open request never reads its
+ * own response, so a template cannot make a request depend on itself; a
+ * template without a response stays unresolved, and Send asks for it.
  */
 VariableResolver RequestEditor::resolverFor(const QList<KeyValue> &rows) const
 {
     VariableResolver variables = VariableResolver::fromKeyValues(rows);
     variables.setResponseLookup([this, self = m_requestId](const QString &request, const QString &selector) {
-        return m_responses.value(request, selector, self);
+        QStringList ids;
+        if (m_responses.contains(request)) {
+            ids.append(request);
+        } else {
+            for (const QString &id : m_responses.requestIds()) {
+                const CollectionNode *node = findNode(m_manager->workspaceData().collection, id);
+                if (node && node->name == request)
+                    ids.append(id);
+            }
+        }
+        ids.removeAll(self);
+        return m_responses.value(ids, selector);
     });
     return variables;
+}
+
+/*!
+ * \internal
+ * \brief Forgets the responses of requests that no longer exist, and updates the templates.
+ */
+void RequestEditor::pruneResponses()
+{
+    if (m_responses.isEmpty())
+        return;
+    QSet<QString> ids;
+    const std::function<void(const QList<CollectionNode> &)> collect = [&](const QList<CollectionNode> &nodes) {
+        for (const CollectionNode &node : nodes) {
+            if (node.kind == CollectionNode::Kind::Request)
+                ids.insert(node.id);
+            collect(node.children);
+        }
+    };
+    collect(m_manager->workspaceData().collection);
+    m_responses.retain(ids);
+    emit responseTemplatesChanged();
 }
 
 /*!
@@ -1120,8 +1157,14 @@ VariableResolver RequestEditor::resolverFor(const QList<KeyValue> &rows) const
 QStringList RequestEditor::responseTemplates() const
 {
     QStringList templates;
-    for (const QString &name : m_responses.requestNames(m_requestId))
-        templates.append(VariableResolver::responseTemplate(name, QStringLiteral("$")));
+    for (const QString &id : m_responses.requestIds()) {
+        const CollectionNode *node = findNode(m_manager->workspaceData().collection, id);
+        if (id == m_requestId || !node || node->name.isEmpty())
+            continue;
+        const QString text = VariableResolver::responseTemplate(node->name, QStringLiteral("$"));
+        if (!templates.contains(text))
+            templates.append(text);
+    }
     return templates;
 }
 

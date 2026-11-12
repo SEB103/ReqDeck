@@ -82,7 +82,7 @@ QString ImportController::summary() const
         int requests = 0;
         int folders = 0;
         count(m_result.folder, requests, folders);
-        parts.append(tr("%n request(s)", "", requests) + tr(" in %n folder(s)", "", folders + 1));
+        parts.append(tr("%1 in %2").arg(tr("%n request(s)", "", requests), tr("%n folder(s)", "", folders + 1)));
     }
     if (!m_result.environments.isEmpty())
         parts.append(tr("%n environment(s)", "", int(m_result.environments.size())));

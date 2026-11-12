@@ -8,6 +8,7 @@
 #include <QHash>
 #include <QJsonValue>
 #include <QList>
+#include <QSet>
 #include <QString>
 #include <QStringList>
 
@@ -29,8 +30,8 @@ public:
     /** Largest JSON body kept for templates. */
     static constexpr qsizetype kMaxJsonBytes = 4 * 1024 * 1024;
 
-    /** Keeps \a response as the last one of the request \a requestId named \a requestName. */
-    void store(const QString &requestId, const QString &requestName, const ResponseData &response);
+    /** Keeps \a response as the last one of the request \a requestId. */
+    void store(const QString &requestId, const ResponseData &response);
 
     /** Forgets every response, for example when another workspace opens. */
     void clear();
@@ -38,22 +39,25 @@ public:
     /** Returns whether no response is kept. */
     bool isEmpty() const;
 
-    /**
-     * Returns the value \a selector picks from the last response of \a request, a
-     * request id or name, or nothing. The request \a exceptRequestId is never read.
-     */
-    std::optional<QString> value(const QString &request, const QString &selector,
-                                 const QString &exceptRequestId) const;
+    /** Returns whether a response of the request \a requestId is kept. */
+    bool contains(const QString &requestId) const;
 
-    /** Returns the names of the requests with a kept response, newest first, without \a exceptRequestId. */
-    QStringList requestNames(const QString &exceptRequestId) const;
+    /**
+     * Returns the value \a selector picks from the newest kept response of the
+     * requests \a requestIds, or nothing.
+     */
+    std::optional<QString> value(const QStringList &requestIds, const QString &selector) const;
+
+    /** Returns the ids of the requests with a kept response, newest first. */
+    QStringList requestIds() const;
+
+    /** Forgets the responses of requests not in \a requestIds, for example deleted ones. */
+    void retain(const QSet<QString> &requestIds);
 
 private:
     /** One kept response. */
     struct Entry
     {
-        /** Name of the request when it was sent. */
-        QString name;
         /** Response headers as received. */
         QList<std::pair<QByteArray, QByteArray>> headers;
         /** The JSON body, parsed; undefined when the body was not JSON or too large. */

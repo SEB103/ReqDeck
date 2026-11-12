@@ -345,12 +345,17 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
                     pending += "\r\n\r\n" + value.toUtf8() + "\r\n";
                 }
             }
-            pending += "--" + boundary + "--\r\n";
-            if (built.segments.isEmpty())
-                built.body = pending;
-            else
-                built.segments.append({pending, {}});
-            contentType += "; boundary=" + boundary;
+            if (pending.isEmpty() && built.segments.isEmpty()) {
+                // No field at all: a body of only the closing boundary is not a form.
+                contentType.clear();
+            } else {
+                pending += "--" + boundary + "--\r\n";
+                if (built.segments.isEmpty())
+                    built.body = pending;
+                else
+                    built.segments.append({pending, {}});
+                contentType += "; boundary=" + boundary;
+            }
             // A typed multipart Content-Type cannot know this boundary, so ours replaces it.
             const QByteArray typed = headers.value(QHttpHeaders::WellKnownHeader::ContentType).toByteArray();
             if (typed.trimmed().toLower().startsWith("multipart/form-data"))
