@@ -104,6 +104,15 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
   and lists what does not carry over before anything is added. Nothing in an
   imported file is run.
 - Guide chapter "Coming from Postman".
+- Cookies: a server's cookies are kept per workspace and sent back to it with
+  the next requests, redirects included; Request > Cookies… shows, edits, and
+  deletes them, and a workspace can turn them off. A Cookie header typed in a
+  request wins. Persistent cookies are kept encrypted for the Windows user.
+- Form data bodies with text fields and files, and a file as the body; files
+  are streamed, so large uploads work, and a redirect that keeps the method
+  sends the body again. Imports and cURL (-F, --data-binary @file, -T) bring
+  them along.
+- Guide chapter "Logging in and uploading".
 
 ### Fixed
 - Responses over HTTP/2 show the name of their status, for example 200 OK.

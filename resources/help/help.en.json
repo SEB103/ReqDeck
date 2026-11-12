@@ -238,7 +238,7 @@
             "why": "Uploads of pictures and documents use this, often with a few text fields beside the file.",
             "example": "title = Holiday, photo = File C:/Pictures/beach.jpg",
             "next": "Add File… picks a file; the type of a part comes from its file name unless you type one.",
-            "chapter": "requests"
+            "chapter": "logins"
         },
         "request.bodyFile": {
             "title": "File as the body",
@@ -622,7 +622,7 @@
             "why": "After a login the server knows you by a cookie; ReqDeck keeps it so the requests after the login work.",
             "example": "Send the login request, then the next one: its Cookie header carries the session the login set.",
             "next": "Change a value, delete a cookie, or turn cookies off for this workspace. A Cookie header typed in a request wins over the stored cookies.",
-            "chapter": "requests"
+            "chapter": "logins"
         },
         "dialog.import": {
             "title": "Import a collection",
@@ -780,6 +780,49 @@
                 {
                     "type": "tip",
                     "text": "A password, token, or key you type into a request is saved in the workspace file. ReqDeck then offers Move to a secret: the value goes into a secret variable, encrypted on this computer, and the field shows {{token}} instead."
+                }
+            ]
+        },
+        {
+            "id": "logins",
+            "title": "Logging in and uploading",
+            "blocks": [
+                {
+                    "type": "p",
+                    "text": "Many services log you in once and then know you by a cookie. ReqDeck keeps the cookies a server sets and sends them back to that server with the next requests, so the requests after a login work."
+                },
+                {
+                    "type": "steps",
+                    "items": [
+                        "Send the login request, for example POST {{baseUrl}}/login with your user name and password.",
+                        "Send the next request. Its Cookie header carries the session the login set.",
+                        "Choose Request > Cookies… to see the cookies of this workspace, change a value, or delete them."
+                    ]
+                },
+                {
+                    "type": "tip",
+                    "text": "A Cookie header typed in a request wins: ReqDeck then sends just that one and says so above the response."
+                },
+                {
+                    "type": "p",
+                    "text": "To upload files, pick Form data as the body. Each row is a text field or a file; Add File… picks a file. To send one file as the whole body, as some APIs want for a PUT, pick File."
+                },
+                {
+                    "type": "table",
+                    "rows": [
+                        [
+                            "Form data",
+                            "Text fields and files, as a web form with an upload sends them."
+                        ],
+                        [
+                            "File",
+                            "One file as the body, byte for byte, with a Content-Type from its name."
+                        ]
+                    ]
+                },
+                {
+                    "type": "warn",
+                    "text": "Cookies are kept beside the workspace, encrypted for your Windows user, not in the .reqdeck file. A workspace file you share holds the paths of your files, not the files themselves."
                 }
             ]
         },

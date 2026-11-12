@@ -222,7 +222,7 @@ void HelpLibraryTest::linksAreWebAddresses()
 void HelpLibraryTest::guideChaptersExist()
 {
     const QStringList chapters {QStringLiteral("first-request"), QStringLiteral("requests"),
-                                QStringLiteral("variables"), QStringLiteral("auth"),
+                                QStringLiteral("variables"), QStringLiteral("auth"), QStringLiteral("logins"),
                                 QStringLiteral("response"), QStringLiteral("history"),
                                 QStringLiteral("data"), QStringLiteral("moving"),
                                 QStringLiteral("troubleshooting")};
