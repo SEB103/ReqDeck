@@ -3,6 +3,7 @@
 
 #include "mockhttpserver.h"
 
+#include <QCryptographicHash>
 #include <QFile>
 #include <QSslConfiguration>
 #include <QSslKey>
@@ -332,6 +333,23 @@ void MockHttpServer::route(QTcpSocket *socket, const Request &request)
         // The target is passed percent-encoded as "url=<absolute URL>".
         const QByteArray target = QByteArray::fromPercentEncoding(request.query.mid(4));
         writeResponse(socket, 302, {{"Location", target}}, {}, head);
+        return;
+    }
+
+    if (path == "/count") {
+        QByteArray contentLength;
+        for (const auto &[name, value] : request.headers) {
+            if (name.compare("Content-Length", Qt::CaseInsensitive) == 0)
+                contentLength = value;
+        }
+        const QJsonObject count {
+            {QStringLiteral("size"), double(request.body.size())},
+            {QStringLiteral("sha256"), QString::fromLatin1(
+                QCryptographicHash::hash(request.body, QCryptographicHash::Sha256).toHex())},
+            {QStringLiteral("contentLength"), QString::fromLatin1(contentLength)},
+        };
+        writeResponse(socket, 200, {{"Content-Type", "application/json"}},
+                      QJsonDocument(count).toJson(QJsonDocument::Compact), head);
         return;
     }
 

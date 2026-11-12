@@ -35,6 +35,8 @@ target_sources(ReqDeckCore
     PRIVATE
         core/history/historystore.cpp
         core/history/historystore.h
+        core/http/bodysource.cpp
+        core/http/bodysource.h
         core/http/cookiestore.cpp
         core/http/cookiestore.h
         core/http/curlconverter.cpp

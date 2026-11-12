@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <QFile>
 #include <QHttpHeaders>
+#include <QTemporaryDir>
 #include <QtTest>
 
 #include "core/http/httpencoding.h"
@@ -115,6 +117,18 @@ private slots:
 
     /*! Verifies that "://" later in the URL does not count as a scheme. */
     void detectsSchemeOnlyAtStart();
+
+    /*! Verifies a multipart body of text parts: boundary, names, escaping, variables. */
+    void buildsTextOnlyFormData();
+
+    /*! Verifies that file parts become streamed segments with file name and type. */
+    void buildsFormDataWithFiles();
+
+    /*! Verifies that a missing file stops the build with its path and field. */
+    void missingFileStopsTheBuild();
+
+    /*! Verifies a file body: one segment and a type from the name unless typed. */
+    void buildsFileBody();
 };
 
 void RequestBuilderTest::encodesPairs()
@@ -418,6 +432,104 @@ void RequestBuilderTest::detectsSchemeOnlyAtStart()
     QCOMPARE(built.request.url().host(), QStringLiteral("localhost"));
     QCOMPARE(built.request.url().port(), 3000);
     QCOMPARE(built.request.url().scheme(), QStringLiteral("http"));
+}
+
+void RequestBuilderTest::buildsTextOnlyFormData()
+{
+    RequestSpec spec;
+    spec.method = HttpMethod::Post;
+    spec.url = QStringLiteral("https://h.test/up");
+    spec.body.mode = BodyMode::FormData;
+    spec.body.parts = {{QStringLiteral("a\"b"), QStringLiteral("{{v}}"), true, false, QString()},
+                       {QStringLiteral("off"), QStringLiteral("x"), false, false, QString()},
+                       {QStringLiteral("json"), QStringLiteral("{}"), true, false, QStringLiteral("application/json")}};
+    const VariableResolver variables(QHash<QString, QString> {{QStringLiteral("v"), QStringLiteral("val")}});
+    const BuiltRequest built = build(spec, variables);
+
+    QVERIFY2(built.ok, qPrintable(built.errorString));
+    QVERIFY(built.segments.isEmpty());
+    const QByteArray type = built.request.headers().value(QHttpHeaders::WellKnownHeader::ContentType).toByteArray();
+    QVERIFY2(type.startsWith("multipart/form-data; boundary="), type);
+    const QByteArray boundary = type.mid(type.indexOf("boundary=") + 9);
+    QVERIFY(built.body.startsWith("--" + boundary + "\r\n"));
+    QVERIFY(built.body.contains("Content-Disposition: form-data; name=\"a%22b\"\r\n\r\nval\r\n"));
+    QVERIFY(built.body.contains("name=\"json\"\r\nContent-Type: application/json\r\n\r\n{}\r\n"));
+    QVERIFY(!built.body.contains("name=\"off\""));
+    QVERIFY(built.body.endsWith("--" + boundary + "--\r\n"));
+}
+
+void RequestBuilderTest::buildsFormDataWithFiles()
+{
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("photo.png"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("PNG");
+    file.close();
+
+    RequestSpec spec;
+    spec.method = HttpMethod::Post;
+    spec.url = QStringLiteral("https://h.test/up");
+    spec.body.mode = BodyMode::FormData;
+    spec.body.parts = {{QStringLiteral("note"), QStringLiteral("hi"), true, false, QString()},
+                       {QStringLiteral("photo"), path, true, true, QString()}};
+    const BuiltRequest built = build(spec);
+
+    QVERIFY2(built.ok, qPrintable(built.errorString));
+    QCOMPARE(built.segments.size(), 3);
+    QVERIFY(built.segments.at(0).bytes.contains("name=\"note\"\r\n\r\nhi\r\n"));
+    QVERIFY(built.segments.at(0).bytes.endsWith(
+        "name=\"photo\"; filename=\"photo.png\"\r\nContent-Type: image/png\r\n\r\n"));
+    QCOMPARE(built.segments.at(1).filePath, QFileInfo(path).absoluteFilePath());
+    QVERIFY(built.segments.at(2).bytes.startsWith("\r\n--"));
+    QVERIFY(built.body.isEmpty());
+}
+
+void RequestBuilderTest::missingFileStopsTheBuild()
+{
+    RequestSpec spec;
+    spec.method = HttpMethod::Post;
+    spec.url = QStringLiteral("https://h.test/up");
+    spec.body.mode = BodyMode::FormData;
+    spec.body.parts = {{QStringLiteral("photo"), QStringLiteral("Z:/missing/photo.png"), true, true, QString()}};
+    BuiltRequest built = build(spec);
+    QVERIFY(!built.ok);
+    QVERIFY2(built.errorString.contains(QStringLiteral("Z:/missing/photo.png")), qPrintable(built.errorString));
+    QVERIFY(built.errorString.contains(QStringLiteral("photo")));
+
+    spec.body.mode = BodyMode::File;
+    spec.body.filePath.clear();
+    built = build(spec);
+    QVERIFY(!built.ok);
+}
+
+void RequestBuilderTest::buildsFileBody()
+{
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("data.json"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("{}");
+    file.close();
+
+    RequestSpec spec;
+    spec.method = HttpMethod::Put;
+    spec.url = QStringLiteral("https://h.test/up");
+    spec.body.mode = BodyMode::File;
+    spec.body.filePath = QStringLiteral("{{dir}}/data.json");
+    const VariableResolver variables(QHash<QString, QString> {{QStringLiteral("dir"), dir.path()}});
+    BuiltRequest built = build(spec, variables);
+
+    QVERIFY2(built.ok, qPrintable(built.errorString));
+    QCOMPARE(built.segments.size(), 1);
+    QCOMPARE(built.segments.at(0).filePath, QFileInfo(path).absoluteFilePath());
+    QCOMPARE(built.request.headers().value(QHttpHeaders::WellKnownHeader::ContentType).toByteArray(),
+             QByteArray("application/json"));
+
+    spec.headers = {{QStringLiteral("Content-Type"), QStringLiteral("text/plain"), true}};
+    built = build(spec, variables);
+    QCOMPARE(built.request.headers().value(QHttpHeaders::WellKnownHeader::ContentType).toByteArray(),
+             QByteArray("text/plain"));
 }
 
 QTEST_GUILESS_MAIN(RequestBuilderTest)

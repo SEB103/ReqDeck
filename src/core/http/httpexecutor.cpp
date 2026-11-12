@@ -377,10 +377,24 @@ void HttpExecutor::startReply()
         m_current.request.setHeaders(std::move(headers));
     }
 
-    if (m_current.verb == "HEAD")
+    if (m_current.verb == "HEAD") {
         m_reply = m_network->head(m_current.request);
-    else
+    } else if (!m_current.segments.isEmpty()) {
+        // A fresh device per hop, so a 307 or 308 sends the whole body again.
+        auto *device = new SegmentedBodyDevice(m_current.segments, this);
+        if (!device->open(QIODevice::ReadOnly)) {
+            const QString error = device->errorString();
+            delete device;
+            finishWithoutReply(error);
+            return;
+        }
+        QNetworkRequest request = m_current.request;
+        request.setHeader(QNetworkRequest::ContentLengthHeader, device->size());
+        m_reply = m_network->sendCustomRequest(request, m_current.verb, device);
+        device->setParent(m_reply);
+    } else {
         m_reply = m_network->sendCustomRequest(m_current.request, m_current.verb, m_current.body);
+    }
 
     m_body.clear();
     m_bodyFile.reset();
@@ -407,6 +421,28 @@ void HttpExecutor::startReply()
         m_tlsChecks.append(std::move(check));
     });
 #endif
+}
+
+/*!
+ * \internal
+ * \brief Ends the running request without a reply, with the error \a message.
+ *
+ * Used when a hop cannot even start, for example when a file of the body
+ * became unreadable after the request was built. finished() comes from the
+ * event loop, as it does for a reply.
+ */
+void HttpExecutor::finishWithoutReply(const QString &message)
+{
+    ResponseData response;
+    response.elapsedMs = m_timer.elapsed();
+    response.error = ResponseError::Network;
+    response.errorString = message;
+    response.finalUrl = m_current.request.url();
+    response.tlsChecks = std::exchange(m_tlsChecks, {});
+    QMetaObject::invokeMethod(this, [this, response]() {
+        emit busyChanged(false);
+        emit finished(response);
+    }, Qt::QueuedConnection);
 }
 
 /*!
@@ -471,6 +507,7 @@ void HttpExecutor::prepareRedirect(const QUrl &target, int status)
     if (toGet) {
         m_current.verb = QByteArrayLiteral("GET");
         m_current.body.clear();
+        m_current.segments.clear();
         headers.removeAll(QHttpHeaders::WellKnownHeader::ContentType);
         headers.removeAll(QHttpHeaders::WellKnownHeader::ContentLength);
     }

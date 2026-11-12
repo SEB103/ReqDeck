@@ -9,6 +9,7 @@
 #include <QString>
 #include <QStringList>
 
+#include "core/http/bodysource.h"
 #include "core/http/requestspec.h"
 #include "core/http/responsedata.h"
 #include "core/http/variableresolver.h"
@@ -24,8 +25,10 @@ struct BuiltRequest
     QNetworkRequest request;
     /** Upper-case request verb. */
     QByteArray verb;
-    /** Encoded request body; empty when the request has none. */
+    /** Encoded request body; empty when the request has none or streams it from segments. */
     QByteArray body;
+    /** Pieces of a body streamed from files, in order; empty for a body held in body. */
+    QList<BodySegment> segments;
     /** Referenced variables that had no value, in order of appearance. */
     QStringList unresolvedVariables;
     /** Whether HttpExecutor follows redirects for this request. */

@@ -102,6 +102,9 @@ private:
     /** Sends the current hop of m_current and connects the reply. */
     void startReply();
 
+    /** Ends the running request without a reply, reporting \a message. */
+    void finishWithoutReply(const QString &message);
+
     /** Moves the bytes that arrived to memory, or to the file past the limit. */
     void readBody();
 

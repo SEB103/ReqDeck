@@ -5,7 +5,10 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QCryptographicHash>
+#include <QFile>
 #include <QTcpServer>
+#include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
 
@@ -220,6 +223,18 @@ private slots:
 
     /*! Verifies that a cookie set by a redirect is sent on the next hop. */
     void redirectStoresAndSendsPerHop();
+
+    /*! Verifies that a multipart body with a file arrives whole, with its Content-Length. */
+    void sendsMultipartWithFile();
+
+    /*! Verifies that a 307 redirect sends a multipart body again. */
+    void redirectResendsMultipartBody();
+
+    /*! Verifies that a large file body arrives whole. */
+    void largeFileIsStreamed();
+
+    /*! Verifies that a file removed after building fails the send with its path. */
+    void vanishedFileFailsTheSend();
 
     /*! Verifies that a typed Cookie header is sent as typed, without the stored cookies. */
     void typedCookieHeaderWins();
@@ -979,6 +994,102 @@ void HttpExecutorTest::typedCookieHeaderWins()
     QCOMPARE(echoedHeader(echoOf(*response), QStringLiteral("Cookie")), QStringList({QStringLiteral("sid=user")}));
     QVERIFY(response->storedCookiesSkipped);
     QCOMPARE(store.cookies().at(0).value(), QByteArray("server"));
+}
+
+void HttpExecutorTest::sendsMultipartWithFile()
+{
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("note.txt"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("file content");
+    file.close();
+
+    RequestSpec spec = specFor(m_server.url(QStringLiteral("/echo")), HttpMethod::Post);
+    spec.body.mode = BodyMode::FormData;
+    spec.body.parts = {{QStringLiteral("title"), QStringLiteral("hello"), true, false, QString()},
+                       {QStringLiteral("doc"), path, true, true, QString()}};
+    HttpExecutor executor;
+    auto response = sendAndWait(executor, buildRequest(spec));
+    QVERIFY(response);
+    QCOMPARE(response->statusCode, 200);
+    const QString body = echoOf(*response).value(QStringLiteral("body")).toString();
+    QVERIFY2(body.contains(QStringLiteral("name=\"title\"\r\n\r\nhello\r\n")), qPrintable(body));
+    QVERIFY(body.contains(QStringLiteral("filename=\"note.txt\"\r\nContent-Type: text/plain\r\n\r\nfile content\r\n")));
+    QCOMPARE(echoedHeader(echoOf(*response), QStringLiteral("Content-Length")),
+             QStringList({QString::number(body.toUtf8().size())}));
+}
+
+void HttpExecutorTest::redirectResendsMultipartBody()
+{
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("note.txt"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("again");
+    file.close();
+
+    RequestSpec spec = specFor(m_server.url(QStringLiteral("/redirect307")), HttpMethod::Post);
+    spec.body.mode = BodyMode::FormData;
+    spec.body.parts = {{QStringLiteral("doc"), path, true, true, QString()}};
+    HttpExecutor executor;
+    auto response = sendAndWait(executor, buildRequest(spec));
+    QVERIFY(response);
+    QCOMPARE(response->statusCode, 200);
+    const QJsonObject echo = echoOf(*response);
+    QCOMPARE(echo.value(QStringLiteral("method")).toString(), QStringLiteral("POST"));
+    QVERIFY2(echo.value(QStringLiteral("body")).toString().contains(QStringLiteral("\r\n\r\nagain\r\n")),
+             qPrintable(echo.value(QStringLiteral("body")).toString()));
+}
+
+void HttpExecutorTest::largeFileIsStreamed()
+{
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("big.bin"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    const QByteArray block = MockHttpServer::patternBytes(0, 1024 * 1024);
+    for (int i = 0; i < 24; ++i) {
+        file.write(block);
+        hash.addData(block);
+    }
+    file.close();
+
+    RequestSpec spec = specFor(m_server.url(QStringLiteral("/count")), HttpMethod::Put);
+    spec.body.mode = BodyMode::File;
+    spec.body.filePath = path;
+    HttpExecutor executor;
+    auto response = sendAndWait(executor, buildRequest(spec));
+    QVERIFY(response);
+    QCOMPARE(response->statusCode, 200);
+    const QJsonObject count = QJsonDocument::fromJson(response->body).object();
+    QCOMPARE(count.value(QStringLiteral("size")).toDouble(), 24.0 * 1024 * 1024);
+    QCOMPARE(count.value(QStringLiteral("contentLength")).toString(), QString::number(24 * 1024 * 1024));
+    QCOMPARE(count.value(QStringLiteral("sha256")).toString(), QString::fromLatin1(hash.result().toHex()));
+}
+
+void HttpExecutorTest::vanishedFileFailsTheSend()
+{
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("gone.txt"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("x");
+    file.close();
+    RequestSpec spec = specFor(m_server.url(QStringLiteral("/echo")), HttpMethod::Post);
+    spec.body.mode = BodyMode::File;
+    spec.body.filePath = path;
+    const BuiltRequest built = buildRequest(spec);
+    QVERIFY(built.ok);
+    QVERIFY(QFile::remove(path));
+
+    HttpExecutor executor;
+    auto response = sendAndWait(executor, built);
+    QVERIFY(response);
+    QCOMPARE(response->error, ResponseError::Network);
+    QVERIFY2(response->errorString.contains(QStringLiteral("gone.txt")), qPrintable(response->errorString));
+    QVERIFY(!executor.isBusy());
 }
 
 void HttpExecutorTest::crossOriginRedirectDropsCredentials()

@@ -3,9 +3,12 @@
 
 #include "core/http/requestbuilder.h"
 
+#include <QFileInfo>
 #include <QHttpHeaders>
+#include <QMimeDatabase>
 #include <QRegularExpression>
 #include <QUrl>
+#include <QUuid>
 
 #include <algorithm>
 #include <chrono>
@@ -89,6 +92,46 @@ bool hasScheme(const QString &url)
  * \internal
  * \brief Returns a failed BuiltRequest carrying \a message.
  */
+/*!
+ * \internal
+ * \brief Returns \a text for a quoted Content-Disposition parameter.
+ *
+ * As browsers do, a double quote becomes %22 and line breaks %0D and %0A, so
+ * a name cannot end the parameter or the header.
+ */
+QByteArray dispositionValue(const QString &text)
+{
+    QByteArray value = text.toUtf8();
+    value.replace('"', "%22").replace('\r', "%0D").replace('\n', "%0A");
+    return value;
+}
+
+/*!
+ * \internal
+ * \brief Returns the Content-Type for the file at \a path, from its name.
+ */
+QByteArray contentTypeOfFile(const QString &path)
+{
+    const QMimeType type = QMimeDatabase().mimeTypeForFile(path, QMimeDatabase::MatchExtension);
+    return type.isValid() && !type.isDefault() ? type.name().toLatin1() : QByteArrayLiteral("application/octet-stream");
+}
+
+/*!
+ * \internal
+ * \brief Returns why the file at \a path cannot be sent, or an empty string.
+ */
+QString unreadableFile(const QString &path)
+{
+    const QFileInfo info(path);
+    if (path.trimmed().isEmpty())
+        return QStringLiteral("No file is chosen for the body.");
+    if (!info.isFile())
+        return QStringLiteral("The file to send was not found: %1").arg(path);
+    if (!info.isReadable())
+        return QStringLiteral("The file to send cannot be read: %1").arg(path);
+    return {};
+}
+
 BuiltRequest failure(BuiltRequest built, const QString &message)
 {
     built.ok = false;
@@ -245,14 +288,58 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
     }
 
     if (spec.method != HttpMethod::Head && spec.body.mode != BodyMode::None) {
-        if (spec.body.mode == BodyMode::Raw)
+        QByteArray contentType = defaultContentType(spec.body.mode, spec.body.rawType);
+        if (spec.body.mode == BodyMode::Raw) {
             built.body = resolve(spec.body.raw).toUtf8();
-        else
+        } else if (spec.body.mode == BodyMode::FormUrlEncoded) {
             built.body = encodeKeyValuePairs(resolvePairs(spec.body.form));
-        if (!headers.contains(QHttpHeaders::WellKnownHeader::ContentType)) {
-            headers.append(QHttpHeaders::WellKnownHeader::ContentType,
-                           defaultContentType(spec.body.mode, spec.body.rawType));
+        } else if (spec.body.mode == BodyMode::File) {
+            const QString path = resolve(spec.body.filePath).trimmed();
+            if (const QString error = unreadableFile(path); !error.isEmpty())
+                return failure(std::move(built), error);
+            built.segments.append({{}, QFileInfo(path).absoluteFilePath()});
+            contentType = contentTypeOfFile(path);
+        } else {
+            // RFC 7578: each part names its field, files their file name too.
+            const QByteArray boundary = "----ReqDeck" + QUuid::createUuid().toByteArray(QUuid::Id128);
+            QByteArray pending;
+            for (const FormPart &part : spec.body.parts) {
+                if (!part.enabled || part.key.trimmed().isEmpty())
+                    continue;
+                const QString key = resolve(part.key);
+                const QString value = resolve(part.value);
+                pending += "--" + boundary + "\r\nContent-Disposition: form-data; name=\"" + dispositionValue(key) + '"';
+                QString partType = resolve(part.contentType).trimmed();
+                if (part.isFile) {
+                    const QString path = value.trimmed();
+                    if (const QString error = unreadableFile(path); !error.isEmpty())
+                        return failure(std::move(built), QStringLiteral("%1 (form field %2)").arg(error, key));
+                    pending += "; filename=\"" + dispositionValue(QFileInfo(path).fileName()) + '"';
+                    if (partType.isEmpty())
+                        partType = QString::fromLatin1(contentTypeOfFile(path));
+                    pending += "\r\nContent-Type: " + partType.toUtf8() + "\r\n\r\n";
+                    built.segments.append({std::exchange(pending, {}), {}});
+                    built.segments.append({{}, QFileInfo(path).absoluteFilePath()});
+                    pending = "\r\n";
+                } else {
+                    if (!partType.isEmpty())
+                        pending += "\r\nContent-Type: " + partType.toUtf8();
+                    pending += "\r\n\r\n" + value.toUtf8() + "\r\n";
+                }
+            }
+            pending += "--" + boundary + "--\r\n";
+            if (built.segments.isEmpty())
+                built.body = pending;
+            else
+                built.segments.append({pending, {}});
+            contentType += "; boundary=" + boundary;
+            // A typed multipart Content-Type cannot know the boundary, so ours replaces it.
+            const QByteArray typed = headers.value(QHttpHeaders::WellKnownHeader::ContentType).toByteArray();
+            if (typed.trimmed().toLower().startsWith("multipart/form-data") && !typed.contains("boundary="))
+                headers.removeAll(QHttpHeaders::WellKnownHeader::ContentType);
         }
+        if (!headers.contains(QHttpHeaders::WellKnownHeader::ContentType) && !contentType.isEmpty())
+            headers.append(QHttpHeaders::WellKnownHeader::ContentType, contentType);
     }
 
     built.verb = httpMethodVerb(spec.method);
