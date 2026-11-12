@@ -94,7 +94,8 @@ void TabsModel::setCurrentIndex(int row)
  */
 QString TabsModel::currentRequestId() const
 {
-    return m_current < 0 ? QString() : m_tabs.at(m_current).requestId;
+    // Slots of tabClosed() run while a removal has not chosen the new current tab.
+    return m_current < 0 || m_current >= m_tabs.size() ? QString() : m_tabs.at(m_current).requestId;
 }
 
 /*!
@@ -102,7 +103,7 @@ QString TabsModel::currentRequestId() const
  */
 int TabsModel::currentTabId() const
 {
-    return m_current < 0 ? 0 : m_tabs.at(m_current).id;
+    return m_current < 0 || m_current >= m_tabs.size() ? 0 : m_tabs.at(m_current).id;
 }
 
 /*!

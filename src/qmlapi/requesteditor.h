@@ -4,9 +4,12 @@
 #ifndef REQUESTEDITOR_H
 #define REQUESTEDITOR_H
 
+#include <QHash>
 #include <QObject>
 #include <QString>
 #include <QVariantMap>
+
+#include <optional>
 
 #include "core/http/requestbuilder.h"
 #include "core/http/requestspec.h"
@@ -14,6 +17,7 @@
 
 class CollectionTreeModel;
 class HttpExecutor;
+class TabsModel;
 class FormPartModel;
 class KeyValueModel;
 class ResponseView;
@@ -120,6 +124,9 @@ public:
 
     /** Sets the defaults requests are built with. */
     void setBuilderOptions(const RequestBuilder::Options &options);
+
+    /** Follows the current tab of \a tabs, which is not owned; sends and responses then belong to tabs. */
+    void setTabs(TabsModel *tabs);
 
     /** Returns whether a request is open. */
     bool hasRequest() const;
@@ -334,20 +341,55 @@ private:
     /** Receives the state and result of sending; not owned. */
     ResponseView *m_response {nullptr};
 
-    /** Sends requests; owned through the QObject tree. */
-    HttpExecutor *m_executor {nullptr};
+    /** The send of one tab and what it gave. */
+    struct TabSend
+    {
+        /** Executor of the tab; owned through the QObject tree. */
+        HttpExecutor *executor {nullptr};
+        /** The request as it was sent, which outlives switching to another one. */
+        RequestSpec sent;
+        /** Name and id of the request sent. */
+        QString name;
+        QString requestId;
+        /** Variables of the send that had no value. */
+        QStringList unresolved;
+        /** One-time values of the send, for Continue past a certificate; never stored. */
+        QList<KeyValue> extra;
+        /** Last response, or nothing. */
+        std::optional<ResponseData> response;
+        /** Why the last send could not be built; empty when it was. */
+        QString buildError;
+    };
+
+    /** Returns the key of the current tab's send: its tab id, or 0 without tabs. */
+    int currentKey() const;
+
+    /** Returns the send of \a key, with its executor created on first use. */
+    TabSend &sendOf(int key);
+
+    /** Keeps the result of the send of \a key and shows it when its tab is current. */
+    void finishSend(int key, const ResponseData &response);
+
+    /** Loads the current tab's request and shows its send. */
+    void showCurrentTab();
+
+    /** Shows the send of the current tab in the response view. */
+    void showCurrentSend();
+
+    /** Cancels and forgets the send of the closed tab \a tabId. */
+    void dropTab(int tabId);
+
+    /** Loads \a id into the editor without touching the tabs. */
+    void loadRequest(const QString &id);
+
+    /** Sends per tab; key 0 without tabs. */
+    QHash<int, TabSend> m_sends;
+
+    /** Tabs followed, or null; not owned. */
+    TabsModel *m_tabs {nullptr};
 
     /** Defaults requests are built with. */
     RequestBuilder::Options m_builderOptions;
-
-    /** One-time values of the last send, for Continue past a certificate; never stored. */
-    QList<KeyValue> m_lastExtraVariables;
-
-    /** Variables of the running request that had no value. */
-    QStringList m_unresolved;
-
-    /** The request as it was sent, which outlives switching to another one. */
-    RequestSpec m_sentRequest;
 
     /** Query parameter rows; owned through the QObject tree. */
     KeyValueModel *m_params {nullptr};

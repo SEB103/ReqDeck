@@ -20,6 +20,7 @@
 #include "qmlapi/formpartmodel.h"
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/responseview.h"
+#include "qmlapi/tabsmodel.h"
 #include "qmlapi/workspacemanager.h"
 
 /*!
@@ -35,7 +36,6 @@ RequestEditor::RequestEditor(WorkspaceManager *manager, CollectionTreeModel *col
     , m_manager(manager)
     , m_collection(collection)
     , m_response(response)
-    , m_executor(new HttpExecutor(this))
     , m_params(new KeyValueModel(this))
     , m_headers(new KeyValueModel(this))
     , m_form(new KeyValueModel(this))
@@ -49,11 +49,22 @@ RequestEditor::RequestEditor(WorkspaceManager *manager, CollectionTreeModel *col
     connect(m_parts, &FormPartModel::edited, this, &RequestEditor::storeTables);
 
     connect(m_manager, &WorkspaceManager::workspaceReplaced, this, &RequestEditor::dropResponse);
-    connect(m_executor, &HttpExecutor::finished, this, &RequestEditor::showResponse);
-    connect(m_executor, &HttpExecutor::busyChanged, this, [this]() {
-        emit busyChanged();
-        emit canSendChanged();
-    });
+}
+
+/*!
+ * \brief Follows the current tab of \a tabs.
+ *
+ * Each tab then has its own send: requests of different tabs run at once,
+ * and the response view shows the current tab's last result. load() of a
+ * request goes through the preview tab. Without tabs there is one send, as
+ * before.
+ * \param tabs The tabs of the workspace; not owned.
+ */
+void RequestEditor::setTabs(TabsModel *tabs)
+{
+    m_tabs = tabs;
+    connect(m_tabs, &TabsModel::currentChanged, this, &RequestEditor::showCurrentTab);
+    connect(m_tabs, &TabsModel::tabClosed, this, &RequestEditor::dropTab);
 }
 
 /*!
@@ -72,7 +83,8 @@ bool RequestEditor::hasRequest() const
 
 bool RequestEditor::busy() const
 {
-    return m_executor->isBusy();
+    const auto it = m_sends.constFind(currentKey());
+    return it != m_sends.constEnd() && it->executor->isBusy();
 }
 
 bool RequestEditor::canSend() const
@@ -388,6 +400,23 @@ KeyValueModel *RequestEditor::formModel() const
  */
 void RequestEditor::load(const QString &id)
 {
+    // With tabs the request opens in the preview tab, which then loads it.
+    if (m_tabs && m_collection->request(id)) {
+        if (m_tabs->currentRequestId() != id)
+            m_tabs->preview(id);
+        else if (m_requestId != id)
+            loadRequest(id);
+        return;
+    }
+    loadRequest(id);
+}
+
+/*!
+ * \internal
+ * \brief Loads the request \a id into the editor; a folder or unknown id leaves it empty.
+ */
+void RequestEditor::loadRequest(const QString &id)
+{
     const RequestSpec *request = m_collection->request(id);
     if (!request) {
         clear();
@@ -479,7 +508,7 @@ void RequestEditor::sendTrustingCertificate()
     if (!m_response->canTrustCertificate() || m_response->requestId() != m_requestId)
         return;
     // The values entered for the failed send count for its repetition too.
-    sendBuilt(m_response->certificateFailure(), m_lastExtraVariables);
+    sendBuilt(m_response->certificateFailure(), sendOf(currentKey()).extra);
 }
 
 /*!
@@ -492,9 +521,14 @@ void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue
     if (!canSend())
         return;
 
-    // Copied first: a repetition passes m_lastExtraVariables itself.
+    // Copied first: a repetition passes the send's own values.
     const QList<KeyValue> extra = extraVariables;
-    m_lastExtraVariables = extra;
+    if (m_tabs)
+        m_tabs->keepCurrent();
+    TabSend &send = sendOf(currentKey());
+    send.extra = extra;
+    send.name = m_name;
+    send.requestId = m_requestId;
     QList<KeyValue> rows;
     const RequestSpec request = effectiveRequest(rows);
     const VariableResolver variables = VariableResolver::fromKeyValues(rows + extra);
@@ -502,14 +536,17 @@ void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue
     built.tlsException = tlsException;
 
     m_response->setBusy(m_name, m_requestId);
+    send.unresolved = built.unresolvedVariables;
     if (!built.ok) {
+        send.response.reset();
+        send.buildError = built.errorString;
         m_response->setBuildError(built.errorString, built.unresolvedVariables);
         return;
     }
-    m_unresolved = built.unresolvedVariables;
-    m_sentRequest = m_request;
-    m_executor->setCookieStore(m_manager->cookiesEnabled() ? m_manager->cookieStore() : nullptr);
-    m_executor->send(built);
+    send.buildError.clear();
+    send.sent = m_request;
+    send.executor->setCookieStore(m_manager->cookiesEnabled() ? m_manager->cookieStore() : nullptr);
+    send.executor->send(built);
 }
 
 /*!
@@ -517,7 +554,9 @@ void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue
  */
 void RequestEditor::cancel()
 {
-    m_executor->abort();
+    const auto it = m_sends.constFind(currentKey());
+    if (it != m_sends.constEnd())
+        it->executor->abort();
 }
 
 /*!
@@ -579,8 +618,127 @@ void RequestEditor::showResponse(const ResponseData &response)
                                         .arg(check.server(), check.messages.join(QStringLiteral("; ")));
         }
     }
-    m_response->setResponse(response, m_unresolved);
-    emit requestFinished(m_sentRequest, response);
+    // Without tabs the one send has key 0.
+    finishSend(0, response);
+}
+
+/*!
+ * \internal
+ * \brief Returns the key of the current tab's send: its tab id, or 0 without tabs.
+ */
+int RequestEditor::currentKey() const
+{
+    return m_tabs ? m_tabs->currentTabId() : 0;
+}
+
+/*!
+ * \internal
+ * \brief Returns the send of \a key, creating its executor on first use.
+ *
+ * Each executor reports to its own key, so a response reaches the tab that
+ * sent it even after another tab became current.
+ */
+RequestEditor::TabSend &RequestEditor::sendOf(int key)
+{
+    TabSend &send = m_sends[key];
+    if (!send.executor) {
+        send.executor = new HttpExecutor(this);
+        connect(send.executor, &HttpExecutor::finished, this, [this, key](const ResponseData &response) {
+            if (key == 0)
+                showResponse(response);
+            else
+                finishSend(key, response);
+        });
+        connect(send.executor, &HttpExecutor::busyChanged, this, [this, key](bool busy) {
+            if (m_tabs)
+                m_tabs->setBusy(key, busy);
+            if (key == currentKey()) {
+                emit busyChanged();
+                emit canSendChanged();
+            }
+        });
+    }
+    return send;
+}
+
+/*!
+ * \internal
+ * \brief Keeps the result of the send of \a key and shows it when its tab is current.
+ *
+ * Every result goes to the history, also one of a tab in the background.
+ */
+void RequestEditor::finishSend(int key, const ResponseData &response)
+{
+    auto it = m_sends.find(key);
+    if (it == m_sends.end())
+        return;
+    if (key != 0) {
+        for (const TlsCheck &check : response.tlsChecks) {
+            if (check.ignored) {
+                qWarning().noquote() << QStringLiteral("The certificate of %1 was not checked: %2")
+                                            .arg(check.server(), check.messages.join(QStringLiteral("; ")));
+            }
+        }
+    }
+    it->response = response;
+    const RequestSpec sent = it->sent;
+    if (key == currentKey())
+        m_response->setResponse(response, it->unresolved);
+    emit requestFinished(sent, response);
+}
+
+/*!
+ * \internal
+ * \brief Loads the current tab's request and shows its send.
+ */
+void RequestEditor::showCurrentTab()
+{
+    const QString id = m_tabs->currentRequestId();
+    if (id.isEmpty())
+        clear();
+    else if (id != m_requestId)
+        loadRequest(id);
+    showCurrentSend();
+    emit busyChanged();
+    emit canSendChanged();
+}
+
+/*!
+ * \internal
+ * \brief Shows the send of the current tab: running, its result, or nothing.
+ */
+void RequestEditor::showCurrentSend()
+{
+    const auto it = m_sends.constFind(currentKey());
+    if (it == m_sends.constEnd()) {
+        m_response->clear();
+    } else if (it->executor->isBusy()) {
+        m_response->setBusy(it->name, it->requestId);
+    } else if (it->response) {
+        m_response->setBusy(it->name, it->requestId);
+        m_response->setResponse(*it->response, it->unresolved);
+    } else if (!it->buildError.isEmpty()) {
+        m_response->setBusy(it->name, it->requestId);
+        m_response->setBuildError(it->buildError, it->unresolved);
+    } else {
+        m_response->clear();
+    }
+}
+
+/*!
+ * \internal
+ * \brief Cancels and forgets the send of the closed tab \a tabId.
+ */
+void RequestEditor::dropTab(int tabId)
+{
+    const auto it = m_sends.find(tabId);
+    if (it == m_sends.end())
+        return;
+    HttpExecutor *executor = it->executor;
+    m_sends.erase(it);
+    // Erased first, so the abort's finished() finds no send to show.
+    executor->abort();
+    executor->deleteLater();
 }
 
 /*!
@@ -592,8 +750,14 @@ void RequestEditor::showResponse(const ResponseData &response)
  */
 void RequestEditor::dropResponse()
 {
-    m_executor->abort();
+    const QHash<int, TabSend> sends = std::exchange(m_sends, {});
+    for (const TabSend &send : sends) {
+        send.executor->abort();
+        send.executor->deleteLater();
+    }
     m_response->clear();
+    emit busyChanged();
+    emit canSendChanged();
 }
 
 /*!
@@ -619,6 +783,9 @@ void RequestEditor::updateField(T &field, const T &value)
  */
 void RequestEditor::store()
 {
+    // An edit keeps the preview tab.
+    if (m_tabs)
+        m_tabs->keepCurrent();
     m_collection->updateRequest(m_requestId, m_request);
 }
 

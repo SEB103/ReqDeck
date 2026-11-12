@@ -21,6 +21,7 @@
 #include "qmlapi/keyvaluemodel.h"
 #include "qmlapi/requesteditor.h"
 #include "qmlapi/responseview.h"
+#include "qmlapi/tabsmodel.h"
 #include "qmlapi/workspacemanager.h"
 
 /*!
@@ -201,6 +202,15 @@ private slots:
 
     /*! Verifies that form data parts are stored with the request and sent. */
     void formDataPartsAreStoredAndSent();
+
+    /*! Verifies that sends in two tabs run at once and each response stays with its tab. */
+    void responsesStayWithTheirTabs();
+
+    /*! Verifies that switching tabs keeps edits, and an edit keeps the preview tab. */
+    void switchingTabsKeepsEdits();
+
+    /*! Verifies that closing a running tab cancels its send without touching the current tab. */
+    void closingARunningTabCancelsIt();
 
     /*! Verifies the file body path, a file URL turned into a path, and the file info. */
     void fileBodyPathAndInfo();
@@ -949,6 +959,94 @@ void RequestEditorTest::formDataPartsAreStoredAndSent()
     m_editor->send();
     QVERIFY(waitForResponse(*m_response));
     QVERIFY2(m_response->bodyText().contains(QStringLiteral("name=\\\"title\\\"")), qPrintable(m_response->bodyText()));
+}
+
+/*!
+ * \internal
+ * \brief Opens a workspace whose requests "a" and "b" point at \a pathA and \a pathB of \a server.
+ */
+static void openTwoRequests(WorkspaceManager &manager, const QTemporaryDir &dir, const MockHttpServer &server,
+                            const QString &pathA, const QString &pathB)
+{
+    WorkspaceData data;
+    data.id = newItemId();
+    data.displayName = QStringLiteral("Tabs");
+    for (const auto &[id, path] : {std::pair {QStringLiteral("a"), pathA}, std::pair {QStringLiteral("b"), pathB}}) {
+        CollectionNode node;
+        node.id = id;
+        node.kind = CollectionNode::Kind::Request;
+        node.name = id.toUpper();
+        node.request.url = server.url(path).toString();
+        data.collection.append(node);
+    }
+    const QString file = dir.filePath(QStringLiteral("tabs.reqdeck"));
+    QVERIFY(WorkspaceSerializer::save(file, data));
+    QVERIFY(manager.openWorkspace(file));
+}
+
+void RequestEditorTest::responsesStayWithTheirTabs()
+{
+    TabsModel tabs(m_collection.get());
+    m_editor->setTabs(&tabs);
+    openTwoRequests(*m_manager, *m_dir, m_server, QStringLiteral("/delay/400"), QStringLiteral("/status/201"));
+    QSignalSpy finished(m_editor.get(), &RequestEditor::requestFinished);
+
+    tabs.open(QStringLiteral("a"));
+    QCOMPARE(m_editor->requestId(), QStringLiteral("a"));
+    m_editor->send();
+    QVERIFY(m_editor->busy());
+    tabs.open(QStringLiteral("b"));
+    QVERIFY(!m_editor->busy());
+    QVERIFY(m_editor->canSend());
+    m_editor->send();
+
+    QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 2, 10000);
+    QCOMPARE(m_response->statusCode(), 201);
+    tabs.setCurrentIndex(0);
+    QCOMPARE(m_editor->requestId(), QStringLiteral("a"));
+    QCOMPARE(m_response->statusCode(), 200);
+    QCOMPARE(m_response->property("requestId").toString(), QStringLiteral("a"));
+    tabs.setCurrentIndex(1);
+    QCOMPARE(m_response->statusCode(), 201);
+}
+
+void RequestEditorTest::switchingTabsKeepsEdits()
+{
+    TabsModel tabs(m_collection.get());
+    m_editor->setTabs(&tabs);
+    openTwoRequests(*m_manager, *m_dir, m_server, QStringLiteral("/echo"), QStringLiteral("/status/200"));
+
+    m_editor->load(QStringLiteral("a"));
+    QCOMPARE(tabs.rowCount(), 1);
+    QVERIFY(tabs.index(0).data(TabsModel::PreviewRole).toBool());
+    QVERIFY(!m_manager->dirty());
+    m_editor->setUrl(QStringLiteral("https://h.test/edited"));
+    QVERIFY(!tabs.index(0).data(TabsModel::PreviewRole).toBool());
+
+    m_editor->load(QStringLiteral("b"));
+    QCOMPARE(tabs.rowCount(), 2);
+    tabs.setCurrentIndex(0);
+    QCOMPARE(m_editor->url(), QStringLiteral("https://h.test/edited"));
+}
+
+void RequestEditorTest::closingARunningTabCancelsIt()
+{
+    TabsModel tabs(m_collection.get());
+    m_editor->setTabs(&tabs);
+    openTwoRequests(*m_manager, *m_dir, m_server, QStringLiteral("/delay/2000"), QStringLiteral("/status/200"));
+    tabs.open(QStringLiteral("a"));
+    m_editor->send();
+    tabs.open(QStringLiteral("b"));
+    QVERIFY(tabs.index(0).data(TabsModel::BusyRole).toBool());
+
+    tabs.close(0);
+
+    QCOMPARE(m_editor->requestId(), QStringLiteral("b"));
+    QVERIFY(!m_editor->busy());
+    QVERIFY(!m_response->busy());
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    QCOMPARE(m_response->statusCode(), 200);
 }
 
 void RequestEditorTest::fileBodyPathAndInfo()
