@@ -44,6 +44,9 @@ private slots:
 
     /*! Verifies that the dark palette has its own colors. */
     void settingDarkChangesColors();
+
+    /*! Verifies that a response() template has its own color and is not marked unresolved. */
+    void responseTemplateHasOwnColor();
 };
 
 void VariableHighlighterTest::knownAndUnresolvedDiffer()
@@ -61,6 +64,21 @@ void VariableHighlighterTest::knownAndUnresolvedDiffer()
     QVERIFY(formats.at(0).format.foreground() != formats.at(1).format.foreground());
     QVERIFY(!formats.at(0).format.fontUnderline());
     QVERIFY(formats.at(1).format.fontUnderline());
+}
+
+void VariableHighlighterTest::responseTemplateHasOwnColor()
+{
+    QTextDocument document(QStringLiteral(R"({{a}}{{response("A", "$")}}{{b}})"));
+    VariableHighlighter highlighter;
+    highlighter.setDocument(&document);
+    highlighter.setVariables(resolverWith(QStringLiteral("a")));
+
+    const QList<QTextLayout::FormatRange> formats = formatsOf(document);
+    QCOMPARE(formats.size(), 3);
+    QCOMPARE(formats.at(1).start, 5);
+    QVERIFY(!formats.at(1).format.fontUnderline());
+    QVERIFY(formats.at(1).format.foreground() != formats.at(0).format.foreground());
+    QVERIFY(formats.at(1).format.foreground() != formats.at(2).format.foreground());
 }
 
 void VariableHighlighterTest::plainTextHasNoFormats()

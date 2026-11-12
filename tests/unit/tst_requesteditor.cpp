@@ -22,6 +22,7 @@
 #include "qmlapi/requesteditor.h"
 #include "qmlapi/responseview.h"
 #include "qmlapi/tabsmodel.h"
+#include "core/http/variableresolver.h"
 #include "qmlapi/workspacemanager.h"
 
 /*!
@@ -268,6 +269,9 @@ private slots:
 
     /*! Verifies that Continue does nothing without a failed certificate check. */
     void trustingWithoutTlsFailureDoesNothing();
+
+    /*! Verifies that response() reads the last response of another request in this workspace only. */
+    void responseTemplateResolves();
 
 private:
     /*! Waits until the running request has finished. */
@@ -991,6 +995,43 @@ static void openTwoRequests(WorkspaceManager &manager, const QTemporaryDir &dir,
     const QString file = dir.filePath(QStringLiteral("tabs.reqdeck"));
     QVERIFY(WorkspaceSerializer::save(file, data));
     QVERIFY(manager.openWorkspace(file));
+}
+
+void RequestEditorTest::responseTemplateResolves()
+{
+    openTwoRequests(*m_manager, *m_dir, m_server, QStringLiteral("/json/2"), QStringLiteral("/echo"));
+    QSignalSpy templates(m_editor.get(), &RequestEditor::responseTemplatesChanged);
+    const QString fromA = QStringLiteral(R"({{response("A", "$[1].id")}})");
+    const QString missing = VariableResolver::responseTemplate(QStringLiteral("A"), QStringLiteral("$[1].id"));
+
+    m_editor->load(QStringLiteral("b"));
+    m_editor->setProperty("url", m_server.url(QStringLiteral("/echo?v=")).toString() + fromA);
+    QCOMPARE(m_editor->missingVariables(), QStringList({missing}));
+    QVERIFY(m_editor->responseTemplates().isEmpty());
+
+    m_editor->load(QStringLiteral("a"));
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY(templates.count() > 0);
+    // The open request does not read its own response.
+    QVERIFY(m_editor->responseTemplates().isEmpty());
+
+    m_editor->load(QStringLiteral("b"));
+    QCOMPARE(m_editor->responseTemplates(), QStringList({QStringLiteral(R"(response("A", "$"))")}));
+    QCOMPARE(m_editor->missingVariables(), QStringList());
+    m_editor->send();
+    QVERIFY(waitForResponse(*m_response));
+    QVERIFY2(m_response->bodyText().contains(QStringLiteral("v=1")), qPrintable(m_response->bodyText()));
+
+    m_editor->setProperty("url", m_server.url(QStringLiteral("/echo?v=")).toString()
+                                     + QStringLiteral(R"({{response("Nobody", "$")}})"));
+    QCOMPARE(m_editor->missingVariables(),
+             QStringList({VariableResolver::responseTemplate(QStringLiteral("Nobody"), QStringLiteral("$"))}));
+
+    // Another workspace starts without responses.
+    openTwoRequests(*m_manager, *m_dir, m_server, QStringLiteral("/json/2"), QStringLiteral("/echo"));
+    m_editor->load(QStringLiteral("b"));
+    QVERIFY(m_editor->responseTemplates().isEmpty());
 }
 
 void RequestEditorTest::responsesStayWithTheirTabs()

@@ -57,6 +57,8 @@ target_sources(ReqDeckCore
         core/http/requestbuilder.h
         core/http/requestspec.cpp
         core/http/requestspec.h
+        core/http/responsecache.cpp
+        core/http/responsecache.h
         core/http/responsedata.h
         core/http/variableresolver.cpp
         core/http/variableresolver.h

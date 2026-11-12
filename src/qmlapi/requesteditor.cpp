@@ -57,6 +57,8 @@ RequestEditor::RequestEditor(WorkspaceManager *manager, CollectionTreeModel *col
     connect(m_parts, &FormPartModel::edited, this, &RequestEditor::storeTables);
 
     connect(m_manager, &WorkspaceManager::workspaceReplaced, this, &RequestEditor::dropResponse);
+    // The open request is left out of its own templates.
+    connect(this, &RequestEditor::requestChanged, this, &RequestEditor::responseTemplatesChanged);
 }
 
 /*!
@@ -496,7 +498,7 @@ QStringList RequestEditor::missingVariables() const
         return {};
     QList<KeyValue> rows;
     const RequestSpec request = effectiveRequest(rows);
-    const VariableResolver variables = VariableResolver::fromKeyValues(rows);
+    const VariableResolver variables = resolverFor(rows);
     const BuiltRequest built = RequestBuilder::build(request, variables, m_builderOptions);
     QStringList names = built.unresolvedVariables;
     if (!built.ok) {
@@ -561,7 +563,7 @@ void RequestEditor::sendBuilt(const TlsCheck &tlsException, const QList<KeyValue
     send.requestId = m_requestId;
     QList<KeyValue> rows;
     RequestSpec request = effectiveRequest(rows);
-    const VariableResolver variables = VariableResolver::fromKeyValues(rows + extra);
+    const VariableResolver variables = resolverFor(rows + extra);
 
     // OAuth 2.0: a usable token goes in as a header; otherwise one is fetched
     // first when that needs no user, and the send comes back here.
@@ -822,8 +824,7 @@ RequestEditor::OAuthContext RequestEditor::oauthContext(const QList<KeyValue> &e
     const InheritedSettings inherited = inheritedSettings(data.collection, m_requestId, m_request.auth);
     if (inherited.auth.type != AuthType::OAuth2)
         return context;
-    const VariableResolver variables =
-        VariableResolver::fromKeyValues(inherited.variables + activeEnvironmentVariables(data) + extra);
+    const VariableResolver variables = resolverFor(inherited.variables + activeEnvironmentVariables(data) + extra);
     const OAuth2Settings &raw = inherited.auth.oauth2;
     context.active = true;
     context.owner = inherited.authOwnerId;
@@ -944,10 +945,43 @@ void RequestEditor::finishSend(int key, const ResponseData &response)
         }
     }
     it->response = response;
+    m_responses.store(it->requestId, it->name, response);
     const RequestSpec sent = it->sent;
     if (key == currentKey())
         m_response->setResponse(response, it->unresolved);
     emit requestFinished(sent, response);
+    emit responseTemplatesChanged();
+}
+
+/*!
+ * \internal
+ * \brief Returns a resolver over \a rows whose response() templates read the responses of this run.
+ *
+ * The open request never reads its own response, so a template cannot make a
+ * request depend on itself; a template without a response stays unresolved,
+ * and Send asks for it.
+ */
+VariableResolver RequestEditor::resolverFor(const QList<KeyValue> &rows) const
+{
+    VariableResolver variables = VariableResolver::fromKeyValues(rows);
+    variables.setResponseLookup([this, self = m_requestId](const QString &request, const QString &selector) {
+        return m_responses.value(request, selector, self);
+    });
+    return variables;
+}
+
+/*!
+ * \brief Returns response() templates for the other requests with a response in this run.
+ *
+ * Each template reads the whole JSON body, "$", which the user narrows to the
+ * value they need; the newest response comes first.
+ */
+QStringList RequestEditor::responseTemplates() const
+{
+    QStringList templates;
+    for (const QString &name : m_responses.requestNames(m_requestId))
+        templates.append(VariableResolver::responseTemplate(name, QStringLiteral("$")));
+    return templates;
 }
 
 /*!
@@ -1022,6 +1056,9 @@ void RequestEditor::dropResponse()
         send.executor->deleteLater();
     }
     m_response->clear();
+    // Responses of another workspace are never read.
+    m_responses.clear();
+    emit responseTemplatesChanged();
     emit busyChanged();
     emit canSendChanged();
 }

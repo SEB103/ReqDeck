@@ -49,8 +49,11 @@ void VariableHighlighter::highlightBlock(const QString &text)
 {
     const QList<VariableReference> references = VariableResolver::references(text);
     for (const VariableReference &reference : references) {
-        setFormat(int(reference.start), int(reference.length),
-                  m_variables.contains(reference.name) ? m_knownFormat : m_unresolvedFormat);
+        // A template reads a response of this run, which only a send can look up.
+        const QTextCharFormat &format = reference.response                    ? m_responseFormat
+                                        : m_variables.contains(reference.name) ? m_knownFormat
+                                                                               : m_unresolvedFormat;
+        setFormat(int(reference.start), int(reference.length), format);
     }
 }
 
@@ -62,4 +65,5 @@ void VariableHighlighter::updateFormats()
 {
     m_knownFormat.setForeground(QColor(m_dark ? 0x90CAF9 : 0x1565C0));
     m_unresolvedFormat.setForeground(QColor(m_dark ? 0xEF9A9A : 0xC62828));
+    m_responseFormat.setForeground(QColor(m_dark ? 0xCE93D8 : 0x6A1B9A));
 }

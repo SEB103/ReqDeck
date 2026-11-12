@@ -3176,6 +3176,28 @@ Item {
             compare(url.cursorPosition, 11);
         }
 
+        /*! Verifies that the URL completer offers a response() template of a request sent before. */
+        function test_urlCompleterOffersResponseTemplate() {
+            const window = createMain();
+            const tree = findChild(window.contentItem, "tree").parent;
+            tree.selectNode("r1");
+            cppRequestEditor.url = cppTestHost.serverUrl("/json/2");
+            cppRequestEditor.send();
+            tryCompare(cppResponse, "busy", false, 10000);
+            tree.selectNode("r2");
+            verify(cppRequestEditor.responseTemplates.indexOf('response("Create item", "$")') === 0,
+                   cppRequestEditor.responseTemplates.join());
+            cppRequestEditor.url = "";
+            const url = findChild(window.contentItem, "urlField");
+            const area = findChild(url, "editArea");
+            area.forceActiveFocus();
+            tryCompare(area, "activeFocus", true);
+
+            area.insert(0, "{{res");
+            cppTestHost.pressKey(window, Qt.Key_Return, Qt.NoModifier);
+            compare(cppRequestEditor.url, '{{response("Create item", "$")}}');
+        }
+
         /*! Verifies that the raw body offers the variables after {{ too. */
         function test_rawBodyCompleterInsertsVariable() {
             const pane = createRequest("r1");

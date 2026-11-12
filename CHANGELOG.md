@@ -121,6 +121,12 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
   browser and a local callback, and Client Credentials; tokens are renewed or
   fetched by themselves where no login is needed, kept encrypted apart from the
   workspace, and can be reset. Imports bring OAuth 2.0 settings along.
+- JSONPath filter above a JSON response, without any script.
+- Sent tab: each request as it went to the server, redirects included, with
+  passwords, tokens, cookie values, and API keys masked.
+- `{{response("Request", "$.path")}}` and `{{response("Request", "header:Name")}}`
+  put a value from another request's last response into a request; responses
+  are kept in memory only, and the completion offers the requests sent so far.
 
 ### Fixed
 - Responses over HTTP/2 show the name of their status, for example 200 OK.

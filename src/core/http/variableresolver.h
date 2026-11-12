@@ -9,6 +9,9 @@
 #include <QString>
 #include <QStringList>
 
+#include <functional>
+#include <optional>
+
 #include "core/http/requestspec.h"
 
 /** Place of one {{name}} reference in a text. */
@@ -18,8 +21,10 @@ struct VariableReference
     qsizetype start {0};
     /** Length of the reference, braces included. */
     qsizetype length {0};
-    /** Referenced name. */
+    /** Referenced name; for a response() template its canonical text, for example response("Login", "$.token"). */
     QString name;
+    /** Whether this is a response() template rather than a variable. */
+    bool response {false};
 };
 
 /**
@@ -27,10 +32,15 @@ struct VariableReference
  *
  * Substitution is a single, case-sensitive pass: substituted values are not
  * scanned again, and references to unknown names stay verbatim in the output.
+ * A {{response("request", "selector")}} template reads a value through the
+ * response lookup; without a value it behaves like an unknown name.
  */
 class VariableResolver
 {
 public:
+    /** Reads a value from the last response of a request, given its id or name and a selector. */
+    using ResponseLookup = std::function<std::optional<QString>(const QString &request, const QString &selector)>;
+
     /** Creates a resolver without variables. */
     VariableResolver() = default;
 
@@ -53,6 +63,12 @@ public:
     /** Returns whether a reference to \a name resolves. */
     bool contains(const QString &name) const;
 
+    /** Sets the lookup that response() templates read from; none leaves them unresolved. */
+    void setResponseLookup(ResponseLookup lookup);
+
+    /** Returns the canonical template text that reads \a selector from the response of \a request. */
+    static QString responseTemplate(const QString &request, const QString &selector);
+
     /** Returns the unique variable names referenced by \a text in order of appearance. */
     static QStringList referencedNames(const QString &text);
 
@@ -62,6 +78,9 @@ public:
 private:
     /** Variable values by name. */
     QHash<QString, QString> m_variables;
+
+    /** Lookup of response() templates; empty for none. */
+    ResponseLookup m_responseLookup;
 };
 
 #endif // VARIABLERESOLVER_H

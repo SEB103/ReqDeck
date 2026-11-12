@@ -44,6 +44,9 @@ private:
 
     /** Format of a reference that does not resolve. */
     QTextCharFormat m_unresolvedFormat;
+
+    /** Format of a response() template, whose value is known only when the request is sent. */
+    QTextCharFormat m_responseFormat;
 };
 
 #endif // VARIABLEHIGHLIGHTER_H

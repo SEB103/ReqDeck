@@ -25,6 +25,10 @@ import Base as Base
 Item {
     id: root
 
+    /*! Names the completers offer: the active variables, then response() templates of this run. */
+    readonly property var completionNames: Array.from(cppEnvironments.activeVariableNames)
+                                           .concat(Array.from(cppRequestEditor.responseTemplates))
+
     /*!
         Sends the open request from a shortcut.
         Taking the focus stores a name or timeout still being edited, and giving it
@@ -166,7 +170,7 @@ Item {
 
                     objectName: "urlCompleter"
                     target: urlField
-                    names: cppEnvironments.activeVariableNames
+                    names: root.completionNames
                     onCompleted: (text, cursorPosition) => {
                         cppRequestEditor.url = text
                         urlField.cursorPosition = cursorPosition
@@ -337,7 +341,7 @@ Item {
                             id: rawBodyCompleter
 
                             target: rawBodyArea
-                            names: cppEnvironments.activeVariableNames
+                            names: root.completionNames
                             // Only the changed part is replaced, so undo, layout, and
                             // the scroll position of a long body stay.
                             onCompleted: (text, cursorPosition) => {
@@ -517,7 +521,7 @@ Item {
                         id: passwordFieldCompleter
 
                         target: passwordField
-                        names: cppEnvironments.activeVariableNames
+                        names: root.completionNames
                         onCompleted: (text, cursorPosition) => {
                             cppRequestEditor.authPassword = text
                             passwordField.cursorPosition = cursorPosition
@@ -561,7 +565,7 @@ Item {
                         id: tokenFieldCompleter
 
                         target: tokenField
-                        names: cppEnvironments.activeVariableNames
+                        names: root.completionNames
                         onCompleted: (text, cursorPosition) => {
                             cppRequestEditor.authToken = text
                             tokenField.cursorPosition = cursorPosition
@@ -614,7 +618,7 @@ Item {
                         id: apiKeyValueCompleter
 
                         target: apiKeyValueField
-                        names: cppEnvironments.activeVariableNames
+                        names: root.completionNames
                         onCompleted: (text, cursorPosition) => {
                             cppRequestEditor.apiKeyValue = text
                             apiKeyValueField.cursorPosition = cursorPosition

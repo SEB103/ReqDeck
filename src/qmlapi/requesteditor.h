@@ -14,7 +14,9 @@
 #include "core/http/oauthclient.h"
 #include "core/http/requestbuilder.h"
 #include "core/http/requestspec.h"
+#include "core/http/responsecache.h"
 #include "core/http/responsedata.h"
+#include "core/http/variableresolver.h"
 
 class CollectionTreeModel;
 class HttpExecutor;
@@ -128,6 +130,9 @@ class RequestEditor : public QObject
 
     /** Size of the body file, or why it cannot be sent; empty while the path holds variables. */
     Q_PROPERTY(QString bodyFileInfo READ bodyFileInfo NOTIFY requestChanged)
+
+    /** response() templates for the completion, one per other request with a response in this run. */
+    Q_PROPERTY(QStringList responseTemplates READ responseTemplates NOTIFY responseTemplatesChanged)
 
 public:
     /** Creates an empty editor; \a manager, \a collection, and \a response must outlive it. */
@@ -284,6 +289,9 @@ public:
     /** Returns the variables the open request references that do not resolve, each once. */
     Q_INVOKABLE QStringList missingVariables() const;
 
+    /** Returns response() templates for the other requests with a response in this run, newest first. */
+    QStringList responseTemplates() const;
+
     /** Sends the open request with \a values added to the active variables for this send only. */
     Q_INVOKABLE void sendWithValues(const QVariantMap &values);
 
@@ -326,6 +334,9 @@ signals:
 
     /** Emitted after the response of \a request reached the view; \a request is as it was sent. */
     void requestFinished(const RequestSpec &request, const ResponseData &response);
+
+    /** Emitted when responseTemplates may have changed. */
+    void responseTemplatesChanged();
 
     /** Emitted after copyAsCurl() wrote to the clipboard. */
     void copiedToClipboard();
@@ -476,6 +487,12 @@ private:
 
     /** A token just fetched for the waiting send, used even when it expires soon. */
     std::optional<OAuthToken> m_freshToken;
+
+    /** Last response of each request in this run, for response() templates; never stored. */
+    ResponseCache m_responses;
+
+    /** Returns a resolver over \a rows whose response() templates read m_responses. */
+    VariableResolver resolverFor(const QList<KeyValue> &rows) const;
 
     /** Defaults requests are built with. */
     RequestBuilder::Options m_builderOptions;

@@ -3,6 +3,8 @@
 
 #include <QtTest>
 
+#include "core/http/responsecache.h"
+#include "core/http/responsedata.h"
 #include "core/http/variableresolver.h"
 
 /*!
@@ -58,6 +60,21 @@ private slots:
 
     /*! Verifies that contains() sees what fromKeyValues() kept. */
     void containsHonorsEnabledAndKey();
+
+    /*! Verifies that a response() template reads through the lookup, or stays unresolved by its canonical name. */
+    void responseTemplateUsesLookup();
+
+    /*! Verifies quotes and backslashes in template arguments and the canonical text. */
+    void responseTemplateEscapes();
+
+    /*! Verifies that a template without a response takes a value typed for its canonical name. */
+    void responseTemplateTakesTypedValue();
+
+    /*! Verifies the selectors of the response cache: JSONPath, header, and what gives nothing. */
+    void responseCacheSelectors();
+
+    /*! Verifies that the cache finds a request by id or name and never reads the excluded request. */
+    void responseCacheFindsRequests();
 };
 
 void VariableResolverTest::substitutesKnownNames()
@@ -161,6 +178,120 @@ void VariableResolverTest::containsHonorsEnabledAndKey()
 
     QVERIFY(resolver.contains(QStringLiteral("a")));
     QVERIFY(!resolver.contains(QStringLiteral("b")));
+}
+
+void VariableResolverTest::responseTemplateUsesLookup()
+{
+    VariableResolver resolver = makeResolver();
+    const QString text = QStringLiteral(R"(Bearer {{ response( "Login" , "$.token" ) }} at {{baseUrl}})");
+
+    QStringList unresolved;
+    QCOMPARE(resolver.resolve(text, &unresolved), QStringLiteral(R"(Bearer {{ response( "Login" , "$.token" ) }} at http://h)"));
+    QCOMPARE(unresolved, QStringList({QStringLiteral(R"(response("Login", "$.token"))")}));
+
+    QStringList seen;
+    resolver.setResponseLookup([&seen](const QString &request, const QString &selector) -> std::optional<QString> {
+        seen = {request, selector};
+        return QStringLiteral("t-1");
+    });
+    unresolved.clear();
+    QCOMPARE(resolver.resolve(text, &unresolved), QStringLiteral("Bearer t-1 at http://h"));
+    QVERIFY(unresolved.isEmpty());
+    QCOMPARE(seen, QStringList({QStringLiteral("Login"), QStringLiteral("$.token")}));
+
+    const QList<VariableReference> references = VariableResolver::references(text);
+    QCOMPARE(references.size(), 2);
+    QVERIFY(references.at(0).response);
+    QCOMPARE(references.at(0).start, 7);
+    QCOMPARE(references.at(0).name, QStringLiteral(R"(response("Login", "$.token"))"));
+    QVERIFY(!references.at(1).response);
+
+    // A variable called response is still a variable.
+    QCOMPARE(VariableResolver(QHash<QString, QString> {{QStringLiteral("response"), QStringLiteral("r")}})
+                 .resolve(QStringLiteral("{{response}}")),
+             QStringLiteral("r"));
+}
+
+void VariableResolverTest::responseTemplateEscapes()
+{
+    VariableResolver resolver;
+    QString request;
+    QString selector;
+    resolver.setResponseLookup([&](const QString &r, const QString &s) -> std::optional<QString> {
+        request = r;
+        selector = s;
+        return std::nullopt;
+    });
+    QStringList unresolved;
+    resolver.resolve(QStringLiteral(R"({{response("Say \"hi\"", "$['a\\b']")}})"), &unresolved);
+    QCOMPARE(request, QStringLiteral(R"(Say "hi")"));
+    QCOMPARE(selector, QStringLiteral(R"($['a\b'])"));
+    const QString canonical = QStringLiteral(R"(response("Say \"hi\"", "$['a\\b']"))");
+    QCOMPARE(unresolved, QStringList({canonical}));
+    QCOMPARE(VariableResolver::responseTemplate(request, selector), unresolved.first());
+    QVERIFY(VariableResolver::references(QStringLiteral(R"({{response("a")}})")).isEmpty());
+}
+
+void VariableResolverTest::responseTemplateTakesTypedValue()
+{
+    const QString name = VariableResolver::responseTemplate(QStringLiteral("Login"), QStringLiteral("$.token"));
+    VariableResolver resolver = VariableResolver::fromKeyValues({{name, QStringLiteral("typed"), true}});
+    resolver.setResponseLookup([](const QString &, const QString &) { return std::optional<QString>(); });
+    QCOMPARE(resolver.resolve(QStringLiteral(R"({{response("Login","$.token")}})")), QStringLiteral("typed"));
+}
+
+void VariableResolverTest::responseCacheSelectors()
+{
+    ResponseData response;
+    response.statusCode = 200;
+    response.headers = {{QByteArrayLiteral("x-token"), QByteArrayLiteral("h-1")}};
+    response.body = R"({"token":"t-1","n":2.5,"ok":true,"list":[1,2],"obj":{"a":null}})";
+    ResponseCache cache;
+    cache.store(QStringLiteral("login"), QStringLiteral("Login"), response);
+
+    const auto value = [&cache](const QString &selector) {
+        return cache.value(QStringLiteral("login"), selector, QString());
+    };
+    QCOMPARE(value(QStringLiteral("$.token")), std::optional<QString>(QStringLiteral("t-1")));
+    QCOMPARE(value(QStringLiteral("$.n")), std::optional<QString>(QStringLiteral("2.5")));
+    QCOMPARE(value(QStringLiteral("$.ok")), std::optional<QString>(QStringLiteral("true")));
+    QCOMPARE(value(QStringLiteral("$.list")), std::optional<QString>(QStringLiteral("[1,2]")));
+    QCOMPARE(value(QStringLiteral("$.obj")), std::optional<QString>(QStringLiteral(R"({"a":null})")));
+    QCOMPARE(value(QStringLiteral("$.list[*]")), std::optional<QString>(QStringLiteral("1")));
+    QCOMPARE(value(QStringLiteral("header:X-Token")), std::optional<QString>(QStringLiteral("h-1")));
+    QVERIFY(!value(QStringLiteral("header:Missing")));
+    QVERIFY(!value(QStringLiteral("$.missing")));
+    QVERIFY(!value(QStringLiteral("token")));
+
+    // A failed send keeps the earlier response.
+    ResponseData failed;
+    failed.error = ResponseError::Timeout;
+    cache.store(QStringLiteral("login"), QStringLiteral("Login"), failed);
+    QCOMPARE(value(QStringLiteral("$.token")), std::optional<QString>(QStringLiteral("t-1")));
+}
+
+void VariableResolverTest::responseCacheFindsRequests()
+{
+    ResponseData first;
+    first.statusCode = 200;
+    first.body = R"({"v":"old"})";
+    ResponseData second = first;
+    second.body = R"({"v":"new"})";
+    ResponseCache cache;
+    QVERIFY(cache.isEmpty());
+    cache.store(QStringLiteral("a"), QStringLiteral("Same"), first);
+    cache.store(QStringLiteral("b"), QStringLiteral("Same"), second);
+
+    QCOMPARE(cache.value(QStringLiteral("a"), QStringLiteral("$.v"), QString()), std::optional<QString>(QStringLiteral("old")));
+    QCOMPARE(cache.value(QStringLiteral("Same"), QStringLiteral("$.v"), QString()), std::optional<QString>(QStringLiteral("new")));
+    QVERIFY(!cache.value(QStringLiteral("b"), QStringLiteral("$.v"), QStringLiteral("b")));
+    QVERIFY(!cache.value(QStringLiteral("Other"), QStringLiteral("$.v"), QString()));
+    QCOMPARE(cache.requestNames(QString()), QStringList({QStringLiteral("Same")}));
+    QCOMPARE(cache.requestNames(QStringLiteral("b")), QStringList({QStringLiteral("Same")}));
+
+    cache.clear();
+    QVERIFY(cache.isEmpty());
+    QVERIFY(!cache.value(QStringLiteral("a"), QStringLiteral("$.v"), QString()));
 }
 
 QTEST_GUILESS_MAIN(VariableResolverTest)

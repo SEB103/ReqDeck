@@ -626,10 +626,10 @@
         },
         "completer": {
             "title": "Variable suggestions",
-            "what": "After you type {{, ReqDeck lists the variables of the active environment that start with what follows.",
+            "what": "After you type {{, ReqDeck lists the variables of the active environment that start with what follows, and response(...) templates of the requests you sent since ReqDeck started.",
             "why": "You do not have to remember or spell variable names.",
-            "example": "{{ba offers {{baseUrl}}.",
-            "next": "Arrow keys choose, Enter or Tab inserts, Escape closes the list.",
+            "example": "{{ba offers {{baseUrl}}; {{res offers {{response(\"Login\", \"$\")}} once Login was sent. Change $ to the path of the value, for example $.token, or use \"header:Location\" for a header.",
+            "next": "Arrow keys choose, Enter or Tab inserts, Escape closes the list. A response(...) template uses the last response of that request; responses are kept in memory only, until ReqDeck closes.",
             "chapter": "variables"
         },
         "history.search": {
@@ -955,6 +955,18 @@
                 {
                     "type": "tip",
                     "text": "Ctrl+F finds text in the answer. The save button beside the size writes the answer to a file, also a very large one, of which only the start is shown."
+                },
+                {
+                    "type": "p",
+                    "text": "A long JSON answer? Type a JSONPath in the field above it, for example $.items[*].id, and only those values are shown. Clear the field to see everything again."
+                },
+                {
+                    "type": "p",
+                    "text": "The Sent tab shows what really went to the server: the method, the address, the headers, and the size of the body, one block for each redirect. Passwords, tokens, and cookie values are hidden."
+                },
+                {
+                    "type": "tip",
+                    "text": "A request can use a value from the answer of another one. Write {{response(\"Login\", \"$.token\")}} where the value belongs, for example in a header, and send Login first. Answers are kept in memory until ReqDeck closes, never on disk."
                 }
             ]
         },
