@@ -725,7 +725,7 @@ void WorkspaceManager::setCookiesEnabled(bool enabled)
 void WorkspaceManager::saveCookies()
 {
     m_cookieSaveTimer.stop();
-    if (m_cookiesWorkspaceId.isEmpty())
+    if (m_cookiesWorkspaceId.isEmpty() || m_cookiesUnwritable)
         return;
     QString error;
     if (!m_cookies->save(cookiesFilePath(m_cookiesWorkspaceId), SecretCipher(), &error))
@@ -751,15 +751,15 @@ void WorkspaceManager::switchCookies(const QString &workspaceId)
         return;
     }
     QString error;
-    if (!m_cookies->load(cookiesFilePath(workspaceId), SecretCipher(), &error)) {
-        // Kept as "<file>.corrupt", so the next save cannot destroy it.
-        const bool kept = setAsideCorruptFile(cookiesFilePath(workspaceId));
-        notify(Diagnostics::Level::Warning, [error, kept]() {
-            return kept ? QCoreApplication::translate("WorkspaceManager", "%1 The file was kept with the suffix .corrupt.").arg(error)
-                        : error;
+    m_cookiesUnwritable = !m_cookies->load(cookiesFilePath(workspaceId), SecretCipher(), &error);
+    if (m_cookiesUnwritable) {
+        // Like secrets of another computer: the file stays as it is, and the
+        // cookies of this session live until the workspace closes.
+        notify(Diagnostics::Level::Warning, [error]() {
+            return QCoreApplication::translate("WorkspaceManager",
+                                               "%1 The file is left unchanged; new cookies are kept until the workspace closes.")
+                .arg(error);
         });
-        if (!kept)
-            return;
     }
     m_cookiesWorkspaceId = workspaceId;
 }

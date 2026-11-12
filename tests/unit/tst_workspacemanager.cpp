@@ -247,7 +247,7 @@ private slots:
     /*! Verifies that the cookie setting is stored in the workspace and survives a reopen. */
     void cookieSettingIsStored();
 
-    /*! Verifies that a cookies file that cannot be read is kept aside, not overwritten. */
+    /*! Verifies that a cookies file that cannot be read stays as it is, also after new cookies. */
     void unreadableCookiesFileIsKept();
 
 private:
@@ -1322,9 +1322,13 @@ void WorkspaceManagerTest::unreadableCookiesFileIsKept()
     file.close();
 
     QVERIFY(manager.openWorkspace(path));
+    manager.cookieStore()->storeFromResponse({"sid=new; Max-Age=3600"}, QUrl(QStringLiteral("https://a.test/")));
+    manager.saveCookies();
+    QCOMPARE(manager.cookieStore()->cookies().size(), 1);
     manager.closeWorkspace();
 
-    QCOMPARE(readFile(cookies + QStringLiteral(".corrupt")), QByteArray("{\"schema\": 99}"));
+    QCOMPARE(readFile(cookies), QByteArray("{\"schema\": 99}"));
+    QVERIFY(!QFile::exists(cookies + QStringLiteral(".corrupt")));
 }
 
 void WorkspaceManagerTest::backupBeforeSchemaChange()

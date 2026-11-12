@@ -319,6 +319,9 @@ protected:
     /** Id of the workspace whose cookies m_cookies holds; empty for none. */
     QString m_cookiesWorkspaceId;
 
+    /** Whether the cookies file of the workspace could not be read, so it is never written. */
+    bool m_cookiesUnwritable {false};
+
     /** Delays writing the cookies so a burst of responses writes once. */
     QTimer m_cookieSaveTimer;
 
