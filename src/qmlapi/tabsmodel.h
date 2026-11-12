@@ -1,0 +1,164 @@
+// SPDX-FileCopyrightText: Copyright (C) 2026 ReqDeck Project
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#ifndef TABSMODEL_H
+#define TABSMODEL_H
+
+#include <QAbstractListModel>
+#include <QList>
+#include <QSet>
+#include <QString>
+#include <QStringList>
+
+class CollectionTreeModel;
+
+/**
+ * The open request tabs of the active workspace.
+ *
+ * At most one tab is the preview tab: previewing another request replaces
+ * its request, and keeping it makes it a normal tab. Tabs of requests that
+ * leave the collection close by themselves.
+ */
+class TabsModel : public QAbstractListModel
+{
+    Q_OBJECT
+    Q_DISABLE_COPY_MOVE(TabsModel)
+
+    /** Row of the current tab, or -1 without tabs. */
+    Q_PROPERTY(int currentIndex READ currentIndex WRITE setCurrentIndex NOTIFY currentChanged)
+
+    /** Request id of the current tab, or an empty string. */
+    Q_PROPERTY(QString currentRequestId READ currentRequestId NOTIFY currentChanged)
+
+    /** Id of the current tab, or 0. */
+    Q_PROPERTY(int currentTabId READ currentTabId NOTIFY currentChanged)
+
+    /** Number of tabs. */
+    Q_PROPERTY(int count READ rowCount NOTIFY countChanged)
+
+public:
+    /** Data roles of a tab. */
+    enum Role {
+        TabIdRole = Qt::UserRole + 1, /**< Id of the tab, unique while the model lives. */
+        RequestIdRole,                /**< Id of the request shown. */
+        NameRole,                     /**< Name of the request. */
+        MethodRole,                   /**< HTTP method of the request, for example "GET". */
+        PreviewRole,                  /**< Whether the tab is the preview tab. */
+        BusyRole                      /**< Whether a send of the tab is running. */
+    };
+    Q_ENUM(Role)
+
+    /** Most tabs open at once. */
+    static constexpr int kMaxTabs = 30;
+
+    /** Creates an empty model of tabs for requests of \a collection, which is not owned. */
+    explicit TabsModel(CollectionTreeModel *collection, QObject *parent = nullptr);
+
+    /** Returns the number of tabs. */
+    int rowCount(const QModelIndex &parent = {}) const override;
+
+    /** Returns \a role of the tab at \a index. */
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+
+    /** Returns the QML names of the roles. */
+    QHash<int, QByteArray> roleNames() const override;
+
+    /** Returns the row of the current tab, or -1. */
+    int currentIndex() const;
+
+    /** Makes the tab at \a row current; an invalid row is ignored. */
+    void setCurrentIndex(int row);
+
+    /** Returns the request id of the current tab, or an empty string. */
+    QString currentRequestId() const;
+
+    /** Returns the id of the current tab, or 0. */
+    int currentTabId() const;
+
+    /** Shows \a requestId in the preview tab, or in its own tab when one is open. */
+    Q_INVOKABLE void preview(const QString &requestId);
+
+    /** Shows \a requestId in a tab that stays, opening one when needed. */
+    Q_INVOKABLE void open(const QString &requestId);
+
+    /** Keeps the preview tab, if it is current, as a normal tab. */
+    Q_INVOKABLE void keepCurrent();
+
+    /** Closes the tab at \a row. */
+    Q_INVOKABLE void close(int row);
+
+    /** Closes every tab but the one at \a row. */
+    Q_INVOKABLE void closeOthers(int row);
+
+    /** Moves the tab at \a from to \a to. */
+    Q_INVOKABLE void move(int from, int to);
+
+    /** Makes the next tab current, wrapping around; \a step -1 goes back. */
+    Q_INVOKABLE void cycle(int step);
+
+    /** Returns the row of the tab with id \a tabId, or -1. */
+    int rowOfTab(int tabId) const;
+
+    /** Marks the tab \a tabId as running a send or not. */
+    void setBusy(int tabId, bool busy);
+
+    /** Returns the request ids of the tabs, in order, for restoring them later. */
+    QStringList requestIds() const;
+
+    /** Returns the request id of the preview tab, or an empty string. */
+    QString previewRequestId() const;
+
+    /** Replaces the tabs with \a requestIds, \a preview as the preview tab, and \a current current; unknown ids are left out. */
+    void restore(const QStringList &requestIds, const QString &preview, const QString &current);
+
+    /** Closes every tab. */
+    void clear();
+
+signals:
+    /** Emitted when the current tab or its request changes. */
+    void currentChanged();
+
+    /** Emitted when the number of tabs changes. */
+    void countChanged();
+
+    /** Emitted when the tab \a tabId closes, so its response and send can go. */
+    void tabClosed(int tabId);
+
+private:
+    /** One open tab. */
+    struct Tab
+    {
+        int id {0};
+        QString requestId;
+        bool preview {false};
+    };
+
+    /** Inserts a tab for \a requestId after the current one and makes it current. */
+    void insertTab(const QString &requestId, bool preview);
+
+    /** Removes the tab at \a row without choosing a new current tab. */
+    void removeTab(int row);
+
+    /** Closes tabs of requests that left the collection and refreshes names. */
+    void followCollection();
+
+    /** Returns the row of the first tab of \a requestId, or -1. */
+    int rowOfRequest(const QString &requestId) const;
+
+    /** Collection of the requests; not owned. */
+    CollectionTreeModel *m_collection {nullptr};
+
+    /** Tabs in order. */
+    QList<Tab> m_tabs;
+
+    /** Ids of tabs with a running send. */
+    QSet<int> m_busy;
+
+    /** Row of the current tab, or -1. */
+    int m_current {-1};
+
+    /** Id the next tab gets. */
+    int m_nextId {1};
+};
+
+#endif // TABSMODEL_H

@@ -111,6 +111,8 @@ target_sources(ReqDeckQmlApi
         qmlapi/cookiemodel.h
         qmlapi/formpartmodel.cpp
         qmlapi/formpartmodel.h
+        qmlapi/tabsmodel.cpp
+        qmlapi/tabsmodel.h
         qmlapi/collectiontreemodel.h
         qmlapi/environmentmodel.cpp
         qmlapi/foldereditor.cpp

@@ -458,6 +458,18 @@ target_link_libraries(tst_formpartmodel
 
 add_test(NAME FormPartModel.Unit COMMAND tst_formpartmodel)
 
+qt_add_executable(tst_tabsmodel
+    unit/tst_tabsmodel.cpp
+)
+
+target_link_libraries(tst_tabsmodel
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Test
+)
+
+add_test(NAME TabsModel.Unit COMMAND tst_tabsmodel)
+
 qt_add_executable(tst_foldereditor
     unit/tst_foldereditor.cpp
 )
