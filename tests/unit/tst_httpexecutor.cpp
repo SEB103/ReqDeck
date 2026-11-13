@@ -276,6 +276,9 @@ private slots:
     /*! Verifies that an API key in the query and a URL password are masked in the hop. */
     void sentHopMasksQueryKeyAndPassword();
 
+    /*! Verifies that a file body does not follow a 307 to another server. */
+    void filesStayOnTheirServer();
+
 private:
     /*! Server shared by all test functions. */
     MockHttpServer m_server;
@@ -1330,6 +1333,36 @@ void HttpExecutorTest::sentHopMasksQueryKeyAndPassword()
     const auto tokenResponse = sendAndWait(executor, buildRequest(specFor(tokenUrl)));
     QVERIFY(tokenResponse);
     QVERIFY(!tokenResponse->sent.at(0).url.toString().contains(QLatin1StringView("ghp-secret")));
+}
+
+void HttpExecutorTest::filesStayOnTheirServer()
+{
+    MockHttpServer other;
+    QVERIFY(other.start());
+    QTemporaryDir dir;
+    QFile file(dir.filePath(QStringLiteral("up.txt")));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("secret file");
+    file.close();
+    const QString target = QString::fromLatin1(QUrl::toPercentEncoding(other.url(QStringLiteral("/echo")).toString()));
+
+    RequestSpec spec = specFor(m_server.url(QStringLiteral("/redirect307-to?url=") + target), HttpMethod::Post);
+    spec.body.mode = BodyMode::File;
+    spec.body.filePath = file.fileName();
+    HttpExecutor executor;
+    const auto response = sendAndWait(executor, buildRequest(spec));
+    QVERIFY(response);
+    QCOMPARE(response->statusCode, 307);
+    QVERIFY(response->filesNotRedirected);
+    QCOMPARE(other.requestCount(), 0);
+
+    // Without files the same redirect is followed.
+    spec.body.mode = BodyMode::Raw;
+    spec.body.raw = QStringLiteral("text");
+    const auto text = sendAndWait(executor, buildRequest(spec));
+    QVERIFY(text);
+    QCOMPARE(text->statusCode, 200);
+    QVERIFY(!text->filesNotRedirected);
 }
 
 void HttpExecutorTest::utf8HeaderValueArrives()

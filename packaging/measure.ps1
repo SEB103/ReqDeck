@@ -59,12 +59,13 @@ Copy-Item $AppDir $app -Recurse
 Copy-Item (Join-Path $PSScriptRoot 'portable.ini') (Join-Path $app 'portable.ini') -Force
 $exe = Join-Path $app 'ReqDeck.exe'
 
-function Measure-Start([string[]] $Arguments) {
-    # Returns the milliseconds until the main window exists and the private memory 5 s later.
+function Measure-Start([string[]] $Arguments, [string] $TitleContains = '') {
+    # Returns the milliseconds until the main window exists (and, with -TitleContains,
+    # shows the opened workspace in its title) and the private memory 5 s later.
     $watch = [System.Diagnostics.Stopwatch]::StartNew()
     $process = if ($Arguments) { Start-Process $exe -ArgumentList $Arguments -PassThru } else { Start-Process $exe -PassThru }
     try {
-        while ($process.MainWindowHandle -eq 0) {
+        while ($process.MainWindowHandle -eq 0 -or ($TitleContains -and $process.MainWindowTitle -notlike "*$TitleContains*")) {
             if ($watch.ElapsedMilliseconds -gt 30000) { throw 'The main window did not appear within 30 s.' }
             Start-Sleep -Milliseconds 10
             $process.Refresh()
@@ -94,15 +95,21 @@ try {
 
     # reqdeck_bench also writes the 3,000-request workspace that the application then opens.
     $workspace = Join-Path $work 'bench.reqdeck'
-    $env:PATH = (Join-Path $QtPrefix 'bin') + ';' + $env:PATH
-    $bench = & $BenchExe $workspace
-    if ($LASTEXITCODE -ne 0) { throw "reqdeck_bench failed with exit code $LASTEXITCODE" }
+    $savedPath = $env:PATH
+    try {
+        $env:PATH = (Join-Path $QtPrefix 'bin') + ';' + $env:PATH
+        $bench = & $BenchExe $workspace
+        if ($LASTEXITCODE -ne 0) { throw "reqdeck_bench failed with exit code $LASTEXITCODE" }
+    } finally {
+        $env:PATH = $savedPath
+    }
     $values = @{}
     foreach ($line in $bench) {
         if ($line -match '^BENCH (\S+) (\S+) (\S+)$') { $values[$Matches[1]] = "$($Matches[2]) $($Matches[3])" }
     }
     $rows.Add("| Workspace of 3,000 requests: save / load | $($values['workspace3000.save']) / $($values['workspace3000.load']) |")
-    $opened = Measure-Start @("`"$workspace`"")
+    # The window appears before the workspace opens; its title names the workspace once it is loaded.
+    $opened = Measure-Start @("`"$workspace`"") 'Benchmark'
     $rows.Add("| Start with the 3,000-request workspace | $($opened.StartMs) ms, $($opened.PrivateMB) MB |")
     $rows.Add("| 20 MB JSON response: show / JSONPath filter `$[*].id | $($values['json20mb.show']) / $($values['json20mb.filter']) |")
     $rows.Add("| 0.9 MB JSON response: pretty-print | $($values['json1mb.pretty']) |")

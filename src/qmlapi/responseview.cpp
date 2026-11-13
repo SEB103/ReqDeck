@@ -495,6 +495,9 @@ void ResponseView::setResponse(const ResponseData &response, const QStringList &
     }
     if (response.storedCookiesSkipped)
         warnings.append(tr("Stored cookies were not sent: the request has a Cookie header of its own."));
+    if (response.filesNotRedirected)
+        warnings.append(tr("The redirect to another server was not followed: it would send your files there. "
+                           "Send the request to that address yourself if you want them there."));
     if (!unresolvedVariables.isEmpty())
         warnings.append(unresolvedWarning(unresolvedVariables));
     m_warningText = warnings.join(u'\n');

@@ -724,7 +724,13 @@ void HttpExecutor::handleFinished()
         const bool followable = location.isValid() && !location.isEmpty() && target.isValid()
                                 && (scheme == QLatin1StringView("http") || scheme == QLatin1StringView("https"))
                                 && !downgrade;
-        if (followable) {
+        // 307 and 308 send the body again; files were confirmed for this server only.
+        const bool keepsBody = response.statusCode == 307 || response.statusCode == 308;
+        const bool hasFiles = std::any_of(m_current.segments.cbegin(), m_current.segments.cend(),
+                                          [](const BodySegment &segment) { return !segment.filePath.isEmpty(); });
+        if (followable && keepsBody && hasFiles && !isSameOrigin(reply->url(), target)) {
+            response.filesNotRedirected = true;
+        } else if (followable) {
             if (m_redirectCount >= kMaxRedirects) {
                 response.error = ResponseError::Network;
                 response.errorString = QStringLiteral("Too many redirects.");

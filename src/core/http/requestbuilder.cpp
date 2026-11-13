@@ -122,9 +122,14 @@ QString absoluteFile(const QString &path, const QString &baseDirectory)
  */
 QString unreadableFile(const QString &path)
 {
-    const QFileInfo info(path);
     if (path.trimmed().isEmpty())
         return QStringLiteral("No file is chosen for the body.");
+    // Looking at a file on a share would contact that computer, with the
+    // user's Windows credentials, before the upload was confirmed; the send
+    // opens it and reports a failure then.
+    if (RequestBuilder::isNetworkPath(path))
+        return {};
+    const QFileInfo info(path);
     if (!info.isFile())
         return QStringLiteral("The file to send was not found: %1").arg(path);
     if (!info.isReadable())
@@ -152,6 +157,19 @@ BuiltRequest failure(BuiltRequest built, const QString &message)
     return built;
 }
 } // namespace
+
+/*!
+ * \brief Returns whether \a path names a file on another computer.
+ *
+ * A UNC path such as \\\\server\\share\\file, in either separator, is
+ * reached over the network; ReqDeck does not look at it before the user
+ * confirmed its upload.
+ * \param path A file path.
+ */
+bool RequestBuilder::isNetworkPath(const QString &path)
+{
+    return QDir::fromNativeSeparators(path.trimmed()).startsWith(QLatin1StringView("//"));
+}
 
 /*!
  * \brief Builds a network request from \a spec.
@@ -314,7 +332,7 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
             if (const QString error = unreadableFile(path); !error.isEmpty())
                 return failure(std::move(built), error);
             built.segments.append({{}, QFileInfo(path).absoluteFilePath()});
-            contentType = contentTypeForFile(path);
+            contentType = contentTypeForFile(QFileInfo(path).fileName());
         } else {
             // RFC 7578: each part names its field, files their file name too.
             const QByteArray boundary = "----ReqDeck" + QUuid::createUuid().toByteArray(QUuid::Id128);
@@ -334,7 +352,7 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
                         return failure(std::move(built), QStringLiteral("%1 (form field %2)").arg(error, key));
                     pending += "; filename=\"" + dispositionValue(QFileInfo(path).fileName()) + '"';
                     if (partType.isEmpty())
-                        partType = QString::fromLatin1(contentTypeForFile(path));
+                        partType = QString::fromLatin1(contentTypeForFile(QFileInfo(path).fileName()));
                     pending += "\r\nContent-Type: " + partType.toUtf8() + "\r\n\r\n";
                     built.segments.append({std::exchange(pending, {}), {}});
                     built.segments.append({{}, QFileInfo(path).absoluteFilePath()});

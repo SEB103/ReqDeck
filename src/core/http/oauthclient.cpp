@@ -396,8 +396,8 @@ void OAuthClient::readToken()
     if (!error.isEmpty())
         finish(failure(tr("The authorization server refused the token: %1").arg(description.isEmpty() ? error : description)
                        + statusText));
-    else if (status == 0 && reply->error() != QNetworkReply::NoError)
-        finish(failure(tr("The token could not be fetched: %1").arg(reply->errorString())));
+    else if (reply->error() != QNetworkReply::NoError && (status == 0 || object.isEmpty()))
+        finish(failure(tr("The token could not be fetched: %1").arg(reply->errorString()) + statusText));
     else
         finish(failure(tr("The authorization server answered without a token.") + statusText));
 }

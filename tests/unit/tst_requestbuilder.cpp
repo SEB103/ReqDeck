@@ -596,6 +596,16 @@ void RequestBuilderTest::relativeFilesUseBaseDirectory()
     QVERIFY2(built.ok, qPrintable(built.errorString));
     QCOMPARE(QFileInfo(built.segments.at(1).filePath), QFileInfo(file.fileName()));
 
+    // A file on a share is not looked at before the send, so the build does not fail on it.
+    spec.body.mode = BodyMode::File;
+    spec.body.filePath = QStringLiteral("\\\\host.invalid\\share\\up.txt");
+    QVERIFY(RequestBuilder::isNetworkPath(spec.body.filePath));
+    QVERIFY(RequestBuilder::isNetworkPath(QStringLiteral("//host.invalid/share/up.txt")));
+    QVERIFY(!RequestBuilder::isNetworkPath(file.fileName()));
+    built = RequestBuilder::build(spec, {}, options);
+    QVERIFY2(built.ok, qPrintable(built.errorString));
+    spec.body.mode = BodyMode::FormData;
+
     // Form data without a field sends no body and no multipart type.
     spec.body.parts.clear();
     built = RequestBuilder::build(spec, {}, options);

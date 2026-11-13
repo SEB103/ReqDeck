@@ -1030,11 +1030,21 @@ void RequestEditorTest::filesNeedConfirmation()
     QVERIFY2(m_response->errorText().contains(tr("Confirm the upload").left(18)), qPrintable(m_response->errorText()));
     QCOMPARE(m_server.requestCount(), before);
 
+    QCOMPARE(m_editor->uploadServer(), m_server.url(QString()).authority());
     m_editor->confirmFiles(files);
     QVERIFY(m_editor->unconfirmedFiles().isEmpty());
     m_editor->send();
     QVERIFY(waitForResponse(*m_response));
     QVERIFY2(m_response->bodyText().contains(QStringLiteral("12345")), qPrintable(m_response->bodyText()));
+
+    // A confirmation is for one server: another one asks again.
+    MockHttpServer other;
+    QVERIFY(other.start());
+    const QString url = m_editor->property("url").toString();
+    m_editor->setProperty("url", other.url(QStringLiteral("/echo")).toString());
+    QCOMPARE(m_editor->unconfirmedFiles().size(), 1);
+    m_editor->setProperty("url", url);
+    QVERIFY(m_editor->unconfirmedFiles().isEmpty());
 
     // Another workspace asks again.
     openTwoRequests(*m_manager, *m_dir, m_server, QStringLiteral("/echo"), QStringLiteral("/echo"));

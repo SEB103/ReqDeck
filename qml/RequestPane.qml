@@ -39,7 +39,7 @@ Item {
         root.forceActiveFocus(Qt.ShortcutFocusReason)
         root.trySend()
         // An open dialog asking for values keeps the focus.
-        if (focused && !missingValuesDialog.visible)
+        if (focused && !missingValuesDialog.visible && !confirmFilesDialog.visible)
             focused.forceActiveFocus(Qt.ShortcutFocusReason)
     }
 
@@ -794,10 +794,14 @@ Item {
         /*! One-time values of the send that waits. */
         property var values: ({})
 
+        /*! Server the files go to. */
+        property string server: ""
+
         /*! Asks about \a list of files for the send with \a sendValues. */
         function ask(list, sendValues) {
             confirmFilesDialog.files = list
             confirmFilesDialog.values = sendValues
+            confirmFilesDialog.server = cppRequestEditor.uploadServer(sendValues)
             confirmFilesDialog.open()
         }
 
@@ -810,7 +814,7 @@ Item {
         standardButtons: Dialog.Ok | Dialog.Cancel
 
         onAccepted: {
-            cppRequestEditor.confirmFiles(confirmFilesDialog.files)
+            cppRequestEditor.confirmFiles(confirmFilesDialog.files, confirmFilesDialog.values)
             root.sendWithFiles(confirmFilesDialog.values)
         }
 
@@ -821,7 +825,8 @@ Item {
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
-                text: qsTr("This request sends these files from your computer to the server. Send them?")
+                textFormat: Text.PlainText
+                text: qsTr("This request sends these files from your computer to %1. Send them?").arg(confirmFilesDialog.server)
             }
 
             Label {

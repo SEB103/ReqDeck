@@ -346,6 +346,13 @@ void MockHttpServer::route(QTcpSocket *socket, const Request &request)
         return;
     }
 
+    if (path == "/redirect307-to") {
+        // As /redirect-to, with 307 so that method and body are kept.
+        const QByteArray target = QByteArray::fromPercentEncoding(request.query.mid(4));
+        writeResponse(socket, 307, {{"Location", target}}, {}, head);
+        return;
+    }
+
     if (path == "/redirect-to") {
         // The target is passed percent-encoded as "url=<absolute URL>".
         const QByteArray target = QByteArray::fromPercentEncoding(request.query.mid(4));

@@ -302,8 +302,11 @@ public:
     /** Returns the files the open request would upload with \a values that were not confirmed yet. */
     Q_INVOKABLE QStringList unconfirmedFiles(const QVariantMap &values = {}) const;
 
-    /** Allows the files at \a paths to be uploaded until another workspace opens. */
-    Q_INVOKABLE void confirmFiles(const QStringList &paths);
+    /** Allows the files at \a paths to go to the server of the open request with \a values until another workspace opens. */
+    Q_INVOKABLE void confirmFiles(const QStringList &paths, const QVariantMap &values = {});
+
+    /** Returns the server the open request with \a values would upload its files to. */
+    Q_INVOKABLE QString uploadServer(const QVariantMap &values = {}) const;
 
     /**
      * Sends the open request again without checking the certificate of the host
@@ -520,6 +523,12 @@ private:
 
     /** Returns the comparison key of the file at \a path. */
     static QString fileKey(const QString &path);
+
+    /** Returns the server of \a url as scheme, host, and port. */
+    static QString originOf(const QUrl &url);
+
+    /** Builds the open request with the one-time \a values. */
+    BuiltRequest buildWithValues(const QVariantMap &values) const;
 
     /** Returns a resolver over \a rows whose response() templates read m_responses. */
     VariableResolver resolverFor(const QList<KeyValue> &rows) const;

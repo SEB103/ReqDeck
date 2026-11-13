@@ -102,6 +102,8 @@ struct ResponseData
 {
     /** Whether stored cookies for the request were left out because it had a Cookie header of its own. */
     bool storedCookiesSkipped {false};
+    /** Whether a redirect to another server was not followed because it would send the files again. */
+    bool filesNotRedirected {false};
     /** HTTP status code; 0 when no response was received. */
     int statusCode {0};
     /** HTTP reason phrase, for example "Not Found". */

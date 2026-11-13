@@ -64,6 +64,9 @@ public:
      * or an invalid header name or value; unresolved variables elsewhere are
      * only reported.
      */
+    /** Returns whether \a path names a file on another computer, such as \\\\server\\share\\file. */
+    static bool isNetworkPath(const QString &path);
+
     static BuiltRequest build(const RequestSpec &spec, const VariableResolver &variables,
                               const Options &options);
 };

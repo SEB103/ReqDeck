@@ -36,10 +36,13 @@ and explains every part of itself: point at anything and press F1.
   put it. Before a new version changes the file format, ReqDeck keeps a copy of
   the old file, and File > Restore Previous Copy brings it back.
 - **No telemetry.** ReqDeck connects only to the servers your requests and
-  logins name, and to GitHub when you check for updates. The automatic update
-  check is off until you turn it on.
-- **It installs only itself:** its folder, Start menu entries, and an optional
-  desktop shortcut. It changes no settings of other programs.
+  logins name, and to GitHub when you check for updates: the GitHub API for the
+  latest release, and the update repository on GitHub Pages when the installer
+  or the Maintenance Tool installs an update. The automatic update check is off
+  until you turn it on.
+- **It installs only itself:** its folder, Start menu entries, an optional
+  desktop shortcut, and the entry in Windows' list of installed apps that lets
+  you remove it. It changes no settings of other programs.
 - **No ads,** no banners, no panels you cannot close.
 - **It shows what it really sent:** the Sent tab lists method, URL, headers, and
   body size of every hop. Passwords, tokens, cookie values, and API keys are
@@ -62,8 +65,10 @@ and explains every part of itself: point at anything and press F1.
   of its own, such as `Host` and `Accept-Encoding`, which are not listed.
 - **response() values** come from answers received since ReqDeck started; they
   are never written to disk. After a restart, send the request again.
-- **Files:** before a request uploads a file it has not uploaded before, ReqDeck
-  shows the path and asks. A relative path means a file next to the workspace.
+- **Files:** before a request uploads a file to a server it has not sent that
+  file to, ReqDeck shows the path and the server and asks. A redirect to another
+  server does not take the files along. A relative path means a file next to the
+  workspace.
 - **Windows 10 and 11, 64-bit only.** The user interface is in English; F1 help
   and the guide are in English and Russian.
 - **No scripts, plugins, cloud sync, or mock servers.** ReqDeck runs no code from

@@ -642,10 +642,10 @@
         },
         "dialog.confirmFiles": {
             "title": "Upload files?",
-            "what": "Before a request sends a file from your computer for the first time, ReqDeck shows its path and asks.",
+            "what": "Before a request sends a file from your computer to a server for the first time, ReqDeck shows the path and the server and asks.",
             "why": "A workspace or an imported collection can name any file, for example a private key; nothing leaves without your yes.",
             "example": "An imported request with a file field C:\\Users\\you\\.ssh\\id_rsa asks before it sends that file.",
-            "next": "Files you choose yourself with Browse… or Add File… count as confirmed. The answer lasts until another workspace opens. A relative path means a file next to the workspace file.",
+            "next": "Files you choose yourself with Browse… or Add File… count as confirmed. The answer lasts until another workspace opens. A relative path means a file next to the workspace file. A redirect to another server does not take the files along.",
             "chapter": "logins"
         },
         "dialog.missingValues": {

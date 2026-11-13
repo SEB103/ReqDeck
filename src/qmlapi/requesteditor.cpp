@@ -125,9 +125,10 @@ QString RequestEditor::fileKey(const QString &path)
  */
 QStringList RequestEditor::unconfirmedFilesOf(const BuiltRequest &built) const
 {
+    const QString origin = originOf(built.request.url());
     QStringList files;
     for (const BodySegment &segment : built.segments) {
-        if (!segment.filePath.isEmpty() && !m_confirmedFiles.contains(fileKey(segment.filePath))
+        if (!segment.filePath.isEmpty() && !m_confirmedFiles.contains(origin + u'\n' + fileKey(segment.filePath))
             && !files.contains(segment.filePath))
             files.append(segment.filePath);
     }
@@ -135,11 +136,51 @@ QStringList RequestEditor::unconfirmedFilesOf(const BuiltRequest &built) const
 }
 
 /*!
+ * \internal
+ * \brief Returns scheme, host, and port of \a url in lower case: the server a confirmation is for.
+ */
+QString RequestEditor::originOf(const QUrl &url)
+{
+    const bool https = url.scheme().compare(QLatin1StringView("https"), Qt::CaseInsensitive) == 0;
+    return QStringLiteral("%1://%2:%3").arg(url.scheme().toLower(), url.host().toLower()).arg(url.port(https ? 443 : 80));
+}
+
+/*!
+ * \internal
+ * \brief Builds the open request with the one-time \a values, as a send would.
+ */
+BuiltRequest RequestEditor::buildWithValues(const QVariantMap &values) const
+{
+    QList<KeyValue> extra;
+    for (auto it = values.cbegin(); it != values.cend(); ++it)
+        extra.append({it.key(), it.value().toString(), true});
+    QList<KeyValue> rows;
+    const RequestSpec request = effectiveRequest(rows);
+    return RequestBuilder::build(request, resolverFor(rows + extra), builderOptions());
+}
+
+/*!
+ * \brief Returns the server the open request with \a values would send its files to.
+ * \param values One-time values for variables the request lacks.
+ * \return The host and, when it is not the default, the port; empty without a request.
+ */
+QString RequestEditor::uploadServer(const QVariantMap &values) const
+{
+    if (!hasRequest())
+        return {};
+    const QUrl url = buildWithValues(values).request.url();
+    const bool https = url.scheme().compare(QLatin1StringView("https"), Qt::CaseInsensitive) == 0;
+    const int port = url.port(https ? 443 : 80);
+    return port == (https ? 443 : 80) ? url.host() : QStringLiteral("%1:%2").arg(url.host()).arg(port);
+}
+
+/*!
  * \brief Returns the files the open request would upload that were not confirmed yet.
  *
  * A workspace or an imported collection can name any file on this computer;
- * the user sees each one before its first upload. Files chosen with a file
- * dialog count as confirmed. The confirmation lasts until another workspace
+ * the user sees each one, and the server it goes to, before its first upload
+ * there. Files chosen with a file dialog count as confirmed for the server of
+ * the request at that moment. The confirmation lasts until another workspace
  * opens.
  * \param values One-time values for variables the request lacks, as for sendWithValues().
  * \return The absolute paths, or nothing when the request cannot be built yet.
@@ -148,23 +189,22 @@ QStringList RequestEditor::unconfirmedFiles(const QVariantMap &values) const
 {
     if (!hasRequest())
         return {};
-    QList<KeyValue> extra;
-    for (auto it = values.cbegin(); it != values.cend(); ++it)
-        extra.append({it.key(), it.value().toString(), true});
-    QList<KeyValue> rows;
-    const RequestSpec request = effectiveRequest(rows);
-    return unconfirmedFilesOf(RequestBuilder::build(request, resolverFor(rows + extra), builderOptions()));
+    return unconfirmedFilesOf(buildWithValues(values));
 }
 
 /*!
- * \brief Allows the files at \a paths to be uploaded until another workspace opens.
+ * \brief Allows the files at \a paths to go to the server of the open request until another workspace opens.
  * \param paths Absolute paths, or file URLs as a file dialog gives them.
+ * \param values One-time values of the send, so the server is the one the send uses.
  */
-void RequestEditor::confirmFiles(const QStringList &paths)
+void RequestEditor::confirmFiles(const QStringList &paths, const QVariantMap &values)
 {
+    if (!hasRequest())
+        return;
+    const QString origin = originOf(buildWithValues(values).request.url());
     for (const QString &path : paths) {
         const QUrl url(path);
-        m_confirmedFiles.insert(fileKey(url.isLocalFile() ? url.toLocalFile() : path));
+        m_confirmedFiles.insert(origin + u'\n' + fileKey(url.isLocalFile() ? url.toLocalFile() : path));
     }
 }
 
@@ -293,6 +333,8 @@ QString RequestEditor::bodyFileInfo() const
         return tr("No file chosen.");
     if (path.contains(QLatin1StringView("{{")))
         return QString();
+    if (RequestBuilder::isNetworkPath(path))
+        return tr("A file on another computer; it is read only after you confirm its upload.");
     const QString base = builderOptions().baseDirectory;
     const QFileInfo info(QDir::isRelativePath(path) && !base.isEmpty() ? QDir(base).filePath(path) : path);
     if (!info.isFile())
@@ -968,7 +1010,9 @@ QString RequestEditor::oauthWarning() const
     if (!oauth.active)
         return {};
     const auto plain = [](const QString &text) {
-        const QUrl url(text.trimmed());
+        // Without a scheme the builder sends http, so the warning counts it as such.
+        const QString trimmed = text.trimmed();
+        const QUrl url(trimmed.contains(QLatin1StringView("://")) ? trimmed : QStringLiteral("http://") + trimmed);
         return url.scheme().compare(QLatin1StringView("http"), Qt::CaseInsensitive) == 0
                && !HttpExecutor::isThisComputer(url.host());
     };
