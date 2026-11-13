@@ -18,6 +18,8 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-13
+
 ### Added
 - Repository base: license texts, notices, REUSE metadata, and security policy.
 - CMake build skeleton driven by `packaging/product.json` (product metadata header,
