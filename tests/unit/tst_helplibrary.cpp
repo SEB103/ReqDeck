@@ -45,6 +45,9 @@ private slots:
     /*! Verifies the choice of language. */
     void languageForRussianAndOthers();
 
+    /*! Verifies that the display language of Windows decides, not the regional format. */
+    void languageFollowsDisplayLanguage();
+
     /*! Verifies that both shipped languages explain the same things. */
     void languagesHaveTheSameTopics();
 
@@ -128,6 +131,18 @@ void HelpLibraryTest::languageForRussianAndOthers()
     QCOMPARE(HelpLibrary::languageFor(QLocale(QLocale::Russian, QLocale::Kazakhstan)), QStringLiteral("ru"));
     QCOMPARE(HelpLibrary::languageFor(QLocale(QLocale::German, QLocale::Germany)), QStringLiteral("en"));
     QCOMPARE(HelpLibrary::languageFor(QLocale(QLocale::English, QLocale::UnitedStates)), QStringLiteral("en"));
+}
+
+void HelpLibraryTest::languageFollowsDisplayLanguage()
+{
+    QCOMPARE(HelpLibrary::languageForUiLanguages({QStringLiteral("ru-RU"), QStringLiteral("en-US")}),
+             QStringLiteral("ru"));
+    QCOMPARE(HelpLibrary::languageForUiLanguages({QStringLiteral("ru")}), QStringLiteral("ru"));
+    QCOMPARE(HelpLibrary::languageForUiLanguages({QStringLiteral("en-US"), QStringLiteral("ru-RU")}),
+             QStringLiteral("en"));
+    QCOMPARE(HelpLibrary::languageForUiLanguages({QStringLiteral("de-DE"), QStringLiteral("ru-RU")}),
+             QStringLiteral("en"));
+    QCOMPARE(HelpLibrary::languageForUiLanguages({}), QStringLiteral("en"));
 }
 
 void HelpLibraryTest::languagesHaveTheSameTopics()

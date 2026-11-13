@@ -173,10 +173,28 @@ void HelpLibrary::setGuideDirectory(const QString &directory)
 
 /*!
  * \brief Returns the help language for \a locale.
+ *
+ * For the system locale, QLocale::uiLanguages() lists the display languages
+ * chosen in Windows, while QLocale::language() follows the regional format. The
+ * help follows the display language, so a Russian format on an English Windows
+ * keeps the help in English.
  * \param locale Usually the system locale.
- * \return "ru" for Russian, else "en".
+ * \return "ru" when the first UI language of \a locale is Russian, else "en".
  */
 QString HelpLibrary::languageFor(const QLocale &locale)
 {
-    return locale.language() == QLocale::Russian ? QStringLiteral("ru") : QStringLiteral("en");
+    return languageForUiLanguages(locale.uiLanguages());
+}
+
+/*!
+ * \brief Returns the help language for the preferred UI languages \a uiLanguages.
+ * \param uiLanguages Language tags in order of preference, such as "ru-RU".
+ * \return "ru" when the first of them is Russian, else "en", also for an empty list.
+ */
+QString HelpLibrary::languageForUiLanguages(const QStringList &uiLanguages)
+{
+    if (uiLanguages.isEmpty())
+        return QStringLiteral("en");
+    return QLocale(uiLanguages.constFirst()).language() == QLocale::Russian ? QStringLiteral("ru")
+                                                                            : QStringLiteral("en");
 }

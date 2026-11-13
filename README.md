@@ -72,7 +72,8 @@ and explains every part of itself: point at anything and press F1.
   server does not take the files along. A relative path means a file next to the
   workspace.
 - **Windows 10 and 11, 64-bit only.** The user interface is in English; F1 help
-  and the guide are in English and Russian.
+  and the guide are in English, and in Russian when Windows is set to display
+  Russian.
 - **No scripts, plugins, cloud sync, or mock servers.** ReqDeck runs no code from
   workspaces or imports.
 - The installer is not code-signed yet, so Windows SmartScreen may warn before

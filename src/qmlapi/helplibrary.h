@@ -64,8 +64,11 @@ public:
     /** Looks for the guide in \a directory; empty means the help folder next to the executable. */
     void setGuideDirectory(const QString &directory);
 
-    /** Returns "ru" for a Russian \a locale and "en" for any other. */
+    /** Returns "ru" when the first UI language of \a locale is Russian, else "en". */
     static QString languageFor(const QLocale &locale);
+
+    /** Returns "ru" when the first of \a uiLanguages is Russian, else "en". */
+    static QString languageForUiLanguages(const QStringList &uiLanguages);
 
 private:
     /** Language of the topics. */

@@ -18,6 +18,10 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 
 ## [Unreleased]
 
+### Fixed
+- F1 help and the beginner guide are in Russian when the display language of
+  Windows is Russian; the regional format no longer decides it.
+
 ## [1.0.0] - 2026-11-13
 
 ### Added
