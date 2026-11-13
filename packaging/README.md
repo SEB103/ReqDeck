@@ -289,3 +289,38 @@ online when the Releases API starts reporting the new version.
 - **Settings → Actions → General**: Actions must be allowed to run; the workflows
   declare minimal per-job permissions, so the default read-only token setting is
   sufficient.
+
+---
+
+## 12. Measurements
+
+`packaging/measure.ps1` measures a deployment the way a user meets it. It copies
+the deployment into a temporary folder, adds `portable.ini` so that all data stays
+there, and starts it: cold start is the time until the main window exists, the
+best of five starts after one warm-up start; idle memory is the private memory
+five seconds later. `reqdeck_bench` from the Release build measures the rest
+without a window: saving and loading a workspace of 3,000 requests, showing and
+filtering a 20 MB JSON response, pretty-printing a response near the 1 MB display
+limit (larger bodies are shown unformatted by design), and 100 requests to a
+local server. The script removes its temporary folder and uploads nothing.
+
+```powershell
+powershell -NoProfile -File packaging/measure.ps1 -AppDir release/ReqDeck-1.0.0
+```
+
+Release 1.0.0, measured 2026-11-13 on an Intel Core i5-10600 (3.3 GHz), 32 GB RAM,
+Windows 11 Pro, from `release/ReqDeck-1.0.0`:
+
+| Measurement | Value |
+|---|---|
+| Cold start to main window (best of 5) | 944 ms |
+| Private memory, idle after start | 155.9 MB |
+| Workspace of 3,000 requests: save / load | 50 ms / 26 ms |
+| Start with the 3,000-request workspace open | 924 ms, 167.3 MB |
+| 20 MB JSON response: show / JSONPath filter `$[*].id` | 14 ms / 610 ms |
+| 0.9 MB JSON response: pretty-print | 36 ms |
+| 100 requests to a local server | 118 ms, memory growth −1.4 MB |
+
+Sizes of the same release: installer 90.8 MB, portable ZIP 72.0 MB. No other
+client was measured on this machine yet; a comparison needs Bruno and Yaak
+installed and run with the same steps.

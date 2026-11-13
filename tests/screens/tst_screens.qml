@@ -1359,8 +1359,13 @@ Item {
             waitForRendering(host);
             const table = findChild(host.request, "headersTable");
             const rows = findChild(table, "rows");
-            const row = rows.itemAtIndex(rows.count - 1);
-            const value = findChild(row, "valueField");
+            // A slow machine creates the new row's delegate after the first frame.
+            let value = null;
+            tryVerify(() => {
+                const row = rows.itemAtIndex(rows.count - 1);
+                value = row ? findChild(row, "valueField") : null;
+                return value !== null;
+            });
             value.forceActiveFocus();
             verify(value.activeFocus);
             keyClick(Qt.Key_Y);

@@ -53,7 +53,9 @@ and explains every part of itself: point at anything and press F1.
   authorization field into a secret variable, because typed values are saved in
   the file.
 - **Numbers only with their method.** Speed and memory figures are measured with
-  `packaging/measure.ps1`, and published with the machine and the date.
+  `packaging/measure.ps1` and published with the machine and the date: see
+  "Measurements" in `packaging/README.md`. On a desktop with an Intel Core
+  i5-10600, 1.0.0 starts in under a second and uses about 156 MB idle.
 
 ## Good to know
 
