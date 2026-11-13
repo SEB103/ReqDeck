@@ -132,11 +132,14 @@ user profile does not.
 `ReqDeck.exe`. All data stays next to it (`config/`, `data/`, `logs/`), so the
 folder can be moved freely.
 
-**Updates:** the in-app update check is disabled until the first public release
-(`update.enabled` is `false` in `product.json`). Once enabled, an installed copy
-offers **Install update** (starts the Maintenance Tool with `--start-updater` and
-quits) and a portable copy offers **Open download page**. The update flow has not
-been exercised end to end for ReqDeck yet.
+**Updates:** the in-app update check is enabled since 1.0.0 (`update.enabled` is
+`true` in `product.json`). **Help → Check for Updates** asks the GitHub Releases API
+for the latest release; the automatic check at start is off until the user turns it
+on in Settings. When a newer version exists, an installed copy offers **Install
+update** (starts the Maintenance Tool with `--start-updater` and quits), which
+installs it from the update repository on GitHub Pages; a portable copy offers
+**Open download page**. An update from one published release to the next has not
+been exercised yet, because 1.0.0 is the first release.
 
 ---
 
