@@ -115,7 +115,7 @@ Windows SmartScreen may warn after download (*More info → Run anyway*).
 **Silent install (command line):**
 
 ```bat
-ReqDeck-0.0.1-Setup.exe install --root "C:\Program Files\ReqDeck" --accept-licenses --default-answer --confirm-command
+ReqDeck-1.0.0-Setup.exe install --root "C:\Program Files\ReqDeck" --accept-licenses --default-answer --confirm-command
 ```
 
 Installing into `Program Files` needs administrator rights; a folder inside the

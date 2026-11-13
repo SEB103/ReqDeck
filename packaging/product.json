@@ -5,7 +5,7 @@
   "identifier": "ReqDeck",
   "orgDomain": "reqdeck.local",
 
-  "version": "0.0.1",
+  "version": "1.0.0",
 
   "publisher": "ReqDeck Project",
   "copyright": "Copyright (C) 2026 ReqDeck Project",
@@ -18,7 +18,7 @@
   "artifactBase": "ReqDeck",
 
   "update": {
-    "enabled": false,
+    "enabled": true,
     "releasesApiUrl": "https://api.github.com/repos/SEB103/ReqDeck/releases/latest",
     "releasesPageUrl": "https://github.com/SEB103/ReqDeck/releases",
     "defaultChannel": "stable",
