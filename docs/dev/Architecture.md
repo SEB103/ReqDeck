@@ -126,10 +126,15 @@ Details: [Workspaces and Data](Workspaces-and-Data).
   accent.
 - A three-pane layout: workspace (collection and history), request, and response, with
   tabs above the request.
-- F1 help comes from `resources/help/help.en.json` and `help.ru.json`. `HelpLocator`
-  finds the topic of the control under the pointer or in focus.
-- The interface text is in English and prepared for translation with Qt Linguist
-  (`translations/`). The help and the guide are in English and Russian.
+- F1 help comes from `resources/help/help.en.json` and `help.de.json`. `HelpLocator`
+  finds the topic of the control under the pointer or in focus; each topic names the
+  section of the user manual its *More* opens.
+- The user manual is Markdown in `docs/manual/<lang>/`, compiled into the application.
+  `HelpManual` reads it and `HelpWindow.qml` shows it with Qt's own Markdown support,
+  styled by `HelpManual::decorate()`; `packaging/docs/manual2wiki.py` publishes the same
+  files to the wiki on each release.
+- The interface is in English and German (Qt Linguist catalogs in `translations/`,
+  switched live by `LocaleController`); the help and the manual follow it.
 
 ## Repository layout
 
@@ -139,11 +144,12 @@ src/framework/  ReqDeckFramework
 src/core/       ReqDeckCore: http/, workspace/, import/, history/
 src/qmlapi/     ReqDeckQmlApi
 qml/            MainQml (module ReqDeck) and qml/Base (module Base)
-resources/      icons, help texts, guide PDFs, samples workspace
+resources/      icons, F1 help texts, samples workspace
 translations/   Qt Linguist files
 tests/          unit, qml, screens, support (mock HTTP server), bench
 third_party/    yaml-cpp 0.9.0
-packaging/      product.json, release.ps1, measure.ps1, guide builder, Pages page
+packaging/      product.json, release.ps1, measure.ps1, wiki generator, Pages page
+docs/           user manual (manual/en, manual/de) and developer pages (dev)
 installer/      Qt Installer Framework config, package, wizard styles
 .github/        CI and release workflows
 cmake/          product metadata and Windows version resource

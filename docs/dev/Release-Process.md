@@ -25,7 +25,9 @@ in the [Keep a Changelog](https://keepachangelog.com/) format.
 | `ReqDeck-<version>-win64.zip` | the portable package, with `portable.ini` |
 | `repository/` | the update repository made by `repogen`, for the Maintenance Tool |
 
-Licenses, notices, and the beginner guide are part of the deployment.
+Licenses and notices are part of the deployment; the user manual is compiled into the
+application. After the GitHub Release, the job `wiki` publishes the manual and these
+developer pages to the GitHub wiki.
 
 ## Continuous integration
 

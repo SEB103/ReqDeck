@@ -1,6 +1,6 @@
 # Testing
 
-ReqDeck has **43 CTest tests**: 41 unit test programs, one QML smoke test, and one screen
+ReqDeck has **46 CTest tests**: 44 unit test programs, one QML smoke test, and one screen
 test program. They run on every push in the CI, and before every release.
 
 ## Kinds of tests
