@@ -105,7 +105,6 @@ public:
     {
         for (const QString &scheme : schemes())
             QDesktopServices::setUrlHandler(scheme, this, "recordUrl");
-        m_help.setGuideDirectory(m_dir.filePath(QStringLiteral("help")));
     }
 
     /*! Gives opening addresses back to the system. */
@@ -172,8 +171,10 @@ public:
         m_locale.setLanguage(QStringLiteral("en_GB"));
         // As the application does, the facades build their texts again on a switch.
         QObject::connect(&m_locale, &LocaleController::languageChanged, &m_response, &ResponseView::retranslate);
-        QObject::connect(&m_locale, &LocaleController::languageChanged, &m_manual,
-                         [this]() { m_manual.setLanguage(HelpManual::languageForCode(m_locale.currentLanguage())); });
+        QObject::connect(&m_locale, &LocaleController::languageChanged, &m_manual, [this]() {
+            m_help.setLanguage(HelpManual::languageForCode(m_locale.currentLanguage()));
+            m_manual.setLanguage(HelpManual::languageForCode(m_locale.currentLanguage()));
+        });
         QObject::connect(&m_locale, &LocaleController::languageChanged, &m_editor, &RequestEditor::retranslate);
         context->setContextProperty(QStringLiteral("cppLocale"), &m_locale);
 
@@ -392,7 +393,6 @@ public:
             }
         }
 
-        const HelpLibrary russian(QStringLiteral("ru"), QStringLiteral(REQDECK_HELP_DIR));
         QStringList missing;
         QList<QQuickItem *> pending = roots;
         QSet<QQuickItem *> seen;
@@ -414,7 +414,7 @@ public:
                 continue;
 
             const QString topic = HelpLocator::topicOf(item);
-            if (topic.isEmpty() || !m_help.hasTopic(topic) || !russian.hasTopic(topic)
+            if (topic.isEmpty() || !m_help.hasTopic(topic)
                 || !ownsTopic(item)) {
                 QStringList chain;
                 for (const QObject *object = item; object && chain.size() < 4;
@@ -458,17 +458,6 @@ public:
 
     /*! Returns the addresses the application asked the system to open, oldest first. */
     Q_INVOKABLE QStringList openedUrls() const { return m_openedUrls; }
-
-    /*! Puts a stand-in for the English guide where the application looks for it, or removes it. */
-    Q_INVOKABLE bool setGuidePresent(bool present)
-    {
-        QFile guide(m_dir.filePath(QStringLiteral("help/ReqDeck-Guide.en.pdf")));
-        if (!present)
-            return !guide.exists() || guide.remove();
-        if (!QDir().mkpath(m_dir.filePath(QStringLiteral("help"))) || !guide.open(QIODevice::WriteOnly))
-            return false;
-        return guide.write("%PDF-1.7\n") > 0;
-    }
 
     /*! Returns the path of the Postman sample collection of the unit tests. */
     Q_INVOKABLE QString importSample() const
@@ -552,7 +541,6 @@ public:
     Q_INVOKABLE bool reset()
     {
         m_openedUrls.clear();
-        setGuidePresent(false);
         m_editor.clear();
         m_manager.closeWorkspace();
         m_history.clear();

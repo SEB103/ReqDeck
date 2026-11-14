@@ -3,64 +3,29 @@
 
 #include "qmlapi/helplibrary.h"
 
-#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
-#include <QFileInfo>
-#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QLocale>
 
 #include <algorithm>
 
 /*!
- * \brief Loads help.<language>.json from \a directory.
+ * \brief Loads the topics of \a language from \a directory.
  *
  * Help is an aid, so a missing or broken file is logged and leaves no topics
- * instead of stopping the application; the panel then shows nothing.
- * \param language "en" or "ru".
+ * instead of stopping the application. A language without its own file shows
+ * the English topics.
+ * \param language "en" or "de".
  * \param directory Folder of the help files, the resource folder by default.
  * \param parent The QObject parent.
  */
 HelpLibrary::HelpLibrary(const QString &language, const QString &directory, QObject *parent)
     : QObject(parent)
-    , m_language(language)
+    , m_directory(directory)
 {
-    QFile file(QDir(directory).filePath(QStringLiteral("help.%1.json").arg(language)));
-    if (!file.open(QIODevice::ReadOnly)) {
-        qWarning().noquote() << QStringLiteral("Help file %1 could not be read.").arg(file.fileName());
-        return;
-    }
-
-    const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
-    if (!document.isObject()) {
-        qWarning().noquote() << QStringLiteral("Help file %1 is not valid.").arg(file.fileName());
-        return;
-    }
-
-    m_labels = document.object().value(QLatin1StringView("labels")).toObject().toVariantMap();
-    m_links = document.object().value(QLatin1StringView("links")).toObject().toVariantMap();
-
-    QHash<QString, QString> chapterTitles;
-    const QJsonArray chapters = document.object().value(QLatin1StringView("chapters")).toArray();
-    for (const QJsonValue &value : chapters) {
-        const QJsonObject chapter = value.toObject();
-        const QString id = chapter.value(QLatin1StringView("id")).toString();
-        m_chapters.append(id);
-        chapterTitles.insert(id, chapter.value(QLatin1StringView("title")).toString());
-    }
-
-    // The panel names the chapter it points to, because a PDF opened by the
-    // system viewer starts at its first page.
-    const QJsonObject topics = document.object().value(QLatin1StringView("topics")).toObject();
-    for (auto it = topics.constBegin(); it != topics.constEnd(); ++it) {
-        QVariantMap topic = it.value().toObject().toVariantMap();
-        const QString chapter = topic.value(QStringLiteral("chapter")).toString();
-        if (chapterTitles.contains(chapter))
-            topic.insert(QStringLiteral("chapterTitle"), chapterTitles.value(chapter));
-        m_topics.insert(it.key(), topic);
-    }
+    if (!load(language) && language != QLatin1StringView("en"))
+        load(QStringLiteral("en"));
 }
 
 /*!
@@ -72,10 +37,26 @@ QString HelpLibrary::language() const
 }
 
 /*!
- * \brief Returns the topic \a id.
- * \param id The topic id, for example "request.url".
- * \return The parts of the topic, with the title of its chapter as
- * "chapterTitle", or an empty map for an unknown id.
+ * \brief Shows the topics in \a language.
+ *
+ * A language without a help file falls back to English, so F1 always explains
+ * something. languageChanged() is emitted when the language shown changed.
+ * \param language "en" or "de".
+ */
+void HelpLibrary::setLanguage(const QString &language)
+{
+    const QString previous = m_language;
+    if (language == previous)
+        return;
+    if (!load(language) && !load(QStringLiteral("en")))
+        return;
+    if (m_language != previous)
+        emit languageChanged();
+}
+
+/*!
+ * \brief Returns the topic \a id with title, what, why, example, next, and more.
+ * \return The topic, or an empty map when \a id is unknown.
  */
 QVariantMap HelpLibrary::topic(const QString &id) const
 {
@@ -84,7 +65,6 @@ QVariantMap HelpLibrary::topic(const QString &id) const
 
 /*!
  * \brief Returns whether a topic \a id exists.
- * \param id The topic id.
  */
 bool HelpLibrary::hasTopic(const QString &id) const
 {
@@ -92,10 +72,7 @@ bool HelpLibrary::hasTopic(const QString &id) const
 }
 
 /*!
- * \brief Returns the headings of the help panel.
- *
- * They are in the language of the topics, which can differ from the language of
- * the application interface.
+ * \brief Returns the headings of the help panel in the language of the topics.
  */
 QVariantMap HelpLibrary::labels() const
 {
@@ -113,18 +90,7 @@ QStringList HelpLibrary::topicIds() const
 }
 
 /*!
- * \brief Returns the ids of the chapters of the guide, in order.
- */
-QStringList HelpLibrary::chapterIds() const
-{
-    return m_chapters;
-}
-
-/*!
- * \brief Returns the web addresses offered in the Help menu.
- *
- * Keys are "practice", a public API to try requests on, and "statusCodes", a
- * reference of HTTP status codes in the language of the topics.
+ * \brief Returns the web addresses of the Help menu: practice and statusCodes.
  */
 QVariantMap HelpLibrary::links() const
 {
@@ -132,69 +98,26 @@ QVariantMap HelpLibrary::links() const
 }
 
 /*!
- * \brief Returns where the PDF guide of this language is installed.
- *
- * The guide is a file in the help folder next to the executable, not a
- * resource, so that the system PDF viewer can open it.
+ * \internal
+ * \brief Reads help.<language>.json from the help folder.
+ * \return Whether the file was read; the topics are unchanged otherwise.
  */
-QString HelpLibrary::guidePath() const
+bool HelpLibrary::load(const QString &language)
 {
-    const QString directory = m_guideDirectory.isEmpty()
-        ? QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("help"))
-        : m_guideDirectory;
-    return QDir(directory).filePath(QStringLiteral("ReqDeck-Guide.%1.pdf").arg(m_language));
-}
-
-/*!
- * \brief Returns guidePath() as a file URL, safe for paths with spaces.
- */
-QUrl HelpLibrary::guideUrl() const
-{
-    return QUrl::fromLocalFile(guidePath());
-}
-
-/*!
- * \brief Returns whether the PDF guide of this language exists.
- */
-bool HelpLibrary::hasGuide() const
-{
-    return QFileInfo(guidePath()).isFile();
-}
-
-/*!
- * \brief Looks for the guide in \a directory instead of the help folder next to
- * the executable.
- * \param directory The folder of the guide; empty restores the default.
- */
-void HelpLibrary::setGuideDirectory(const QString &directory)
-{
-    m_guideDirectory = directory;
-}
-
-/*!
- * \brief Returns the help language for \a locale.
- *
- * For the system locale, QLocale::uiLanguages() lists the display languages
- * chosen in Windows, while QLocale::language() follows the regional format. The
- * help follows the display language, so a Russian format on an English Windows
- * keeps the help in English.
- * \param locale Usually the system locale.
- * \return "ru" when the first UI language of \a locale is Russian, else "en".
- */
-QString HelpLibrary::languageFor(const QLocale &locale)
-{
-    return languageForUiLanguages(locale.uiLanguages());
-}
-
-/*!
- * \brief Returns the help language for the preferred UI languages \a uiLanguages.
- * \param uiLanguages Language tags in order of preference, such as "ru-RU".
- * \return "ru" when the first of them is Russian, else "en", also for an empty list.
- */
-QString HelpLibrary::languageForUiLanguages(const QStringList &uiLanguages)
-{
-    if (uiLanguages.isEmpty())
-        return QStringLiteral("en");
-    return QLocale(uiLanguages.constFirst()).language() == QLocale::Russian ? QStringLiteral("ru")
-                                                                            : QStringLiteral("en");
+    QFile file(QDir(m_directory).filePath(QStringLiteral("help.%1.json").arg(language)));
+    if (!file.open(QIODevice::ReadOnly))
+        return false;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
+    if (!document.isObject()) {
+        qWarning().noquote() << QStringLiteral("Help file %1 is not valid.").arg(file.fileName());
+        return false;
+    }
+    m_language = language;
+    m_labels = document.object().value(QLatin1StringView("labels")).toObject().toVariantMap();
+    m_links = document.object().value(QLatin1StringView("links")).toObject().toVariantMap();
+    m_topics.clear();
+    const QJsonObject topics = document.object().value(QLatin1StringView("topics")).toObject();
+    for (auto it = topics.constBegin(); it != topics.constEnd(); ++it)
+        m_topics.insert(it.key(), it.value().toObject().toVariantMap());
+    return true;
 }

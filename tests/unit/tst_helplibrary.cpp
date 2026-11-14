@@ -4,15 +4,15 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QLocale>
 #include <QRegularExpression>
+#include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
 
 #include "qmlapi/helplibrary.h"
+#include "qmlapi/helpmanual.h"
 
 /*!
  * \internal
@@ -23,6 +23,20 @@ static void writeHelp(const QTemporaryDir &dir, const QString &language, const Q
     QFile file(dir.filePath(QStringLiteral("help.%1.json").arg(language)));
     QVERIFY(file.open(QIODevice::WriteOnly));
     file.write(content);
+}
+
+/*!
+ * \internal
+ * \brief Returns the languages that have a help file in the source tree.
+ */
+static QStringList helpLanguages()
+{
+    QStringList languages;
+    for (const QString &language : {QStringLiteral("en"), QStringLiteral("de")}) {
+        if (QFileInfo::exists(QStringLiteral(REQDECK_HELP_DIR "/help.") + language + QStringLiteral(".json")))
+            languages.append(language);
+    }
+    return languages;
 }
 
 /*! Verifies the help topics shown by F1. */
@@ -40,50 +54,29 @@ private slots:
     /*! Verifies that a missing file leaves the application working. */
     void missingFileGivesEmptyTopics();
 
-    /*! Verifies that a damaged file leaves the application working. */
+    /*! Verifies that a broken file leaves the application working. */
     void brokenFileGivesEmptyTopics();
 
-    /*! Verifies the choice of language. */
-    void languageForRussianAndOthers();
+    /*! Verifies that the language switches, and falls back to English without a file. */
+    void switchesLanguage();
 
-    /*! Verifies that the display language of Windows decides, not the regional format. */
-    void languageFollowsDisplayLanguage();
-
-    /*! Verifies that both shipped languages explain the same things. */
+    /*! Verifies that every language has the same topics and every heading of the panel. */
     void languagesHaveTheSameTopics();
 
-    /*! Verifies that each topic points to an existing chapter of the guide. */
-    void topicsPointToChapters();
-
-    /*! Verifies the headings of the panel in the language of the topics. */
-    void labelsFollowLanguage();
-
-    /*! Verifies where the guide is looked for. */
-    void guidePathFollowsLanguage();
-
-    /*! Verifies that the guide is looked for in the folder set for it. */
-    void guideIsFoundWhereSet();
-
-    /*! Verifies that a topic names the chapter of the guide it points to. */
-    void topicCarriesChapterTitle();
-
-    /*! Verifies the web addresses of the Help menu in both languages. */
+    /*! Verifies that the Help menu links are web addresses. */
     void linksAreWebAddresses();
-
-    /*! Verifies the chapters, their screenshots, and the committed PDF files. */
-    void guideChaptersExist();
 
     /*! Verifies that no topic id appears twice in a help file, since JSON keeps only one. */
     void topicIdsAreUnique();
 
-    /*! Verifies that every topic names a page and a section of the English manual. */
+    /*! Verifies that every topic names a page and a section of the manual in its language. */
     void topicsNameManualSections();
 };
 
 void HelpLibraryTest::loadsTopics()
 {
     QTemporaryDir dir;
-    writeHelp(dir, QStringLiteral("en"), R"({"schema":1,"topics":{"request.url":{"title":"Address","what":"Where it goes.","why":"Names the server.","example":"https://h","next":"Press Send.","chapter":"first-request"}},"chapters":[]})");
+    writeHelp(dir, QStringLiteral("en"), R"({"schema":1,"topics":{"request.url":{"title":"Address","what":"Where it goes.","why":"Names the server.","example":"https://h","next":"Press Send.","more":"Requests#method-and-address"}}})");
 
     const HelpLibrary help(QStringLiteral("en"), dir.path());
 
@@ -93,7 +86,7 @@ void HelpLibraryTest::loadsTopics()
     QCOMPARE(topic.value(QStringLiteral("why")).toString(), QStringLiteral("Names the server."));
     QCOMPARE(topic.value(QStringLiteral("example")).toString(), QStringLiteral("https://h"));
     QCOMPARE(topic.value(QStringLiteral("next")).toString(), QStringLiteral("Press Send."));
-    QCOMPARE(topic.value(QStringLiteral("chapter")).toString(), QStringLiteral("first-request"));
+    QCOMPARE(topic.value(QStringLiteral("more")).toString(), QStringLiteral("Requests#method-and-address"));
     QVERIFY(help.hasTopic(QStringLiteral("request.url")));
     QCOMPARE(help.topicIds(), QStringList({QStringLiteral("request.url")}));
 }
@@ -101,7 +94,7 @@ void HelpLibraryTest::loadsTopics()
 void HelpLibraryTest::unknownTopicIsEmpty()
 {
     QTemporaryDir dir;
-    writeHelp(dir, QStringLiteral("en"), R"({"schema":1,"topics":{},"chapters":[]})");
+    writeHelp(dir, QStringLiteral("en"), R"({"schema":1,"topics":{}})");
 
     const HelpLibrary help(QStringLiteral("en"), dir.path());
 
@@ -129,121 +122,58 @@ void HelpLibraryTest::brokenFileGivesEmptyTopics()
     QVERIFY(help.topicIds().isEmpty());
 }
 
-void HelpLibraryTest::languageForRussianAndOthers()
+void HelpLibraryTest::switchesLanguage()
 {
-    QCOMPARE(HelpLibrary::languageFor(QLocale(QLocale::Russian, QLocale::Russia)), QStringLiteral("ru"));
-    QCOMPARE(HelpLibrary::languageFor(QLocale(QLocale::Russian, QLocale::Kazakhstan)), QStringLiteral("ru"));
-    QCOMPARE(HelpLibrary::languageFor(QLocale(QLocale::German, QLocale::Germany)), QStringLiteral("en"));
-    QCOMPARE(HelpLibrary::languageFor(QLocale(QLocale::English, QLocale::UnitedStates)), QStringLiteral("en"));
-}
+    QTemporaryDir dir;
+    writeHelp(dir, QStringLiteral("en"), R"({"topics":{"start":{"title":"Start"}}})");
+    HelpLibrary help(QStringLiteral("de"), dir.path());
+    QCOMPARE(help.language(), QStringLiteral("en"));
+    QSignalSpy changed(&help, &HelpLibrary::languageChanged);
 
-void HelpLibraryTest::languageFollowsDisplayLanguage()
-{
-    QCOMPARE(HelpLibrary::languageForUiLanguages({QStringLiteral("ru-RU"), QStringLiteral("en-US")}),
-             QStringLiteral("ru"));
-    QCOMPARE(HelpLibrary::languageForUiLanguages({QStringLiteral("ru")}), QStringLiteral("ru"));
-    QCOMPARE(HelpLibrary::languageForUiLanguages({QStringLiteral("en-US"), QStringLiteral("ru-RU")}),
-             QStringLiteral("en"));
-    QCOMPARE(HelpLibrary::languageForUiLanguages({QStringLiteral("de-DE"), QStringLiteral("ru-RU")}),
-             QStringLiteral("en"));
-    QCOMPARE(HelpLibrary::languageForUiLanguages({}), QStringLiteral("en"));
+    help.setLanguage(QStringLiteral("de"));
+    QCOMPARE(help.language(), QStringLiteral("en"));
+    QCOMPARE(changed.count(), 0);
+
+    writeHelp(dir, QStringLiteral("de"), R"({"topics":{"start":{"title":"Anfang"}}})");
+    help.setLanguage(QStringLiteral("de"));
+    QCOMPARE(help.language(), QStringLiteral("de"));
+    QCOMPARE(help.topic(QStringLiteral("start")).value(QStringLiteral("title")), QStringLiteral("Anfang"));
+    QCOMPARE(changed.count(), 1);
 }
 
 void HelpLibraryTest::languagesHaveTheSameTopics()
 {
     const HelpLibrary english(QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR));
-    const HelpLibrary russian(QStringLiteral("ru"), QStringLiteral(REQDECK_HELP_DIR));
-
     QVERIFY(english.topicIds().size() > 40);
-    QCOMPARE(russian.topicIds(), english.topicIds());
-    QCOMPARE(russian.chapterIds(), english.chapterIds());
-    for (const QString &id : english.topicIds()) {
-        for (const QString &part : {QStringLiteral("title"), QStringLiteral("what"), QStringLiteral("why"),
-                                    QStringLiteral("example"), QStringLiteral("next")}) {
-            QVERIFY2(!english.topic(id).value(part).toString().isEmpty(), qPrintable(id + u' ' + part));
-            QVERIFY2(!russian.topic(id).value(part).toString().isEmpty(), qPrintable(id + u' ' + part));
+    for (const QString &language : helpLanguages()) {
+        const HelpLibrary help(language, QStringLiteral(REQDECK_HELP_DIR));
+        QCOMPARE(help.language(), language);
+        QCOMPARE(help.topicIds(), english.topicIds());
+        for (const QString &key : {QStringLiteral("why"), QStringLiteral("example"), QStringLiteral("next"),
+                                   QStringLiteral("more"), QStringLiteral("chapter"), QStringLiteral("close")}) {
+            QVERIFY2(!help.labels().value(key).toString().isEmpty(), qPrintable(language + u' ' + key));
+        }
+        for (const QString &id : english.topicIds()) {
+            for (const QString &part : {QStringLiteral("title"), QStringLiteral("what"), QStringLiteral("more")})
+                QVERIFY2(!help.topic(id).value(part).toString().isEmpty(), qPrintable(language + u' ' + id + u' ' + part));
         }
     }
-}
-
-void HelpLibraryTest::topicsPointToChapters()
-{
-    const HelpLibrary english(QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR));
-
-    for (const QString &id : english.topicIds()) {
-        const QString chapter = english.topic(id).value(QStringLiteral("chapter")).toString();
-        QVERIFY2(english.chapterIds().contains(chapter), qPrintable(id + u' ' + chapter));
-    }
-}
-
-void HelpLibraryTest::labelsFollowLanguage()
-{
-    const HelpLibrary russian(QStringLiteral("ru"), QStringLiteral(REQDECK_HELP_DIR));
-    const HelpLibrary english(QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR));
-
-    for (const QString &key : {QStringLiteral("why"), QStringLiteral("example"), QStringLiteral("next"),
-                               QStringLiteral("more"), QStringLiteral("close")}) {
-        QVERIFY2(!russian.labels().value(key).toString().isEmpty(), qPrintable(key));
-        QVERIFY2(!english.labels().value(key).toString().isEmpty(), qPrintable(key));
-    }
-    QCOMPARE(english.labels().value(QStringLiteral("why")).toString(), QStringLiteral("Why"));
-    QCOMPARE(russian.labels().value(QStringLiteral("why")).toString(), QStringLiteral("Зачем"));
-}
-
-void HelpLibraryTest::guidePathFollowsLanguage()
-{
-    QTemporaryDir dir;
-    const HelpLibrary russian(QStringLiteral("ru"), dir.path());
-
-    QVERIFY(russian.guidePath().endsWith(QStringLiteral("/help/ReqDeck-Guide.ru.pdf")));
-    QCOMPARE(russian.language(), QStringLiteral("ru"));
-}
-
-void HelpLibraryTest::guideIsFoundWhereSet()
-{
-    QTemporaryDir dir;
-    HelpLibrary english(QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR));
-    english.setGuideDirectory(dir.path());
-
-    QVERIFY(!english.hasGuide());
-    QFile guide(dir.filePath(QStringLiteral("ReqDeck-Guide.en.pdf")));
-    QVERIFY(guide.open(QIODevice::WriteOnly));
-    guide.write("%PDF-1.7");
-    guide.close();
-
-    QVERIFY(english.hasGuide());
-    QVERIFY(english.guideUrl().isLocalFile());
-    QCOMPARE(english.guideUrl().toLocalFile(), english.guidePath());
-}
-
-void HelpLibraryTest::topicCarriesChapterTitle()
-{
-    const HelpLibrary english(QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR));
-    const HelpLibrary russian(QStringLiteral("ru"), QStringLiteral(REQDECK_HELP_DIR));
-
-    QCOMPARE(english.topic(QStringLiteral("environments.add")).value(QStringLiteral("chapterTitle")).toString(),
-             QStringLiteral("Variables and environments"));
-    QCOMPARE(russian.topic(QStringLiteral("environments.add")).value(QStringLiteral("chapterTitle")).toString(),
-             QStringLiteral("Переменные и окружения"));
 }
 
 void HelpLibraryTest::linksAreWebAddresses()
 {
-    const HelpLibrary english(QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR));
-    const HelpLibrary russian(QStringLiteral("ru"), QStringLiteral(REQDECK_HELP_DIR));
-
-    for (const HelpLibrary *library : {&english, &russian}) {
+    for (const QString &language : helpLanguages()) {
+        const HelpLibrary help(language, QStringLiteral(REQDECK_HELP_DIR));
         for (const QString &key : {QStringLiteral("practice"), QStringLiteral("statusCodes")}) {
-            const QUrl url(library->links().value(key).toString());
-            QVERIFY2(url.isValid() && url.scheme() == QStringLiteral("https"), qPrintable(key));
+            const QUrl url(help.links().value(key).toString());
+            QVERIFY2(url.isValid() && url.scheme() == QStringLiteral("https"), qPrintable(language + u' ' + key));
         }
     }
-    QVERIFY(russian.links().value(QStringLiteral("statusCodes")).toString().contains(QStringLiteral("/ru/")));
 }
 
 void HelpLibraryTest::topicIdsAreUnique()
 {
-    for (const QString &language : {QStringLiteral("en"), QStringLiteral("ru")}) {
+    for (const QString &language : helpLanguages()) {
         QFile file(QDir(QStringLiteral(REQDECK_HELP_DIR)).filePath(QStringLiteral("help.%1.json").arg(language)));
         QVERIFY(file.open(QIODevice::ReadOnly));
         const QString text = QString::fromUtf8(file.readAll());
@@ -255,86 +185,25 @@ void HelpLibraryTest::topicIdsAreUnique()
     }
 }
 
-void HelpLibraryTest::guideChaptersExist()
-{
-    const QStringList chapters {QStringLiteral("first-request"), QStringLiteral("requests"),
-                                QStringLiteral("variables"), QStringLiteral("auth"), QStringLiteral("logins"),
-                                QStringLiteral("response"), QStringLiteral("history"),
-                                QStringLiteral("data"), QStringLiteral("moving"),
-                                QStringLiteral("troubleshooting")};
-    const QStringList blockTypes {QStringLiteral("p"), QStringLiteral("steps"), QStringLiteral("shot"),
-                                  QStringLiteral("tip"), QStringLiteral("warn"), QStringLiteral("table")};
-
-    for (const QString &language : {QStringLiteral("en"), QStringLiteral("ru")}) {
-        QCOMPARE(HelpLibrary(language, QStringLiteral(REQDECK_HELP_DIR)).chapterIds(), chapters);
-
-        QFile file(QDir(QStringLiteral(REQDECK_HELP_DIR)).filePath(QStringLiteral("help.%1.json").arg(language)));
-        QVERIFY(file.open(QIODevice::ReadOnly));
-        const QJsonObject help = QJsonDocument::fromJson(file.readAll()).object();
-        const QJsonObject guide = help.value(QStringLiteral("guide")).toObject();
-        for (const QString &key : {QStringLiteral("title"), QStringLiteral("subtitle"), QStringLiteral("contents"),
-                                   QStringLiteral("tip"), QStringLiteral("warn"), QStringLiteral("keys"),
-                                   QStringLiteral("links")}) {
-            QVERIFY2(!guide.value(key).toString().isEmpty(), qPrintable(language + u' ' + key));
-        }
-        QVERIFY(!guide.value(QStringLiteral("shortcuts")).toArray().isEmpty());
-
-        for (const QJsonValue &chapter : help.value(QStringLiteral("chapters")).toArray()) {
-            const QJsonArray blocks = chapter.toObject().value(QStringLiteral("blocks")).toArray();
-            QVERIFY(!chapter.toObject().value(QStringLiteral("title")).toString().isEmpty());
-            QVERIFY(!blocks.isEmpty());
-            for (const QJsonValue &value : blocks) {
-                const QJsonObject block = value.toObject();
-                const QString type = block.value(QStringLiteral("type")).toString();
-                QVERIFY2(blockTypes.contains(type), qPrintable(language + u' ' + type));
-                if (type == QStringLiteral("shot")) {
-                    const QString shot = block.value(QStringLiteral("file")).toString();
-                    QVERIFY2(QFileInfo::exists(QDir(QStringLiteral(REQDECK_GUIDE_SHOTS_DIR)).filePath(shot)),
-                             qPrintable(shot));
-                }
-            }
-        }
-
-        QFile pdf(QDir(QStringLiteral(REQDECK_HELP_DIR)).filePath(QStringLiteral("ReqDeck-Guide.%1.pdf").arg(language)));
-        QVERIFY2(pdf.open(QIODevice::ReadOnly), qPrintable(pdf.fileName()));
-        QVERIFY(pdf.read(5) == "%PDF-");
-    }
-}
-
-/*!
- * \internal
- * \brief Returns the anchor GitHub gives the heading \a heading.
- */
-static QString headingSlug(const QString &heading)
-{
-    QString slug;
-    for (const QChar c : heading.trimmed().toLower()) {
-        if (c.isLetterOrNumber() || c == u'-' || c == u'_')
-            slug += c;
-        else if (c == u' ')
-            slug += u'-';
-    }
-    return slug;
-}
-
 void HelpLibraryTest::topicsNameManualSections()
 {
-    const QDir manual(QStringLiteral(REQDECK_MANUAL_DIR "/en"));
-    const HelpLibrary english(QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR));
     static const QRegularExpression headingLine(QStringLiteral("^#+ (.+)$"), QRegularExpression::MultilineOption);
-    for (const QString &id : english.topicIds()) {
-        const QString more = english.topic(id).value(QStringLiteral("more")).toString();
-        QVERIFY2(!more.isEmpty(), qPrintable(id));
-        const QString page = more.section(u'#', 0, 0);
-        const QString anchor = more.section(u'#', 1);
-        QFile file(manual.filePath(page + QStringLiteral(".md")));
-        QVERIFY2(file.open(QIODevice::ReadOnly), qPrintable(id + u' ' + page));
-        if (anchor.isEmpty())
-            continue;
-        QStringList slugs;
-        for (const QRegularExpressionMatch &match : headingLine.globalMatch(QString::fromUtf8(file.readAll())))
-            slugs.append(headingSlug(match.captured(1)));
-        QVERIFY2(slugs.contains(anchor), qPrintable(id + u' ' + more));
+    for (const QString &language : helpLanguages()) {
+        const QDir manual(QStringLiteral(REQDECK_MANUAL_DIR "/") + language);
+        const HelpLibrary help(language, QStringLiteral(REQDECK_HELP_DIR));
+        for (const QString &id : help.topicIds()) {
+            const QString more = help.topic(id).value(QStringLiteral("more")).toString();
+            const QString page = more.section(u'#', 0, 0);
+            const QString anchor = more.section(u'#', 1);
+            QFile file(manual.filePath(page + QStringLiteral(".md")));
+            QVERIFY2(file.open(QIODevice::ReadOnly), qPrintable(language + u' ' + id + u' ' + page));
+            if (anchor.isEmpty())
+                continue;
+            QStringList slugs;
+            for (const QRegularExpressionMatch &match : headingLine.globalMatch(QString::fromUtf8(file.readAll())))
+                slugs.append(HelpManual::slug(match.captured(1)));
+            QVERIFY2(slugs.contains(anchor), qPrintable(language + u' ' + id + u' ' + more));
+        }
     }
 }
 

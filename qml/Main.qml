@@ -93,11 +93,6 @@ ApplicationWindow {
         window.requestActivate()
     }
 
-    /*! Opens the user manual at its start; \a chapter is no longer used. */
-    function openGuide(chapter) {
-        mainWindow.openManual("Home")
-    }
-
     /*! Opens the web address \a key of the help links in the browser. */
     function openHelpLink(key) {
         const url = cppHelp.links()[key]
@@ -391,7 +386,7 @@ ApplicationWindow {
         }
 
         function onGuideRequested() {
-            mainWindow.openGuide("")
+            mainWindow.openManual("Home")
         }
 
         function onPracticeApiRequested() {
@@ -456,7 +451,8 @@ ApplicationWindow {
         /*! Id of the shown topic. */
         property string topicId: ""
 
-        labels: cppHelp.labels()
+        // Read again when the help changes its language.
+        labels: { cppHelp.language; return cppHelp.labels() }
         onMoreRequested: (target) => mainWindow.openManual(target)
     }
 

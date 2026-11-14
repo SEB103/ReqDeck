@@ -7,70 +7,60 @@
 #include <QHash>
 #include <QObject>
 #include <QStringList>
-#include <QUrl>
 #include <QVariantMap>
 
-class QLocale;
-
 /**
- * The help topics shown by F1, in one language, exposed to QML as \c cppHelp.
+ * The help topics shown by F1, exposed to QML as \c cppHelp.
  *
- * Topics and the chapters of the guide come from one JSON file per language, so
- * the panel and the PDF guide cannot drift apart.
+ * One JSON file per language holds a short topic for every control; each topic
+ * names the section of the user manual its "More" opens. The language follows
+ * the interface; English is the fallback.
  */
 class HelpLibrary : public QObject
 {
     Q_OBJECT
     Q_DISABLE_COPY_MOVE(HelpLibrary)
 
-    /** Language of the topics, "en" or "ru". */
-    Q_PROPERTY(QString language READ language CONSTANT)
+    /** Language of the topics, "en" or "de". */
+    Q_PROPERTY(QString language READ language NOTIFY languageChanged)
 
 public:
-    /** Loads help.<language>.json from \a directory; a missing or broken file leaves no topics. */
+    /** Loads help.<language>.json from \a directory, or the English file when that one is missing. */
     explicit HelpLibrary(const QString &language, const QString &directory = QStringLiteral(":/help"),
                          QObject *parent = nullptr);
 
     /** Returns the language of the topics. */
     QString language() const;
 
-    /** Returns the topic \a id with title, what, why, example, next, chapter, and chapterTitle; empty when unknown. */
+    /** Shows the topics in \a language; a language without a help file falls back to English. */
+    void setLanguage(const QString &language);
+
+    /** Returns the topic \a id with title, what, why, example, next, and more; empty when unknown. */
     Q_INVOKABLE QVariantMap topic(const QString &id) const;
 
     /** Returns whether a topic \a id exists. */
     Q_INVOKABLE bool hasTopic(const QString &id) const;
 
-    /** Returns the headings of the help panel: why, example, next, more, close. */
+    /** Returns the headings of the help panel: why, example, next, more, chapter, close. */
     Q_INVOKABLE QVariantMap labels() const;
 
     /** Returns the ids of all topics, sorted. */
     QStringList topicIds() const;
 
-    /** Returns the ids of the chapters of the guide, in order. */
-    QStringList chapterIds() const;
-
     /** Returns the web addresses of the Help menu: practice and statusCodes. */
     Q_INVOKABLE QVariantMap links() const;
 
-    /** Returns where the PDF guide of this language is installed. */
-    Q_INVOKABLE QString guidePath() const;
-
-    /** Returns guidePath() as a file URL. */
-    Q_INVOKABLE QUrl guideUrl() const;
-
-    /** Returns whether the PDF guide of this language exists. */
-    Q_INVOKABLE bool hasGuide() const;
-
-    /** Looks for the guide in \a directory; empty means the help folder next to the executable. */
-    void setGuideDirectory(const QString &directory);
-
-    /** Returns "ru" when the first UI language of \a locale is Russian, else "en". */
-    static QString languageFor(const QLocale &locale);
-
-    /** Returns "ru" when the first of \a uiLanguages is Russian, else "en". */
-    static QString languageForUiLanguages(const QStringList &uiLanguages);
+signals:
+    /** Emitted after the topics were loaded in another language. */
+    void languageChanged();
 
 private:
+    /** Reads help.<language>.json; returns false when the file is missing or broken. */
+    bool load(const QString &language);
+
+    /** Folder of the help files. */
+    QString m_directory;
+
     /** Language of the topics. */
     QString m_language;
 
@@ -80,14 +70,8 @@ private:
     /** Headings of the help panel. */
     QVariantMap m_labels;
 
-    /** Chapter ids in order. */
-    QStringList m_chapters;
-
     /** Web addresses of the Help menu. */
     QVariantMap m_links;
-
-    /** Folder of the guide, empty for the help folder next to the executable. */
-    QString m_guideDirectory;
 };
 
 #endif // HELPLIBRARY_H

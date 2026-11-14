@@ -49,10 +49,8 @@ Outlined and are embedded in the application resources.
 The SVG path data was not modified; only the file names were normalized. See
 `resources/images/README.md`.
 
-The screenshots in `packaging/help/shots/` and the beginner guide PDF files in
-`resources/help/`, installed to `help/`, show these icons. The PDF files also
-embed subsets of the Segoe UI and Consolas fonts of Windows, as written by the
-Microsoft Edge PDF printer.
+The screenshots of the user manual in `docs/manual/<language>/images/`, compiled
+into the application and published to the wiki, show these icons.
 
 ## yaml-cpp
 

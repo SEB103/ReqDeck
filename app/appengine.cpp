@@ -278,7 +278,7 @@ AppEngine::AppEngine(QObject* parent)
     , m_workspaceManager(new WorkspaceManager(this))
     , m_collection(new CollectionTreeModel(m_workspaceManager, this))
     , m_environments(new EnvironmentModel(m_workspaceManager, this))
-    , m_help(new HelpLibrary(HelpLibrary::languageFor(QLocale::system()), QStringLiteral(":/help"), this))
+    , m_help(new HelpLibrary(QStringLiteral("en"), QStringLiteral(":/help"), this))
     , m_helpLocator(new HelpLocator(this))
     , m_history(new HistoryModel(AppPaths::instance().historyFilePath(), this))
     , m_response(new ResponseView(this))
@@ -468,9 +468,11 @@ void AppEngine::setLocaleController(LocaleController* controller)
         QStringLiteral("LocaleController is exposed as the cppLocale context property."));
     rootContext()->setContextProperty("cppLocale", controller);
 
-    // The manual is in the language of the interface.
+    // F1 help and the manual are in the language of the interface.
+    m_help->setLanguage(HelpManual::languageForCode(controller->currentLanguage()));
     m_manual->setLanguage(HelpManual::languageForCode(controller->currentLanguage()));
     connect(controller, &LocaleController::languageChanged, this, [this, controller]() {
+        m_help->setLanguage(HelpManual::languageForCode(controller->currentLanguage()));
         m_manual->setLanguage(HelpManual::languageForCode(controller->currentLanguage()));
         if (m_workspaceManager)
             m_workspaceManager->retranslate();
