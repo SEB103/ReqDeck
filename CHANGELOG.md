@@ -18,12 +18,15 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-14
+
 ### Added
 - The interface in English and German: EN or DE at the very right of the top
   bar, and at the top right of the start screen, opens a menu with English and
-  Deutsch; the choice applies at once and is kept. A German Windows starts in German, any other in English. Messages of
-  the request engine, the importers, and the workspace files are translated as
-  well; HTTP status names stay as the protocol defines them.
+  Deutsch; the choice applies at once and is kept. A German Windows starts in
+  German, any other in English. Messages of the request engine, the importers,
+  and the workspace files are translated as well; HTTP status names stay as the
+  protocol defines them.
 
 ### Fixed
 - F1 help and the beginner guide are in Russian when the display language of

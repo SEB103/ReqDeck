@@ -115,7 +115,7 @@ Windows SmartScreen may warn after download (*More info → Run anyway*).
 **Silent install (command line):**
 
 ```bat
-ReqDeck-1.0.0-Setup.exe install --root "C:\Program Files\ReqDeck" --accept-licenses --default-answer --confirm-command
+ReqDeck-1.1.0-Setup.exe install --root "C:\Program Files\ReqDeck" --accept-licenses --default-answer --confirm-command
 ```
 
 Installing into `Program Files` needs administrator rights; a folder inside the
@@ -138,8 +138,8 @@ for the latest release; the automatic check at start is off until the user turns
 on in Settings. When a newer version exists, an installed copy offers **Install
 update** (starts the Maintenance Tool with `--start-updater` and quits), which
 installs it from the update repository on GitHub Pages; a portable copy offers
-**Open download page**. An update from one published release to the next has not
-been exercised yet, because 1.0.0 is the first release.
+**Open download page**. The first update between published releases, 1.0.0 to
+1.1.0, still has to be checked by hand.
 
 ---
 
