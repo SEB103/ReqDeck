@@ -40,6 +40,7 @@
 #include "qmlapi/importcontroller.h"
 #include "qmlapi/tabsmodel.h"
 #include "qmlapi/helplibrary.h"
+#include "qmlapi/helpmanual.h"
 #include "qmlapi/helplocator.h"
 #include "qmlapi/historymodel.h"
 #include "qmlapi/keyvaluemodel.h"
@@ -317,6 +318,9 @@ AppEngine::AppEngine(QObject* parent)
     rootContext()->setContextProperty("cppHistory", m_history);
     qmlRegisterUncreatableType<HelpLibrary>("Cpp.WorkspaceManager", 1, 0, "HelpLibrary", QStringLiteral("HelpLibrary should not be created in QML."));
     rootContext()->setContextProperty("cppHelp", m_help);
+    m_manual = new HelpManual(QStringLiteral(":/manual"), this);
+    qmlRegisterUncreatableType<HelpManual>("Cpp.WorkspaceManager", 1, 0, "HelpManual", QStringLiteral("HelpManual should not be created in QML."));
+    rootContext()->setContextProperty("cppManual", m_manual);
     rootContext()->setContextProperty("cppHelpLocator", m_helpLocator);
     connect(m_history, &HistoryModel::storageFailed, this, [](const QString &message) {
         qWarning().noquote() << message;
@@ -464,7 +468,10 @@ void AppEngine::setLocaleController(LocaleController* controller)
         QStringLiteral("LocaleController is exposed as the cppLocale context property."));
     rootContext()->setContextProperty("cppLocale", controller);
 
-    connect(controller, &LocaleController::languageChanged, this, [this]() {
+    // The manual is in the language of the interface.
+    m_manual->setLanguage(HelpManual::languageForCode(controller->currentLanguage()));
+    connect(controller, &LocaleController::languageChanged, this, [this, controller]() {
+        m_manual->setLanguage(HelpManual::languageForCode(controller->currentLanguage()));
         if (m_workspaceManager)
             m_workspaceManager->retranslate();
         if (m_response)

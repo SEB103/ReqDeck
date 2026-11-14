@@ -35,6 +35,7 @@
 #include "qmlapi/tabsmodel.h"
 #include "qmlapi/environmentvariablesmodel.h"
 #include "qmlapi/helplibrary.h"
+#include "qmlapi/helpmanual.h"
 #include "qmlapi/helplocator.h"
 #include "qmlapi/historymodel.h"
 #include "qmlapi/keyvaluemodel.h"
@@ -136,6 +137,7 @@ public:
         context->setContextProperty(QStringLiteral("cppEnvironments"), &m_environments);
         context->setContextProperty(QStringLiteral("cppHistory"), &m_history);
         context->setContextProperty(QStringLiteral("cppHelp"), &m_help);
+        context->setContextProperty(QStringLiteral("cppManual"), &m_manual);
         context->setContextProperty(QStringLiteral("cppHelpLocator"), &m_helpLocator);
         context->setContextProperty(QStringLiteral("cppRequestEditor"), &m_editor);
         context->setContextProperty(QStringLiteral("cppFolderEditor"), &m_folderEditor);
@@ -170,6 +172,8 @@ public:
         m_locale.setLanguage(QStringLiteral("en_GB"));
         // As the application does, the facades build their texts again on a switch.
         QObject::connect(&m_locale, &LocaleController::languageChanged, &m_response, &ResponseView::retranslate);
+        QObject::connect(&m_locale, &LocaleController::languageChanged, &m_manual,
+                         [this]() { m_manual.setLanguage(HelpManual::languageForCode(m_locale.currentLanguage())); });
         QObject::connect(&m_locale, &LocaleController::languageChanged, &m_editor, &RequestEditor::retranslate);
         context->setContextProperty(QStringLiteral("cppLocale"), &m_locale);
 
@@ -595,6 +599,9 @@ private:
 
     /*! Real interface language controller, without settings. */
     LocaleController m_locale {nullptr};
+
+    /*! Real user manual, read from the source tree. */
+    HelpManual m_manual {QStringLiteral(REQDECK_MANUAL_DIR)};
 
     /*! Real history over a temporary file. */
     HistoryModel m_history {m_dir.filePath(QStringLiteral("history.json"))};

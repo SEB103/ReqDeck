@@ -328,8 +328,8 @@
         <translation>&amp;Hilfe</translation>
     </message>
     <message>
-        <source>Beginner &amp;Guide</source>
-        <translation>&amp;Einsteigerhandbuch</translation>
+        <source>User &amp;Manual</source>
+        <translation>Benutzer&amp;handbuch</translation>
     </message>
     <message>
         <source>&amp;Practice API</source>
@@ -897,6 +897,41 @@
     </message>
 </context>
 <context>
+    <name>HelpWindow</name>
+    <message>
+        <source>ReqDeck User Manual</source>
+        <translation>ReqDeck-Benutzerhandbuch</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Zurück</translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation>Vorwärts</translation>
+    </message>
+    <message>
+        <source>Find in page</source>
+        <translation>Auf der Seite suchen</translation>
+    </message>
+    <message>
+        <source>No matches</source>
+        <translation>Keine Treffer</translation>
+    </message>
+    <message>
+        <source>%1 of %2</source>
+        <translation>%1 von %2</translation>
+    </message>
+    <message>
+        <source>Pages of the manual</source>
+        <translation>Seiten des Handbuchs</translation>
+    </message>
+    <message>
+        <source>Page of the manual</source>
+        <translation>Seite des Handbuchs</translation>
+    </message>
+</context>
+<context>
     <name>HistoryPane</name>
     <message>
         <source>%1 · %2</source>
@@ -1244,14 +1279,6 @@
 <context>
     <name>Main</name>
     <message>
-        <source>The guide was not found: %1</source>
-        <translation>Das Handbuch wurde nicht gefunden: %1</translation>
-    </message>
-    <message>
-        <source>No program to open PDF files was found: %1</source>
-        <translation>Es wurde kein Programm zum Öffnen von PDF-Dateien gefunden: %1</translation>
-    </message>
-    <message>
         <source>New request</source>
         <translation>Neue Anfrage</translation>
     </message>
@@ -1288,8 +1315,8 @@
         <translation>Protokoll ein- oder ausblenden</translation>
     </message>
     <message>
-        <source>Open the guide</source>
-        <translation>Handbuch öffnen</translation>
+        <source>Open the user manual</source>
+        <translation>Benutzerhandbuch öffnen</translation>
     </message>
     <message>
         <source>Settings</source>

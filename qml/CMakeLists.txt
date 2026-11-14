@@ -10,6 +10,7 @@ qt_add_qml_module(MainQml
     CLASS_NAME ReqDeckPlugin
     QML_FILES
         AboutDialog.qml
+        HelpWindow.qml
         CollectionPane.qml
         CookieDialog.qml
         CurlImportDialog.qml

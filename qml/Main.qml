@@ -27,6 +27,9 @@ ApplicationWindow {
     /*! Pending action deferred until the unsaved-changes prompt is answered. */
     property var pendingAction: null
 
+    /*! The window of the user manual, made the first time it is opened. */
+    property var helpWindow: null
+
     /*! Whether the collapsible log panel is shown in the workspace. */
     property bool logPanelVisible: false
 
@@ -65,19 +68,23 @@ ApplicationWindow {
     }
 
     /*!
-        Opens the beginner guide in the system PDF viewer, or says where it was
-        looked for when it is missing. A viewer opened by the system starts at the
-        first page, so \a chapter only names the chapter the help panel shows.
+        Opens the user manual at \a target, a page or "Page#section" as the help
+        topics name them, in its own window, and brings that window to the front.
     */
+    function openManual(target) {
+        if (!mainWindow.helpWindow)
+            mainWindow.helpWindow = helpWindowComponent.createObject(mainWindow)
+        const window = mainWindow.helpWindow
+        const page = target.split("#")[0]
+        window.openPage(page.length > 0 ? page : "Home", target.split("#")[1] || "", false)
+        window.show()
+        window.raise()
+        window.requestActivate()
+    }
+
+    /*! Opens the user manual at its start; \a chapter is no longer used. */
     function openGuide(chapter) {
-        if (!cppHelp.hasGuide()) {
-            mainWindow.showNotification(2, // Diagnostics::Warning
-                                        qsTr("The guide was not found: %1").arg(cppHelp.guidePath()))
-            return
-        }
-        if (!Qt.openUrlExternally(cppHelp.guideUrl()))
-            mainWindow.showNotification(2, // Diagnostics::Warning
-                                        qsTr("No program to open PDF files was found: %1").arg(cppHelp.guidePath()))
+        mainWindow.openManual("Home")
     }
 
     /*! Opens the web address \a key of the help links in the browser. */
@@ -133,7 +140,7 @@ ApplicationWindow {
             ["copyCurl", qsTr("Copy as cURL"), ""],
             ["theme", qsTr("Switch between light and dark"), ""],
             ["log", qsTr("Show or hide the log"), ""],
-            ["guide", qsTr("Open the guide"), ""],
+            ["guide", qsTr("Open the user manual"), ""],
             ["settings", qsTr("Settings"), ""]
         ]
         for (const command of commands)
@@ -429,6 +436,14 @@ ApplicationWindow {
 
         labels: cppHelp.labels()
         onMoreRequested: (chapter) => mainWindow.openGuide(chapter)
+    }
+
+    Component {
+        id: helpWindowComponent
+
+        HelpWindow {
+            darkTheme: mainWindow.darkTheme
+        }
     }
 
     // Takes the focus in commitFocusedEdit(). It is a plain item on purpose: a focus

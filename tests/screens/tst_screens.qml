@@ -1721,36 +1721,79 @@ Item {
             compare(chapter.text, "Guide chapter: Variables and environments");
         }
 
-        /*! Verifies that the Help menu opens the guide and both web links. */
-        function test_helpMenuOffersGuideAndLinks() {
-            verify(cppTestHost.setGuidePresent(true));
+        /*! Returns the help window of \a window after it was opened at \a target. */
+        function openManual(window, target) {
+            window.openManual(target);
+            const help = window.helpWindow;
+            verify(help !== null);
+            tryCompare(help, "visible", true);
+            return help;
+        }
+
+        /*! Verifies that the Help menu opens the user manual and both web links. */
+        function test_helpMenuOffersManualAndLinks() {
             const window = createMain();
 
             findChild(window, "guideMenuItem").triggered();
             findChild(window, "practiceApiMenuItem").triggered();
             findChild(window, "statusCodesMenuItem").triggered();
 
+            tryCompare(window.helpWindow, "visible", true);
+            compare(window.helpWindow.pageId, "Home");
             const urls = cppTestHost.openedUrls();
-            compare(urls.length, 3);
-            verify(urls[0].startsWith("file:///"), urls[0]);
-            verify(urls[0].endsWith("/help/ReqDeck-Guide.en.pdf"), urls[0]);
-            compare(urls[1], "https://httpbin.org");
-            compare(urls[2], "https://developer.mozilla.org/docs/Web/HTTP/Status");
+            compare(urls.length, 2);
+            compare(urls[0], "https://httpbin.org");
+            compare(urls[1], "https://developer.mozilla.org/docs/Web/HTTP/Status");
+            window.helpWindow.close();
         }
 
-        /*! Verifies that More in the panel opens the guide. */
-        function test_moreOpensGuide() {
-            verify(cppTestHost.setGuidePresent(true));
-            const window = createMain();
-            mouseMove(window.contentItem, window.width - 4, window.height - 30);
-            cppTestHost.pressKey(window, Qt.Key_F1, Qt.NoModifier);
-            const panel = helpPanel(window);
-            tryCompare(panel, "opened", true);
+        /*! Verifies the page list, the shown page, and Back and Forward of the help window. */
+        function test_helpPagesBackForward() {
+            const help = openManual(createMain(), "Requests");
+            compare(findChild(help.contentItem, "helpPages").count, 12);
+            compare(help.pageId, "Requests");
+            verify(findChild(help.contentItem, "helpText").text.indexOf("# Requests") === 0);
 
-            mouseClick(findChild(panel, "helpMore"));
+            help.openPage("Responses", "", false);
+            help.goBack();
+            compare(help.pageId, "Requests");
+            help.goForward();
+            compare(help.pageId, "Responses");
+            compare(findChild(help, "helpForward").enabled, false);
+            help.close();
+        }
 
+        /*! Verifies that a link to a section opens the page there and a web link leaves the window. */
+        function test_helpLinksNavigate() {
+            const help = openManual(createMain(), "Home");
+            const text = findChild(help.contentItem, "helpText");
+
+            help.followLink("Authentication#oauth-20");
+            compare(help.pageId, "Authentication");
+            compare(text.cursorPosition, cppManual.anchorPosition("Authentication", "oauth-20"));
+
+            help.followLink("https://github.com/SEB103/ReqDeck/issues");
+            compare(help.pageId, "Authentication");
+            compare(cppTestHost.openedUrls(), ["https://github.com/SEB103/ReqDeck/issues"]);
+
+            help.followLink("file:///C:/Windows/win.ini");
+            compare(help.pageId, "Authentication");
             compare(cppTestHost.openedUrls().length, 1);
-            verify(cppTestHost.openedUrls()[0].endsWith("/help/ReqDeck-Guide.en.pdf"));
+            help.close();
+        }
+
+        /*! Verifies that the find field of the help window counts and selects matches. */
+        function test_helpFindInPage() {
+            const help = openManual(createMain(), "Requests");
+            const find = findChild(help, "helpFind");
+            find.text = "cookie";
+            find.textEdited();
+            verify(help.matchCount > 1, help.matchCount);
+            compare(help.matchIndex, 0);
+            compare(findChild(help.contentItem, "helpText").selectedText.toLowerCase(), "cookie");
+            find.accepted();
+            compare(help.matchIndex, 1);
+            help.close();
         }
 
         /*! Verifies the interface language button at the top right of the launcher. */
@@ -1849,18 +1892,6 @@ Item {
 
             findChild(window.contentItem, "sidebarTabs").currentIndex = 1;
             save(window.contentItem, "history.png");
-        }
-
-        /*! Verifies that a missing guide is reported with its path instead of doing nothing. */
-        function test_missingGuideIsReported() {
-            const window = createMain();
-
-            findChild(window, "guideMenuItem").triggered();
-
-            compare(cppTestHost.openedUrls().length, 0);
-            verify(window.statusMessage.startsWith("The guide was not found: "), window.statusMessage);
-            verify(window.statusMessage.endsWith("ReqDeck-Guide.en.pdf"), window.statusMessage);
-            compare(window.statusMessageLevel, 2);
         }
 
         /*! Verifies that the panel leaves the focus where it was. */

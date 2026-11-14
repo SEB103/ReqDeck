@@ -12,6 +12,7 @@ class AppInfo;
 class CollectionTreeModel;
 class EnvironmentModel;
 class HelpLibrary;
+class HelpManual;
 class HelpLocator;
 class HistoryModel;
 class LicenseModel;
@@ -102,6 +103,9 @@ private:
 
     /** Help topics exposed to QML as \c cppHelp; owned by this engine. */
     HelpLibrary* m_help = nullptr;
+
+    /** The user manual of the help window, published as cppManual. */
+    HelpManual* m_manual = nullptr;
 
     /** Sent requests exposed to QML as \c cppHistory; owned by this engine. */
     HistoryModel* m_history = nullptr;

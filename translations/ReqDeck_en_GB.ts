@@ -328,7 +328,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Beginner &amp;Guide</source>
+        <source>User &amp;Manual</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -897,6 +897,41 @@
     </message>
 </context>
 <context>
+    <name>HelpWindow</name>
+    <message>
+        <source>ReqDeck User Manual</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Find in page</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No matches</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 of %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pages of the manual</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Page of the manual</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>HistoryPane</name>
     <message>
         <source>%1 · %2</source>
@@ -1244,14 +1279,6 @@
 <context>
     <name>Main</name>
     <message>
-        <source>The guide was not found: %1</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>No program to open PDF files was found: %1</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>New request</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1288,7 +1315,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Open the guide</source>
+        <source>Open the user manual</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

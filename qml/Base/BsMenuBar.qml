@@ -390,7 +390,7 @@ MenuBar {
         BsMenuItem {
             objectName: "guideMenuItem"
 
-            text: qsTr("Beginner &Guide")
+            text: qsTr("User &Manual")
             icon.source: "qrc:/images/svg/article.svg"
             onTriggered: appMenuBar.guideRequested()
         }
