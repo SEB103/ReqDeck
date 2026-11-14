@@ -65,6 +65,9 @@ public:
     /** Returns the text position of the heading \a anchor in the page \a pageId, or -1. */
     Q_INVOKABLE int anchorPosition(const QString &pageId, const QString &anchor) const;
 
+    /** Names \a target ("Page" or "Page#section") as "Page title › Heading"; empty for an unknown page. */
+    Q_INVOKABLE QString sectionTitle(const QString &target) const;
+
     /**
      * Styles the page in \a document after it was loaded from Markdown: headings in the
      * accent colour, callouts ("> [!TIP]", "> [!WARNING]", "> [!NOTE]") as coloured

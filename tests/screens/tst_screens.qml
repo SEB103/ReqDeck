@@ -1703,11 +1703,11 @@ Item {
             tryCompare(panel, "opened", true);
             compare(findChild(panel, "helpTitle").text, "Getting started");
             verify(findChild(panel, "help_example").text.length > 0);
-            compare(findChild(panel, "helpMore").text, "More in the guide");
+            compare(findChild(panel, "helpMore").text, "More in the manual");
         }
 
-        /*! Verifies that the panel names the chapter More opens, since the viewer starts at page one. */
-        function test_panelNamesGuideChapter() {
+        /*! Verifies that the panel names the manual section More opens, and More opens it there. */
+        function test_moreOpensSection() {
             const window = createMain();
             const button = findChild(window.contentItem, "manageEnvironmentsButton");
             mouseMove(button, button.width / 2, button.height / 2);
@@ -1718,7 +1718,17 @@ Item {
             tryCompare(panel, "opened", true);
             const chapter = findChild(panel, "helpChapter");
             compare(chapter.visible, true);
-            compare(chapter.text, "Guide chapter: Variables and environments");
+            compare(chapter.text, "In the manual: Variables and Environments › Environments");
+
+            mouseClick(findChild(panel, "helpMore"));
+
+            const help = window.helpWindow;
+            tryCompare(help, "visible", true);
+            compare(help.pageId, "Variables-and-Environments");
+            const text = findChild(help.contentItem, "helpText");
+            compare(text.cursorPosition, cppManual.anchorIn(text.textDocument, "environments"));
+            verify(text.cursorPosition > 0);
+            help.close();
         }
 
         /*! Returns the help window of \a window after it was opened at \a target. */

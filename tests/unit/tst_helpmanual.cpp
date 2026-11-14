@@ -43,6 +43,9 @@ private slots:
     /*! Verifies the ReqDeck look of a page: headings, callouts, links, tables. */
     void decoratesPage();
 
+    /*! Verifies the names of the places the help topics point to. */
+    void namesSections();
+
 private:
     /*! Returns the language folders of the manual in the source tree. */
     static QStringList languagesOnDisk();
@@ -217,6 +220,15 @@ void HelpManualTest::decoratesPage()
     cursor.setPosition(link + 1);
     QCOMPARE(cursor.charFormat().foreground().color(), QColor(0xC2, 0x18, 0x5B));
     QVERIFY(HelpManual::headingPosition(&document, QStringLiteral("after")) > link);
+}
+
+void HelpManualTest::namesSections()
+{
+    const HelpManual manual(QStringLiteral(REQDECK_MANUAL_DIR));
+    QCOMPARE(manual.sectionTitle(QStringLiteral("Authentication#oauth-20")), QStringLiteral("Authentication › OAuth 2.0"));
+    QCOMPARE(manual.sectionTitle(QStringLiteral("Requests")), QStringLiteral("Requests"));
+    QCOMPARE(manual.sectionTitle(QStringLiteral("Requests#no-such-section")), QStringLiteral("Requests"));
+    QVERIFY(manual.sectionTitle(QStringLiteral("No-Such-Page")).isEmpty());
 }
 
 QTEST_MAIN(HelpManualTest)

@@ -20,14 +20,14 @@ import QtQuick.Layouts
 Popup {
     id: root
 
-    /*! Shown topic with title, what, why, example, next, and chapter. */
+    /*! Shown topic with title, what, why, example, next, more (the manual section), and moreTitle. */
     property var topic: ({})
 
     /*! Headings in the language of the topic: why, example, next, more, close. */
     property var labels: ({})
 
-    /*! Emitted when the user asks for the guide chapter \a chapter. */
-    signal moreRequested(string chapter)
+    /*! Emitted when the user asks for the manual section \a target, "Page" or "Page#section". */
+    signal moreRequested(string target)
 
     /*! Returns the text of \a key in \a map, or an empty string. */
     function textOf(map, key) {
@@ -145,11 +145,11 @@ Popup {
             objectName: "helpChapter"
 
             Layout.fillWidth: true
-            visible: root.textOf(root.topic, "chapterTitle").length > 0
+            visible: root.textOf(root.topic, "moreTitle").length > 0
             wrapMode: Text.Wrap
             textFormat: Text.PlainText
             opacity: 0.7
-            text: root.textOf(root.labels, "chapter") + ": " + root.textOf(root.topic, "chapterTitle")
+            text: root.textOf(root.labels, "chapter") + ": " + root.textOf(root.topic, "moreTitle")
         }
 
         Button {
@@ -157,9 +157,9 @@ Popup {
 
             flat: true
             focusPolicy: Qt.NoFocus
-            visible: root.textOf(root.topic, "chapter").length > 0
+            visible: root.textOf(root.topic, "more").length > 0
             text: root.textOf(root.labels, "more")
-            onClicked: root.moreRequested(root.textOf(root.topic, "chapter"))
+            onClicked: root.moreRequested(root.textOf(root.topic, "more"))
         }
     }
 }

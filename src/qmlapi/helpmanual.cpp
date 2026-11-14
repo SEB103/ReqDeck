@@ -150,6 +150,30 @@ int HelpManual::anchorPosition(const QString &pageId, const QString &anchor) con
 }
 
 /*!
+ * \brief Names \a target as the help panel shows it.
+ *
+ * The page's title comes from the manifest, the section's from its heading; a
+ * section that does not exist leaves just the page title.
+ * \param target "Page" or "Page#section", as a help topic's "more" names it.
+ * \return "Page title › Heading", "Page title", or empty for an unknown page.
+ */
+QString HelpManual::sectionTitle(const QString &target) const
+{
+    const QString page = target.section(u'#', 0, 0);
+    const qsizetype index = m_ids.indexOf(page);
+    if (index < 0)
+        return {};
+    const QString title = m_pages.at(index).toMap().value(QStringLiteral("title")).toString();
+    const QString anchor = target.section(u'#', 1);
+    QTextDocument document;
+    document.setMarkdown(markdown(page));
+    const int position = headingPosition(&document, anchor);
+    if (position < 0)
+        return title;
+    return title + QStringLiteral(" \u203A ") + document.findBlock(position).text();
+}
+
+/*!
  * \brief Returns the text position of the heading \a anchor in the shown \a document.
  *
  * Styling moves text into frames and shortens callout markers, so the window

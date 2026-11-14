@@ -72,7 +72,9 @@ ApplicationWindow {
             return
         }
         helpPanel.topicId = id
-        helpPanel.topic = cppHelp.topic(id)
+        const topic = cppHelp.topic(id)
+        topic.moreTitle = cppManual.sectionTitle(topic.more || "")
+        helpPanel.topic = topic
         helpPanel.open()
     }
 
@@ -455,7 +457,7 @@ ApplicationWindow {
         property string topicId: ""
 
         labels: cppHelp.labels()
-        onMoreRequested: (chapter) => mainWindow.openGuide(chapter)
+        onMoreRequested: (target) => mainWindow.openManual(target)
     }
 
     Component {

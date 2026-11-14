@@ -5,9 +5,9 @@
         "why": "Why",
         "example": "Example",
         "next": "What next",
-        "more": "More in the guide",
+        "more": "More in the manual",
         "close": "Close help",
-        "chapter": "Guide chapter"
+        "chapter": "In the manual"
     },
     "guide": {
         "title": "Your first API requests",
