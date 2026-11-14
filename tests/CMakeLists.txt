@@ -592,6 +592,7 @@ qt_add_executable(tst_helplibrary
 
 target_compile_definitions(tst_helplibrary
     PRIVATE REQDECK_HELP_DIR="${CMAKE_SOURCE_DIR}/resources/help"
+    PRIVATE REQDECK_MANUAL_DIR="${CMAKE_SOURCE_DIR}/docs/manual"
     PRIVATE REQDECK_GUIDE_SHOTS_DIR="${CMAKE_SOURCE_DIR}/packaging/help/shots"
 )
 

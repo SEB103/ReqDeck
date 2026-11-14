@@ -62,7 +62,8 @@
             "why": "You can try an API without writing code, and keep the requests you need.",
             "example": "Open Samples on the start screen, open the folder JSONPlaceholder, pick \"Get a post\", and press Send.",
             "next": "Point at any field or button and press F1 to learn what it does.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Home"
         },
         "menu": {
             "title": "Menu",
@@ -70,7 +71,8 @@
             "why": "Commands you do not see as buttons are here, with their shortcuts.",
             "example": "File > Import cURL turns a copied command into a request.",
             "next": "Most commands also have a shortcut, shown next to them.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Keyboard-Shortcuts"
         },
         "topbar.environment": {
             "title": "Environment",
@@ -78,7 +80,8 @@
             "why": "The same requests can go to a test server or to the real one without changes.",
             "example": "Switch from \"Staging\" to \"Production\", and {{baseUrl}} points to the other server.",
             "next": "Use the button next to it to create or edit environments.",
-            "chapter": "variables"
+            "chapter": "variables",
+            "more": "Variables-and-Environments#environments"
         },
         "topbar.manageEnvironments": {
             "title": "Manage environments",
@@ -86,7 +89,8 @@
             "why": "Here you define values such as addresses and keys once, for all requests.",
             "example": "Add a variable baseUrl with the value https://httpbin.org.",
             "next": "Then write {{baseUrl}}/get in the URL of a request.",
-            "chapter": "variables"
+            "chapter": "variables",
+            "more": "Variables-and-Environments#environments"
         },
         "topbar.save": {
             "title": "Save workspace",
@@ -94,7 +98,8 @@
             "why": "Changes live only in memory until you save them.",
             "example": "Press Ctrl+S after editing a request.",
             "next": "The status bar shows when the workspace has unsaved changes.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Workspaces-and-Data#the-workspace-file"
         },
         "topbar.settings": {
             "title": "Settings",
@@ -102,7 +107,8 @@
             "why": "Here you choose the folder for new workspaces and the update check.",
             "example": "Pick the folder where new workspaces are created.",
             "next": "Settings apply at once.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Requests#tabs"
         },
         "collection.tree": {
             "title": "Collection",
@@ -110,7 +116,8 @@
             "why": "You do not have to type a request again: click it and send it.",
             "example": "Right-click to add a request or a folder, rename, duplicate, or delete.",
             "next": "Ctrl+click or Shift+click selects several items for Delete or Duplicate. With the keyboard: arrows move and open folders, F2 renames, Delete deletes. Right-click > Sort A–Z puts folders first, then sorts by name.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Requests#collection-and-folders"
         },
         "sidebar.tabs": {
             "title": "Collection and History",
@@ -118,7 +125,8 @@
             "why": "History lets you find a request you sent earlier, even if you never saved it.",
             "example": "Open History to see the last requests with their status.",
             "next": "Double-click an entry in History to make a request from it.",
-            "chapter": "history"
+            "chapter": "history",
+            "more": "Responses#history"
         },
         "history.list": {
             "title": "History",
@@ -126,7 +134,8 @@
             "why": "You can repeat or inspect what you did before.",
             "example": "Green 200 means success, orange 404 means \"not found\", red means a failure.",
             "next": "Double-click an entry, or select it and press Return, to make a request from it. Passwords are not kept.",
-            "chapter": "history"
+            "chapter": "history",
+            "more": "Responses#history"
         },
         "history.clear": {
             "title": "Clear history",
@@ -134,7 +143,8 @@
             "why": "Useful when the list gets long or holds requests you do not need.",
             "example": "ReqDeck asks before it removes anything.",
             "next": "Your saved requests are not affected.",
-            "chapter": "history"
+            "chapter": "history",
+            "more": "Responses#history"
         },
         "request.name": {
             "title": "Request name",
@@ -142,7 +152,8 @@
             "why": "A clear name helps you find the request later.",
             "example": "\"Create user\" or \"List orders\".",
             "next": "Click the name to change it; it is stored when you leave the field.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Requests#collection-and-folders"
         },
         "request.method": {
             "title": "Method",
@@ -150,7 +161,8 @@
             "why": "The same address can mean different actions depending on the method.",
             "example": "GET reads, POST creates, PUT or PATCH changes, DELETE removes.",
             "next": "Most APIs say in their documentation which method to use.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests#method-and-address"
         },
         "request.url": {
             "title": "Address (URL)",
@@ -158,7 +170,8 @@
             "why": "It names the server and the thing you want from it.",
             "example": "https://httpbin.org/get, or with a variable: {{baseUrl}}/users",
             "next": "Press Send or Ctrl+Enter. A red, underlined {{name}} is a variable without a value.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Requests#method-and-address"
         },
         "request.send": {
             "title": "Send",
@@ -166,7 +179,8 @@
             "why": "The answer appears on the right: status, time, size, and content.",
             "example": "Press Ctrl+Enter from any field of the request.",
             "next": "While the request runs, the button cancels it.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Getting-Started#2-send-it"
         },
         "request.tabs": {
             "title": "Parts of a request",
@@ -174,7 +188,8 @@
             "why": "Each part answers a different question: what to filter, how to talk, what to send, who you are.",
             "example": "Add a parameter page=2 in Params to ask for the second page.",
             "next": "Many requests need only the URL; the other parts are optional.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests"
         },
         "request.params": {
             "title": "Parameters",
@@ -182,7 +197,8 @@
             "why": "They tell the server what exactly you want, for example a search word or a page.",
             "example": "q = coffee becomes ?q=coffee at the end of the URL.",
             "next": "Clear the box at the start of a row to leave that parameter out for now.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests#parameters-and-headers"
         },
         "request.headers": {
             "title": "Headers",
@@ -190,7 +206,8 @@
             "why": "Servers use headers to learn the format you send and accept, or who you are.",
             "example": "Accept = application/json asks for an answer in JSON.",
             "next": "For a login, use the Auth tab instead of typing the header by hand.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests#parameters-and-headers"
         },
         "request.body": {
             "title": "Body",
@@ -198,7 +215,8 @@
             "why": "POST, PUT, and PATCH requests often carry the new data here.",
             "example": "{\"name\": \"Ann\"} as JSON to create a user.",
             "next": "Choose the kind of body first; GET requests usually have none.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests#body"
         },
         "request.bodyMode": {
             "title": "Kind of body",
@@ -206,7 +224,8 @@
             "why": "The server expects one form, and the API documentation names it.",
             "example": "Raw with JSON for most modern APIs; Form for classic web forms.",
             "next": "The matching Content-Type header is added for you.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests#body"
         },
         "request.rawType": {
             "title": "Format of the text",
@@ -214,7 +233,8 @@
             "why": "It sets the Content-Type header, so the server knows how to read the body.",
             "example": "JSON for {\"name\": \"Ann\"}.",
             "next": "Type the text in the field below.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests#body"
         },
         "request.rawBody": {
             "title": "Body text",
@@ -222,7 +242,8 @@
             "why": "Here you write the data the server should receive.",
             "example": "{\"title\": \"Buy milk\", \"done\": false}",
             "next": "Variables such as {{userId}} work here too.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests#body"
         },
         "request.form": {
             "title": "Form fields",
@@ -230,7 +251,8 @@
             "why": "Some servers expect data this way instead of JSON.",
             "example": "username = ann, remember = true",
             "next": "Clear the box at the start of a row to leave that field out.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests#body"
         },
         "request.formData": {
             "title": "Form data",
@@ -238,7 +260,8 @@
             "why": "Uploads of pictures and documents use this, often with a few text fields beside the file.",
             "example": "title = Holiday, photo = File C:/Pictures/beach.jpg",
             "next": "Add File… picks a file; the type of a part comes from its file name unless you type one.",
-            "chapter": "logins"
+            "chapter": "logins",
+            "more": "Requests#body"
         },
         "request.bodyFile": {
             "title": "File as the body",
@@ -246,7 +269,8 @@
             "why": "Some APIs take an upload as the raw body, for example a PUT of an image or a JSON file.",
             "example": "PUT {{baseUrl}}/avatar with the file C:/Pictures/me.png",
             "next": "The Content-Type comes from the file name unless a header sets it. The file is read while it is sent, so large files work.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests#body"
         },
         "request.openTabs": {
             "title": "Open requests",
@@ -254,7 +278,8 @@
             "why": "To work on several requests at once: each tab keeps the response of its own last send, and requests in different tabs can run at the same time.",
             "example": "Send a slow report in one tab and keep testing in another.",
             "next": "Ctrl+Tab goes to the next tab, Ctrl+W closes one; a middle click on a tab closes it too.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests#tabs"
         },
         "settings.showTabs": {
             "title": "Show tabs",
@@ -262,7 +287,8 @@
             "why": "Tabs keep several requests open, each with its own last response. Turned off, ReqDeck shows one request at a time.",
             "example": "Turn it off for a quiet window with a single request.",
             "next": "The choice applies to every workspace on this computer.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests#tabs"
         },
         "request.oauth": {
             "title": "OAuth 2.0",
@@ -270,7 +296,8 @@
             "why": "Many APIs, Google, Microsoft, GitHub, and company APIs among them, take only tokens from their own login.",
             "example": "Token URL https://login.example.com/oauth/token, client ID my-app, scope read.",
             "next": "The API's documentation names the URLs and scopes. Put the client secret in a secret variable, for example {{clientSecret}}.",
-            "chapter": "auth"
+            "chapter": "auth",
+            "more": "Authentication#oauth-20"
         },
         "request.oauthToken": {
             "title": "Token",
@@ -278,7 +305,8 @@
             "why": "A token expires. ReqDeck renews it by itself when the server gave a refresh token, and gets one by itself for client credentials.",
             "example": "Press Get Token, log in in the browser, and come back: the next send carries the token.",
             "next": "Tokens are kept encrypted for your Windows user, never in the workspace file or the history.",
-            "chapter": "auth"
+            "chapter": "auth",
+            "more": "Authentication#tokens"
         },
         "response.sent": {
             "title": "What was sent",
@@ -286,7 +314,8 @@
             "why": "Variables, inherited settings, cookies, and redirects change a request; here you see the result, not the editor.",
             "example": "A POST answered with 307 shows two blocks: the first with 307 Temporary Redirect, the second with the final answer.",
             "next": "Passwords, tokens, cookie values, and an API key are masked. The network layer adds a few headers of its own, such as Host, that are not listed.",
-            "chapter": "response"
+            "chapter": "response",
+            "more": "Responses#sent-tab"
         },
         "response.filter": {
             "title": "JSONPath filter",
@@ -294,7 +323,8 @@
             "why": "In a long response the one value you need is hard to find; a path picks it out.",
             "example": "$.items[*].id, $..price, or $.items[?(@.status == 'open')].name",
             "next": "Clear the field to see the whole body again. The filter stays for the next send. Members of an object come in alphabetical order of their names, so with .. or * the first match may not be the first in the text.",
-            "chapter": "response"
+            "chapter": "response",
+            "more": "Responses#jsonpath-filter"
         },
         "request.authType": {
             "title": "Authentication",
@@ -302,7 +332,8 @@
             "why": "Many APIs answer only to known users and refuse others with 401.",
             "example": "Basic for a user name and password, Bearer for a token, API key for a key, Inherit from folder to use the auth set in Folder Settings… of a folder above.",
             "next": "The API documentation says which one it uses.",
-            "chapter": "auth"
+            "chapter": "auth",
+            "more": "Authentication"
         },
         "request.authUser": {
             "title": "User name",
@@ -310,7 +341,8 @@
             "why": "Together with the password it identifies you to the server.",
             "example": "ann or {{user}}",
             "next": "Prefer a variable for anything you would not show to others.",
-            "chapter": "auth"
+            "chapter": "auth",
+            "more": "Authentication"
         },
         "request.authPassword": {
             "title": "Password",
@@ -318,7 +350,8 @@
             "why": "It proves the user name belongs to you.",
             "example": "{{password}}, with the value kept as a secret variable.",
             "next": "A password typed here is stored in the workspace file; a secret variable is not.",
-            "chapter": "auth"
+            "chapter": "auth",
+            "more": "Authentication"
         },
         "request.token": {
             "title": "Token",
@@ -326,7 +359,8 @@
             "why": "Many APIs use tokens instead of passwords.",
             "example": "{{token}}, with the value kept as a secret variable.",
             "next": "Tokens often expire; get a new one when the server answers 401.",
-            "chapter": "auth"
+            "chapter": "auth",
+            "more": "Authentication"
         },
         "request.apiKeyName": {
             "title": "Key name",
@@ -334,7 +368,8 @@
             "why": "Each API chooses its own name for the key.",
             "example": "X-Api-Key or api_key",
             "next": "Enter the key itself in the next field.",
-            "chapter": "auth"
+            "chapter": "auth",
+            "more": "Authentication"
         },
         "request.apiKeyValue": {
             "title": "Key value",
@@ -342,7 +377,8 @@
             "why": "It identifies your account or app to the API.",
             "example": "{{apiKey}}, with the value kept as a secret variable.",
             "next": "Choose below whether it goes in a header or in the address.",
-            "chapter": "auth"
+            "chapter": "auth",
+            "more": "Authentication"
         },
         "request.apiKeyPlace": {
             "title": "Where the key goes",
@@ -350,7 +386,8 @@
             "why": "APIs expect it in one of the two places.",
             "example": "Header is safer: addresses end up in logs more often.",
             "next": "Follow the API documentation.",
-            "chapter": "auth"
+            "chapter": "auth",
+            "more": "Authentication"
         },
         "request.timeout": {
             "title": "Timeout",
@@ -358,7 +395,8 @@
             "why": "A server that never answers would otherwise keep you waiting.",
             "example": "5000 waits five seconds. 0 uses the default.",
             "next": "Raise it for slow operations such as large uploads.",
-            "chapter": "troubleshooting"
+            "chapter": "troubleshooting",
+            "more": "Requests#timeout-redirects-proxy"
         },
         "table.enabled": {
             "title": "Use this row",
@@ -366,7 +404,8 @@
             "why": "You can try a request with and without a value quickly.",
             "example": "Clear the box to leave page=2 out for one send.",
             "next": "The cross at the end of the row deletes it.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests#parameters-and-headers"
         },
         "response.status": {
             "title": "Status, time, and size",
@@ -374,7 +413,8 @@
             "why": "The status tells at a glance whether the request worked.",
             "example": "200 OK worked, 404 not found, 401 not allowed, 500 the server failed.",
             "next": "The guide explains the codes you will meet most.",
-            "chapter": "response"
+            "chapter": "response",
+            "more": "Responses#status"
         },
         "response.tabs": {
             "title": "Body and Headers of the answer",
@@ -382,7 +422,8 @@
             "why": "Most of the time you need the body; headers help when something is unclear.",
             "example": "Content-Type in Headers says what kind of content came back.",
             "next": "Switch with the tabs above.",
-            "chapter": "response"
+            "chapter": "response",
+            "more": "Responses"
         },
         "response.pretty": {
             "title": "Pretty and Raw",
@@ -390,7 +431,8 @@
             "why": "Pretty is easier to read, Raw shows what the server really sent.",
             "example": "A long one-line JSON becomes an indented tree with line numbers.",
             "next": "Copy the body from Raw if you need it unchanged.",
-            "chapter": "response"
+            "chapter": "response",
+            "more": "Responses#body-and-headers"
         },
         "response.body": {
             "title": "Body of the answer",
@@ -398,7 +440,8 @@
             "why": "This is usually the data you asked for.",
             "example": "A list of users in JSON.",
             "next": "Select text and press Ctrl+C to copy it.",
-            "chapter": "response"
+            "chapter": "response",
+            "more": "Responses#body-and-headers"
         },
         "response.headers": {
             "title": "Headers of the answer",
@@ -406,7 +449,8 @@
             "why": "They tell the format, caching, cookies, and more.",
             "example": "Content-Type: application/json; charset=utf-8",
             "next": "Most of the time you can ignore them.",
-            "chapter": "response"
+            "chapter": "response",
+            "more": "Responses#body-and-headers"
         },
         "environments.list": {
             "title": "Environments",
@@ -414,7 +458,8 @@
             "why": "Switching the environment switches all values at once.",
             "example": "\"Local\", \"Staging\", \"Production\".",
             "next": "Select one to edit its variables on the right.",
-            "chapter": "variables"
+            "chapter": "variables",
+            "more": "Variables-and-Environments#environments"
         },
         "environments.add": {
             "title": "Add environment",
@@ -422,7 +467,8 @@
             "why": "For example for another server.",
             "example": "Add \"Staging\" and give it its own baseUrl.",
             "next": "Type its name, then add variables.",
-            "chapter": "variables"
+            "chapter": "variables",
+            "more": "Variables-and-Environments#environments"
         },
         "environments.duplicate": {
             "title": "Duplicate environment",
@@ -430,7 +476,8 @@
             "why": "Faster than typing the same variables again.",
             "example": "Copy \"Staging\" to start \"Production\", then change the values.",
             "next": "Rename the copy.",
-            "chapter": "variables"
+            "chapter": "variables",
+            "more": "Variables-and-Environments#environments"
         },
         "environments.remove": {
             "title": "Remove environment",
@@ -438,7 +485,8 @@
             "why": "To get rid of one you no longer need.",
             "example": "ReqDeck asks before it deletes.",
             "next": "Requests that used its variables show them as unresolved.",
-            "chapter": "variables"
+            "chapter": "variables",
+            "more": "Variables-and-Environments#environments"
         },
         "environments.name": {
             "title": "Environment name",
@@ -446,7 +494,8 @@
             "why": "A clear name avoids sending to the wrong server.",
             "example": "\"Production\"",
             "next": "It is stored when you leave the field.",
-            "chapter": "variables"
+            "chapter": "variables",
+            "more": "Variables-and-Environments#environments"
         },
         "environments.variables": {
             "title": "Variables",
@@ -454,7 +503,8 @@
             "why": "Write a value once and use it in many requests.",
             "example": "baseUrl = https://httpbin.org, used as {{baseUrl}}/get",
             "next": "Tick Secret for passwords and keys: the value stays out of the workspace file.",
-            "chapter": "variables"
+            "chapter": "variables",
+            "more": "Variables-and-Environments#secret-variables"
         },
         "curl.input": {
             "title": "cURL command",
@@ -462,7 +512,8 @@
             "why": "API documentation and browsers often give requests as curl commands.",
             "example": "In a browser: Developer tools > Network > right-click > Copy as cURL (bash).",
             "next": "The line below tells what was understood; press Import.",
-            "chapter": "history"
+            "chapter": "history",
+            "more": "Import-and-Export#curl"
         },
         "curl.import": {
             "title": "Import",
@@ -470,7 +521,8 @@
             "why": "You can then edit and send it like any other.",
             "example": "Options ReqDeck cannot use are listed before you import.",
             "next": "Check the URL and headers, then press Send.",
-            "chapter": "history"
+            "chapter": "history",
+            "more": "Import-and-Export#curl"
         },
         "launcher.open": {
             "title": "Open workspace",
@@ -478,7 +530,8 @@
             "why": "A workspace holds your requests and environments.",
             "example": "A file ending in .reqdeck.",
             "next": "Recent workspaces are listed above for one click.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Workspaces-and-Data#the-workspace-file"
         },
         "launcher.create": {
             "title": "Create workspace",
@@ -486,7 +539,8 @@
             "why": "Use one workspace per project or API.",
             "example": "\"Shop API\"",
             "next": "Then add a request with Ctrl+N.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Getting-Started#5-make-your-own-workspace"
         },
         "launcher.samples": {
             "title": "Open samples",
@@ -494,7 +548,8 @@
             "why": "The fastest way to see how ReqDeck works.",
             "example": "Pick a request and press Send.",
             "next": "The samples open at Get a post, ready to send: press Send.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Getting-Started#1-open-the-samples"
         },
         "launcher.recent": {
             "title": "Recent workspaces",
@@ -502,7 +557,8 @@
             "why": "One click opens them again.",
             "example": "The cross removes an entry from the list, not the file.",
             "next": "Click a row to open it.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Workspaces-and-Data#the-workspace-file"
         },
         "dialog.settings": {
             "title": "Settings",
@@ -510,7 +566,8 @@
             "why": "To adapt ReqDeck to how you work.",
             "example": "Turn off automatic update checks if you prefer to check yourself.",
             "next": "Close the window when done; changes apply at once.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Requests#tabs"
         },
         "dialog.about": {
             "title": "About ReqDeck",
@@ -518,7 +575,8 @@
             "why": "Useful when you report a problem.",
             "example": "Copy the version when you write to support.",
             "next": "ReqDeck is free software under the GPL.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Home"
         },
         "dialog.update": {
             "title": "Updates",
@@ -526,7 +584,8 @@
             "why": "New versions fix problems and add features.",
             "example": "Install the update when it suits you.",
             "next": "Your workspaces are not changed by an update.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Installation#updates"
         },
         "dialog.workspace": {
             "title": "Workspace",
@@ -534,7 +593,8 @@
             "why": "The workspace is one file in that folder.",
             "example": "\"Shop API\" in Documents\\ReqDeck",
             "next": "Press OK to create it.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Getting-Started#5-make-your-own-workspace"
         },
         "dialog.confirm": {
             "title": "Confirmation",
@@ -542,7 +602,8 @@
             "why": "So that nothing is lost by a slip of the mouse.",
             "example": "Unsaved changes: Save keeps them, Discard drops them, Cancel goes back.",
             "next": "Read the question, then choose.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Getting-Started#5-make-your-own-workspace"
         },
         "log.panel": {
             "title": "Log",
@@ -550,7 +611,8 @@
             "why": "Helps to understand a problem.",
             "example": "Filter by level to see only warnings and errors.",
             "next": "View > Hide Log Panel closes it.",
-            "chapter": "troubleshooting"
+            "chapter": "troubleshooting",
+            "more": "Troubleshooting-and-FAQ#when-something-does-not-work"
         },
         "help.panel": {
             "title": "Help",
@@ -558,7 +620,8 @@
             "why": "So you can go on without searching a manual.",
             "example": "Point at the URL field and press F1.",
             "next": "Press F1 again or Escape to close it. More in the guide opens the PDF.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Getting-Started#4-ask-for-help-on-anything"
         },
         "notification": {
             "title": "Message",
@@ -566,7 +629,8 @@
             "why": "Some results need your attention, for example a file that could not be saved.",
             "example": "\"The workspace could not be saved.\"",
             "next": "Close it with the cross; the log keeps all messages.",
-            "chapter": "troubleshooting"
+            "chapter": "troubleshooting",
+            "more": "Troubleshooting-and-FAQ#when-something-does-not-work"
         },
         "topbar.language": {
             "title": "Interface language",
@@ -574,7 +638,8 @@
             "why": "Use ReqDeck in the language you read best.",
             "example": "Click EN and choose Deutsch: the menus show Datei, Anfrage, Ansicht, Hilfe.",
             "next": "The change applies at once and is kept for the next start. This help stays in English, or in Russian when Windows displays Russian.",
-            "chapter": "first-request"
+            "chapter": "first-request",
+            "more": "Home#the-interface-and-its-language"
         },
         "response.tlsBanner": {
             "title": "Untrusted certificate",
@@ -582,7 +647,8 @@
             "why": "A wrong certificate can mean someone is pretending to be the server, so ReqDeck stops.",
             "example": "A test server on your own computer often has a certificate made by itself.",
             "next": "Press Continue only if you know the server. Otherwise ask its owner.",
-            "chapter": "troubleshooting"
+            "chapter": "troubleshooting",
+            "more": "Responses#certificates"
         },
         "response.tlsContinue": {
             "title": "Continue without the check",
@@ -590,7 +656,8 @@
             "why": "Test servers often use certificates nobody signed, and you still need to try them.",
             "example": "https://localhost:8443 with a self-made certificate.",
             "next": "The answer shows a warning, and the log records it. The next request is checked again.",
-            "chapter": "troubleshooting"
+            "chapter": "troubleshooting",
+            "more": "Responses#certificates"
         },
         "response.save": {
             "title": "Save the response",
@@ -598,7 +665,8 @@
             "why": "To keep a download, open the answer in another program, or get all of a very large one.",
             "example": "users.json in your Downloads folder.",
             "next": "Choose where to save; a message says where the file went.",
-            "chapter": "response"
+            "chapter": "response",
+            "more": "Responses#saving-the-answer"
         },
         "response.find": {
             "title": "Find in the response",
@@ -606,7 +674,8 @@
             "why": "A long answer is easier to read when you jump to the part you need.",
             "example": "Type \"email\" to see every email field in a list of users.",
             "next": "Enter or F3 goes to the next match, Shift+Enter or Shift+F3 to the previous one, Esc closes.",
-            "chapter": "response"
+            "chapter": "response",
+            "more": "Responses#finding-text"
         },
         "dialog.restoreCopy": {
             "title": "Restore previous copy",
@@ -614,7 +683,8 @@
             "why": "If something looks wrong after an update, you get your data back as it was.",
             "example": "File > Restore Previous Copy… after secrets were moved to the encrypted format.",
             "next": "Choose Yes to restore. Changes made since the copy, saved or not, are lost.",
-            "chapter": "data"
+            "chapter": "data",
+            "more": "Workspaces-and-Data#format-changes-and-backups"
         },
         "request.moveToSecret": {
             "title": "Move to a secret",
@@ -622,7 +692,8 @@
             "why": "Text typed into a request is saved in the workspace file, which you may share. Secret values stay encrypted on this computer.",
             "example": "A token abc123 becomes the secret variable token, and the field shows {{token}}.",
             "next": "Save the workspace. Without an active environment, ReqDeck makes one named Default.",
-            "chapter": "auth"
+            "chapter": "auth",
+            "more": "Variables-and-Environments#secret-variables"
         },
         "completer": {
             "title": "Variable suggestions",
@@ -630,7 +701,8 @@
             "why": "You do not have to remember or spell variable names.",
             "example": "{{ba offers {{baseUrl}}; {{res offers {{response(\"Login\", \"$\")}} once Login was sent. Change $ to the path of the value, for example $.token, or use \"header:Location\" for a header.",
             "next": "Arrow keys choose, Enter or Tab inserts, Escape closes the list. A response(...) template uses the last response of that request; responses are kept in memory only, until ReqDeck closes.",
-            "chapter": "variables"
+            "chapter": "variables",
+            "more": "Variables-and-Environments#variables"
         },
         "history.search": {
             "title": "Search history",
@@ -638,7 +710,8 @@
             "why": "To find an earlier request among many.",
             "example": "post orders finds POST requests to an address with orders.",
             "next": "Press the Down arrow to move into the list, then Enter to make a request of the entry.",
-            "chapter": "history"
+            "chapter": "history",
+            "more": "Responses#history"
         },
         "dialog.confirmFiles": {
             "title": "Upload files?",
@@ -646,7 +719,8 @@
             "why": "A workspace or an imported collection can name any file, for example a private key; nothing leaves without your yes.",
             "example": "An imported request with a file field C:\\Users\\you\\.ssh\\id_rsa asks before it sends that file.",
             "next": "Files you choose yourself with Browse… or Add File… count as confirmed. The answer lasts until another workspace opens. A relative path means a file next to the workspace file. A redirect to another server does not take the files along.",
-            "chapter": "logins"
+            "chapter": "logins",
+            "more": "Security-and-Privacy#file-uploads"
         },
         "dialog.missingValues": {
             "title": "Values needed",
@@ -654,7 +728,8 @@
             "why": "So no request leaves with a literal {{name}} in it.",
             "example": "{{token}} has no value: type it once and press OK.",
             "next": "Tick Keep to save the values in the active environment; otherwise they count for this send only.",
-            "chapter": "variables"
+            "chapter": "variables",
+            "more": "Variables-and-Environments#variables"
         },
         "palette": {
             "title": "Find a request or command",
@@ -662,7 +737,8 @@
             "why": "To get anywhere without the mouse or the tree.",
             "example": "list orders finds the request List orders.",
             "next": "Arrows choose, Enter opens or runs, Escape closes.",
-            "chapter": "requests"
+            "chapter": "requests",
+            "more": "Requests#collection-and-folders"
         },
         "dialog.folderSettings": {
             "title": "Folder settings",
@@ -670,7 +746,8 @@
             "why": "Set a token once for a whole API instead of in every request; imported Postman collections need this.",
             "example": "A folder with Bearer {{token}}; its requests set to Inherit from folder send that token.",
             "next": "Right-click a folder > Folder Settings…. Inherit from parent folder passes the question up; No authentication stops it.",
-            "chapter": "auth"
+            "chapter": "auth",
+            "more": "Authentication#inheritance-from-folders"
         },
         "dialog.cookies": {
             "title": "Cookies",
@@ -678,7 +755,8 @@
             "why": "After a login the server knows you by a cookie; ReqDeck keeps it so the requests after the login work.",
             "example": "Send the login request, then the next one: its Cookie header carries the session the login set.",
             "next": "Change a value, delete a cookie, or turn cookies off for this workspace. A Cookie header typed in a request wins over the stored cookies.",
-            "chapter": "logins"
+            "chapter": "logins",
+            "more": "Requests#cookies"
         },
         "dialog.import": {
             "title": "Import a collection",
@@ -686,7 +764,8 @@
             "why": "To carry on with the requests you made in Postman or Insomnia, or to start from an API description.",
             "example": "Export a collection in Postman (Collection v2.1), export data in Insomnia (Insomnia v4, JSON), or take the openapi.json or openapi.yaml of a service, and choose the file here.",
             "next": "Read what will not carry over, then press Import. The collection becomes a new folder; save the workspace to keep it.",
-            "chapter": "moving"
+            "chapter": "moving",
+            "more": "Import-and-Export#collections-from-other-tools"
         }
     },
     "chapters": [

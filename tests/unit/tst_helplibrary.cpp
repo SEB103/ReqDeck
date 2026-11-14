@@ -8,6 +8,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
+#include <QRegularExpression>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -74,6 +75,9 @@ private slots:
 
     /*! Verifies that no topic id appears twice in a help file, since JSON keeps only one. */
     void topicIdsAreUnique();
+
+    /*! Verifies that every topic names a page and a section of the English manual. */
+    void topicsNameManualSections();
 };
 
 void HelpLibraryTest::loadsTopics()
@@ -294,6 +298,43 @@ void HelpLibraryTest::guideChaptersExist()
         QFile pdf(QDir(QStringLiteral(REQDECK_HELP_DIR)).filePath(QStringLiteral("ReqDeck-Guide.%1.pdf").arg(language)));
         QVERIFY2(pdf.open(QIODevice::ReadOnly), qPrintable(pdf.fileName()));
         QVERIFY(pdf.read(5) == "%PDF-");
+    }
+}
+
+/*!
+ * \internal
+ * \brief Returns the anchor GitHub gives the heading \a heading.
+ */
+static QString headingSlug(const QString &heading)
+{
+    QString slug;
+    for (const QChar c : heading.trimmed().toLower()) {
+        if (c.isLetterOrNumber() || c == u'-' || c == u'_')
+            slug += c;
+        else if (c == u' ')
+            slug += u'-';
+    }
+    return slug;
+}
+
+void HelpLibraryTest::topicsNameManualSections()
+{
+    const QDir manual(QStringLiteral(REQDECK_MANUAL_DIR "/en"));
+    const HelpLibrary english(QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR));
+    static const QRegularExpression headingLine(QStringLiteral("^#+ (.+)$"), QRegularExpression::MultilineOption);
+    for (const QString &id : english.topicIds()) {
+        const QString more = english.topic(id).value(QStringLiteral("more")).toString();
+        QVERIFY2(!more.isEmpty(), qPrintable(id));
+        const QString page = more.section(u'#', 0, 0);
+        const QString anchor = more.section(u'#', 1);
+        QFile file(manual.filePath(page + QStringLiteral(".md")));
+        QVERIFY2(file.open(QIODevice::ReadOnly), qPrintable(id + u' ' + page));
+        if (anchor.isEmpty())
+            continue;
+        QStringList slugs;
+        for (const QRegularExpressionMatch &match : headingLine.globalMatch(QString::fromUtf8(file.readAll())))
+            slugs.append(headingSlug(match.captured(1)));
+        QVERIFY2(slugs.contains(anchor), qPrintable(id + u' ' + more));
     }
 }
 
