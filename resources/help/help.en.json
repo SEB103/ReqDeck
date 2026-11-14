@@ -327,7 +327,7 @@
             "what": "The server's verdict, how long it took, and how big the answer was.",
             "why": "The status tells at a glance whether the request worked.",
             "example": "200 OK worked, 404 not found, 401 not allowed, 500 the server failed.",
-            "next": "The guide explains the codes you will meet most.",
+            "next": "The user manual explains the codes you will meet most.",
             "more": "Responses#status"
         },
         "response.tabs": {
@@ -447,7 +447,7 @@
             "what": "Opens ready requests against free test services.",
             "why": "The fastest way to see how ReqDeck works.",
             "example": "Pick a request and press Send.",
-            "next": "The samples open at Get a post, ready to send: press Send.",
+            "next": "The samples open at Create a post, ready to send: press Send.",
             "more": "Getting-Started#1-open-the-samples"
         },
         "launcher.recent": {
@@ -460,7 +460,7 @@
         },
         "dialog.settings": {
             "title": "Settings",
-            "what": "Language, folder for new workspaces, and update checks.",
+            "what": "Folder for new workspaces, tabs, and update checks.",
             "why": "To adapt ReqDeck to how you work.",
             "example": "Turn off automatic update checks if you prefer to check yourself.",
             "next": "Close the window when done; changes apply at once.",
@@ -511,7 +511,7 @@
             "what": "A short explanation of what you pointed at or were working in.",
             "why": "So you can go on without searching a manual.",
             "example": "Point at the URL field and press F1.",
-            "next": "Press F1 again or Escape to close it. More in the guide opens the PDF.",
+            "next": "Press F1 again or Escape to close it. More in the manual opens the matching section of the user manual.",
             "more": "Getting-Started#4-ask-for-help-on-anything"
         },
         "notification": {

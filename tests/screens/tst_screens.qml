@@ -1876,6 +1876,22 @@ Item {
             compare(cppWorkspaceManager.dirty, false);
         }
 
+        /*! Verifies that the manual and the F1 help follow the interface language. */
+        function test_helpFollowsLanguage() {
+            const help = openManual(createMain(), "Requests");
+            const text = findChild(help.contentItem, "helpText");
+            verify(text.text.indexOf("# Requests") === 0);
+
+            cppLocale.setLanguage("de_DE");
+
+            compare(cppManual.language, "de");
+            compare(cppHelp.language, "de");
+            compare(help.pageId, "Requests");
+            verify(text.text.indexOf("# Anfragen") === 0, text.text.substring(0, 40));
+            compare(cppHelp.topic("request.send").title, "Senden");
+            help.close();
+        }
+
         /*! Verifies that the find field of the help window counts and selects matches. */
         function test_helpFindInPage() {
             const help = openManual(createMain(), "Requests");

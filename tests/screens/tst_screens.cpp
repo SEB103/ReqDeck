@@ -393,6 +393,7 @@ public:
             }
         }
 
+        const HelpLibrary german(QStringLiteral("de"), QStringLiteral(REQDECK_HELP_DIR));
         QStringList missing;
         QList<QQuickItem *> pending = roots;
         QSet<QQuickItem *> seen;
@@ -414,7 +415,7 @@ public:
                 continue;
 
             const QString topic = HelpLocator::topicOf(item);
-            if (topic.isEmpty() || !m_help.hasTopic(topic)
+            if (topic.isEmpty() || !m_help.hasTopic(topic) || !german.hasTopic(topic)
                 || !ownsTopic(item)) {
                 QStringList chain;
                 for (const QObject *object = item; object && chain.size() < 4;

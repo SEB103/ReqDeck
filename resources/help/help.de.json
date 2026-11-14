@@ -1,0 +1,650 @@
+{
+    "schema": 1,
+    "language": "de",
+    "labels": {
+        "why": "Wozu",
+        "example": "Beispiel",
+        "next": "Wie weiter",
+        "more": "Mehr im Handbuch",
+        "close": "Hilfe schließen",
+        "chapter": "Im Handbuch"
+    },
+    "links": {
+        "practice": "https://httpbin.org",
+        "statusCodes": "https://developer.mozilla.org/de/docs/Web/HTTP/Status"
+    },
+    "topics": {
+        "start": {
+            "title": "Erste Schritte",
+            "what": "ReqDeck sendet Anfragen an Webdienste (APIs) und zeigt, was sie antworten.",
+            "why": "Sie können eine API ausprobieren, ohne Code zu schreiben, und die Anfragen behalten, die Sie brauchen.",
+            "example": "Beispiele öffnen auf dem Startbildschirm, Ordner JSONPlaceholder öffnen, „Get a post“ wählen und Senden drücken.",
+            "next": "Zeigen Sie auf ein Feld oder eine Schaltfläche und drücken Sie F1, um zu erfahren, was es tut.",
+            "more": "Home"
+        },
+        "menu": {
+            "title": "Menü",
+            "what": "Alle Befehle von ReqDeck, gruppiert nach dem, womit sie arbeiten.",
+            "why": "Befehle, die Sie nicht als Schaltflächen sehen, stehen hier, mit ihren Tastenkürzeln.",
+            "example": "Datei > cURL importieren macht aus einem kopierten Befehl eine Anfrage.",
+            "next": "Die meisten Befehle haben auch ein Tastenkürzel, das daneben steht.",
+            "more": "Keyboard-Shortcuts"
+        },
+        "topbar.environment": {
+            "title": "Umgebung",
+            "what": "Wählt, welche Gruppe von Variablen Ihre Anfragen gerade verwenden.",
+            "why": "Dieselben Anfragen können ohne Änderung an einen Testserver oder an den echten gehen.",
+            "example": "Wechseln Sie von „Staging“ zu „Production“, und {{baseUrl}} zeigt auf den anderen Server.",
+            "next": "Mit der Schaltfläche daneben legen Sie Umgebungen an oder bearbeiten sie.",
+            "more": "Variables-and-Environments#umgebungen"
+        },
+        "topbar.manageEnvironments": {
+            "title": "Umgebungen verwalten",
+            "what": "Öffnet die Liste der Umgebungen und ihrer Variablen.",
+            "why": "Hier legen Sie Werte wie Adressen und Schlüssel einmal für alle Anfragen fest.",
+            "example": "Fügen Sie eine Variable baseUrl mit dem Wert https://httpbin.org hinzu.",
+            "next": "Schreiben Sie dann {{baseUrl}}/get in die URL einer Anfrage.",
+            "more": "Variables-and-Environments#umgebungen"
+        },
+        "topbar.save": {
+            "title": "Arbeitsbereich speichern",
+            "what": "Schreibt alle Anfragen und Umgebungen in die Arbeitsbereichsdatei.",
+            "why": "Änderungen existieren nur im Speicher, bis Sie sie speichern.",
+            "example": "Drücken Sie Strg+S, nachdem Sie eine Anfrage bearbeitet haben.",
+            "next": "Die Statusleiste zeigt, wenn der Arbeitsbereich ungespeicherte Änderungen hat.",
+            "more": "Workspaces-and-Data#die-arbeitsbereichsdatei"
+        },
+        "topbar.settings": {
+            "title": "Einstellungen",
+            "what": "Öffnet die Einstellungen der Anwendung.",
+            "why": "Hier wählen Sie den Ordner für neue Arbeitsbereiche und die Update-Prüfung.",
+            "example": "Wählen Sie den Ordner, in dem neue Arbeitsbereiche angelegt werden.",
+            "next": "Einstellungen gelten sofort.",
+            "more": "Requests#reiter"
+        },
+        "collection.tree": {
+            "title": "Sammlung",
+            "what": "Ihre gespeicherten Anfragen, in Ordnern sortiert.",
+            "why": "Sie müssen eine Anfrage nicht neu eingeben: anklicken und senden.",
+            "example": "Rechtsklick, um eine Anfrage oder einen Ordner hinzuzufügen, umzubenennen, zu duplizieren oder zu löschen.",
+            "next": "Strg+Klick oder Umschalt+Klick wählt mehrere Elemente zum Löschen oder Duplizieren. Mit der Tastatur: Pfeile bewegen und öffnen Ordner, F2 benennt um, Entf löscht. Rechtsklick > A–Z sortieren setzt Ordner zuerst und sortiert dann nach Namen.",
+            "more": "Requests#sammlung-und-ordner"
+        },
+        "sidebar.tabs": {
+            "title": "Sammlung und Verlauf",
+            "what": "Schaltet den linken Bereich zwischen Ihren gespeicherten und Ihren gesendeten Anfragen um.",
+            "why": "Im Verlauf finden Sie eine früher gesendete Anfrage, auch wenn Sie sie nie gespeichert haben.",
+            "example": "Öffnen Sie Verlauf, um die letzten Anfragen mit ihrem Status zu sehen.",
+            "next": "Ein Doppelklick auf einen Eintrag im Verlauf macht daraus eine Anfrage.",
+            "more": "Responses#verlauf"
+        },
+        "history.list": {
+            "title": "Verlauf",
+            "what": "Die gesendeten Anfragen, die neueste zuerst, mit Status und Zeit.",
+            "why": "Sie können wiederholen oder nachsehen, was Sie zuvor getan haben.",
+            "example": "Grünes 200 heißt Erfolg, oranges 404 „nicht gefunden“, rot ein Fehler.",
+            "next": "Doppelklicken Sie auf einen Eintrag oder wählen Sie ihn und drücken Sie Eingabe, um daraus eine Anfrage zu machen. Passwörter werden nicht behalten.",
+            "more": "Responses#verlauf"
+        },
+        "history.clear": {
+            "title": "Verlauf leeren",
+            "what": "Entfernt alle Einträge aus dem Verlauf.",
+            "why": "Nützlich, wenn die Liste lang wird oder Anfragen enthält, die Sie nicht brauchen.",
+            "example": "ReqDeck fragt, bevor es etwas entfernt.",
+            "next": "Ihre gespeicherten Anfragen bleiben unberührt.",
+            "more": "Responses#verlauf"
+        },
+        "request.name": {
+            "title": "Name der Anfrage",
+            "what": "Der Name, unter dem die Anfrage in der Sammlung erscheint.",
+            "why": "Ein klarer Name hilft, die Anfrage später zu finden.",
+            "example": "„Create user“ oder „List orders“.",
+            "next": "Klicken Sie auf den Namen, um ihn zu ändern; er wird gespeichert, wenn Sie das Feld verlassen.",
+            "more": "Requests#sammlung-und-ordner"
+        },
+        "request.method": {
+            "title": "Methode",
+            "what": "Was die Anfrage vom Server verlangt.",
+            "why": "Dieselbe Adresse kann je nach Methode verschiedene Aktionen bedeuten.",
+            "example": "GET liest, POST legt an, PUT oder PATCH ändert, DELETE entfernt.",
+            "next": "Die meisten APIs nennen in ihrer Dokumentation die passende Methode.",
+            "more": "Requests#methode-und-adresse"
+        },
+        "request.url": {
+            "title": "Adresse (URL)",
+            "what": "Wohin die Anfrage geht, wie die Adresse einer Website im Browser.",
+            "why": "Sie nennt den Server und das, was Sie von ihm wollen.",
+            "example": "https://httpbin.org/get, oder mit einer Variablen: {{baseUrl}}/users",
+            "next": "Drücken Sie Senden oder Strg+Eingabe. Ein rot unterstrichenes {{name}} ist eine Variable ohne Wert.",
+            "more": "Requests#methode-und-adresse"
+        },
+        "request.send": {
+            "title": "Senden",
+            "what": "Sendet die Anfrage und wartet auf die Antwort.",
+            "why": "Die Antwort erscheint rechts: Status, Zeit, Größe und Inhalt.",
+            "example": "Drücken Sie Strg+Eingabe in einem beliebigen Feld der Anfrage.",
+            "next": "Während die Anfrage läuft, bricht die Schaltfläche sie ab.",
+            "more": "Getting-Started#2-senden"
+        },
+        "request.tabs": {
+            "title": "Teile einer Anfrage",
+            "what": "Params, Header, Body und Auth sind die Teile, die eine Anfrage außer ihrer Adresse tragen kann.",
+            "why": "Jeder Teil beantwortet eine andere Frage: was filtern, wie sprechen, was senden, wer Sie sind.",
+            "example": "Fügen Sie in Params page=2 hinzu, um die zweite Seite anzufordern.",
+            "next": "Viele Anfragen brauchen nur die URL; die anderen Teile sind optional.",
+            "more": "Requests"
+        },
+        "request.params": {
+            "title": "Parameter",
+            "what": "Paare aus Name und Wert, die nach einem Fragezeichen an die Adresse gehängt werden.",
+            "why": "Sie sagen dem Server, was genau Sie wollen, etwa ein Suchwort oder eine Seite.",
+            "example": "q = coffee wird zu ?q=coffee am Ende der URL.",
+            "next": "Entfernen Sie das Häkchen am Anfang einer Zeile, um den Parameter vorerst wegzulassen.",
+            "more": "Requests#parameter-und-header"
+        },
+        "request.headers": {
+            "title": "Header",
+            "what": "Zusätzliche Informationen, die mit der Anfrage gesendet werden, als Paare aus Name und Wert.",
+            "why": "Server erfahren aus Headern das Format, das Sie senden und annehmen, oder wer Sie sind.",
+            "example": "Accept = application/json fordert eine Antwort in JSON an.",
+            "next": "Für eine Anmeldung nutzen Sie den Reiter Auth, statt den Header von Hand zu schreiben.",
+            "more": "Requests#parameter-und-header"
+        },
+        "request.body": {
+            "title": "Body",
+            "what": "Inhalt, der mit der Anfrage gesendet wird, meist wenn Sie etwas anlegen oder ändern.",
+            "why": "POST-, PUT- und PATCH-Anfragen tragen hier oft die neuen Daten.",
+            "example": "{\"name\": \"Ann\"} als JSON, um einen Benutzer anzulegen.",
+            "next": "Wählen Sie zuerst die Art des Body; GET-Anfragen haben meist keinen.",
+            "more": "Requests#body"
+        },
+        "request.bodyMode": {
+            "title": "Art des Body",
+            "what": "Wählt, wie der Inhalt gesendet wird: kein Body, Rohtext, Formularfelder, Formulardaten mit Dateien oder eine Datei.",
+            "why": "Der Server erwartet eine bestimmte Form, und die API-Dokumentation nennt sie.",
+            "example": "Raw mit JSON für die meisten modernen APIs; URL-kodiertes Formular für klassische Webformulare.",
+            "next": "Der passende Header Content-Type wird für Sie gesetzt.",
+            "more": "Requests#body"
+        },
+        "request.rawType": {
+            "title": "Format des Textes",
+            "what": "Sagt, ob der Rohtext JSON, XML oder einfacher Text ist.",
+            "why": "Es setzt den Header Content-Type, damit der Server weiß, wie er den Body lesen soll.",
+            "example": "JSON für {\"name\": \"Ann\"}.",
+            "next": "Geben Sie den Text im Feld darunter ein.",
+            "more": "Requests#body"
+        },
+        "request.rawBody": {
+            "title": "Text des Body",
+            "what": "Der genaue Text, der als Body gesendet wird.",
+            "why": "Hier schreiben Sie die Daten, die der Server bekommen soll.",
+            "example": "{\"title\": \"Milch kaufen\", \"done\": false}",
+            "next": "Variablen wie {{userId}} funktionieren auch hier.",
+            "more": "Requests#body"
+        },
+        "request.form": {
+            "title": "Formularfelder",
+            "what": "Paare aus Name und Wert, gesendet wie ein Webformular.",
+            "why": "Manche Server erwarten Daten so statt als JSON.",
+            "example": "username = ann, remember = true",
+            "next": "Entfernen Sie das Häkchen am Anfang einer Zeile, um das Feld wegzulassen.",
+            "more": "Requests#body"
+        },
+        "request.formData": {
+            "title": "Formulardaten",
+            "what": "Teile, die als multipart/form-data gesendet werden: Textfelder und Dateien, wie ein Webformular mit Upload sie sendet.",
+            "why": "Uploads von Bildern und Dokumenten nutzen das, oft mit ein paar Textfeldern neben der Datei.",
+            "example": "title = Urlaub, photo = Datei C:/Bilder/strand.jpg",
+            "next": "Datei hinzufügen… wählt eine Datei; der Typ eines Teils ergibt sich aus dem Dateinamen, wenn Sie keinen eingeben.",
+            "more": "Requests#body"
+        },
+        "request.bodyFile": {
+            "title": "Datei als Body",
+            "what": "Sendet eine Datei als ganzen Body, Byte für Byte.",
+            "why": "Manche APIs nehmen einen Upload als rohen Body an, etwa ein PUT eines Bildes oder einer JSON-Datei.",
+            "example": "PUT {{baseUrl}}/avatar mit der Datei C:/Bilder/ich.png",
+            "next": "Der Content-Type ergibt sich aus dem Dateinamen, wenn kein Header ihn setzt. Die Datei wird beim Senden gelesen, auch große Dateien gehen.",
+            "more": "Requests#body"
+        },
+        "request.openTabs": {
+            "title": "Offene Anfragen",
+            "what": "Die in Reitern geöffneten Anfragen. Ein Klick im Baum zeigt eine Anfrage im Vorschau-Reiter, kursiv; ein Doppelklick oder eine Änderung behält sie.",
+            "why": "Um an mehreren Anfragen gleichzeitig zu arbeiten: Jeder Reiter behält die Antwort seines letzten Sendens, und Anfragen in verschiedenen Reitern können gleichzeitig laufen.",
+            "example": "Senden Sie einen langsamen Bericht in einem Reiter und testen Sie im anderen weiter.",
+            "next": "Strg+Tab geht zum nächsten Reiter, Strg+W schließt einen; ein Mittelklick auf einen Reiter schließt ihn auch.",
+            "more": "Requests#reiter"
+        },
+        "settings.showTabs": {
+            "title": "Reiter anzeigen",
+            "what": "Zeigt die offenen Anfragen als Reiter über der Anfrage.",
+            "why": "Reiter halten mehrere Anfragen offen, jede mit ihrer letzten Antwort. Ausgeschaltet zeigt ReqDeck eine Anfrage nach der anderen.",
+            "example": "Schalten Sie es aus für ein ruhiges Fenster mit einer einzigen Anfrage.",
+            "next": "Die Wahl gilt für jeden Arbeitsbereich auf diesem Computer.",
+            "more": "Requests#reiter"
+        },
+        "request.oauth": {
+            "title": "OAuth 2.0",
+            "what": "Holt ein Token von einem Autorisierungsserver und sendet es als Bearer. Autorisierungscode meldet Sie im Browser an; Client Credentials meldet die Anwendung selbst an.",
+            "why": "Viele APIs, darunter Google, Microsoft, GitHub und Firmen-APIs, nehmen nur Token aus ihrer eigenen Anmeldung an.",
+            "example": "Token-URL https://login.example.com/oauth/token, Client-ID my-app, Scope read.",
+            "next": "Die Dokumentation der API nennt die URLs und Scopes. Legen Sie das Client-Secret in eine geheime Variable, zum Beispiel {{clientSecret}}.",
+            "more": "Authentication#oauth-20"
+        },
+        "request.oauthToken": {
+            "title": "Token",
+            "what": "Token abrufen meldet an und behält das Token; Zurücksetzen vergisst es. Die Zeile daneben sagt, wie lange das Token gilt.",
+            "why": "Ein Token läuft ab. ReqDeck erneuert es selbst, wenn der Server ein Refresh-Token gab, und holt bei Client Credentials selbst eins.",
+            "example": "Drücken Sie Token abrufen, melden Sie sich im Browser an und kehren Sie zurück: Das nächste Senden trägt das Token.",
+            "next": "Token werden für Ihren Windows-Benutzer verschlüsselt aufbewahrt, nie in der Arbeitsbereichsdatei oder im Verlauf.",
+            "more": "Authentication#token"
+        },
+        "response.sent": {
+            "title": "Was gesendet wurde",
+            "what": "Zeigt jede Anfrage, wie sie an den Server ging: Methode, URL, Header, Größe des Body und die Antwort, ein Block je Weiterleitung.",
+            "why": "Variablen, geerbte Einstellungen, Cookies und Weiterleitungen verändern eine Anfrage; hier sehen Sie das Ergebnis, nicht den Editor.",
+            "example": "Ein POST mit der Antwort 307 zeigt zwei Blöcke: den ersten mit 307 Temporary Redirect, den zweiten mit der endgültigen Antwort.",
+            "next": "Passwörter, Token, Cookie-Werte und ein API-Schlüssel sind verdeckt. Die Netzwerkschicht fügt ein paar eigene Header hinzu, etwa Host, die nicht aufgeführt sind.",
+            "more": "Responses#reiter-gesendet"
+        },
+        "response.filter": {
+            "title": "JSONPath-Filter",
+            "what": "Zeigt nur die Teile einer JSON-Antwort, die der Pfad auswählt.",
+            "why": "In einer langen Antwort ist der eine Wert schwer zu finden, den Sie brauchen; ein Pfad holt ihn heraus.",
+            "example": "$.items[*].id, $..price oder $.items[?(@.status == 'open')].name",
+            "next": "Leeren Sie das Feld, um wieder den ganzen Body zu sehen. Der Filter bleibt für das nächste Senden. Member eines Objekts kommen in alphabetischer Reihenfolge ihrer Namen, mit .. oder * ist der erste Treffer also nicht unbedingt der erste im Text.",
+            "more": "Responses#jsonpath-filter"
+        },
+        "request.authType": {
+            "title": "Authentifizierung",
+            "what": "Wählt, wie die Anfrage zeigt, wer Sie sind.",
+            "why": "Viele APIs antworten nur bekannten Benutzern und weisen andere mit 401 ab.",
+            "example": "Basic für Benutzername und Passwort, Bearer für ein Token, API-Schlüssel für einen Schlüssel, Vom Ordner erben für die Authentifizierung in den Ordnereinstellungen… eines Ordners darüber.",
+            "next": "Die API-Dokumentation sagt, welche sie verwendet.",
+            "more": "Authentication"
+        },
+        "request.authUser": {
+            "title": "Benutzername",
+            "what": "Der Benutzername für die Authentifizierung Basic.",
+            "why": "Zusammen mit dem Passwort weist er Sie beim Server aus.",
+            "example": "ann oder {{user}}",
+            "next": "Nehmen Sie lieber eine Variable für alles, was Sie anderen nicht zeigen würden.",
+            "more": "Authentication"
+        },
+        "request.authPassword": {
+            "title": "Passwort",
+            "what": "Das Passwort für die Authentifizierung Basic.",
+            "why": "Es beweist, dass der Benutzername Ihnen gehört.",
+            "example": "{{password}}, mit dem Wert als geheime Variable.",
+            "next": "Ein hier eingegebenes Passwort wird in der Arbeitsbereichsdatei gespeichert; eine geheime Variable nicht.",
+            "more": "Authentication"
+        },
+        "request.token": {
+            "title": "Token",
+            "what": "Ein Schlüssel, den der Server Ihnen gab, gesendet als „Bearer“ mit jeder Anfrage.",
+            "why": "Viele APIs verwenden Token statt Passwörtern.",
+            "example": "{{token}}, mit dem Wert als geheime Variable.",
+            "next": "Token laufen oft ab; holen Sie ein neues, wenn der Server 401 antwortet.",
+            "more": "Authentication"
+        },
+        "request.apiKeyName": {
+            "title": "Name des Schlüssels",
+            "what": "Der Name, unter dem der API-Schlüssel gesendet wird.",
+            "why": "Jede API wählt ihren eigenen Namen für den Schlüssel.",
+            "example": "X-Api-Key oder api_key",
+            "next": "Geben Sie den Schlüssel selbst im nächsten Feld ein.",
+            "more": "Authentication"
+        },
+        "request.apiKeyValue": {
+            "title": "Wert des Schlüssels",
+            "what": "Der API-Schlüssel selbst.",
+            "why": "Er weist Ihr Konto oder Ihre App bei der API aus.",
+            "example": "{{apiKey}}, mit dem Wert als geheime Variable.",
+            "next": "Wählen Sie darunter, ob er in einen Header oder in die Adresse kommt.",
+            "more": "Authentication"
+        },
+        "request.apiKeyPlace": {
+            "title": "Wohin der Schlüssel kommt",
+            "what": "Wählt, ob der Schlüssel als Header oder als Parameter in der Adresse gesendet wird.",
+            "why": "APIs erwarten ihn an einer der beiden Stellen.",
+            "example": "Header ist sicherer: Adressen landen öfter in Protokollen.",
+            "next": "Folgen Sie der API-Dokumentation.",
+            "more": "Authentication"
+        },
+        "request.timeout": {
+            "title": "Timeout",
+            "what": "Wie lange, in Millisekunden, ReqDeck auf eine Antwort wartet, bevor es aufgibt.",
+            "why": "Ein Server, der nie antwortet, würde Sie sonst warten lassen.",
+            "example": "5000 wartet fünf Sekunden. 0 verwendet den Standard.",
+            "next": "Erhöhen Sie es für langsame Vorgänge wie große Uploads.",
+            "more": "Requests#timeout-weiterleitungen-proxy"
+        },
+        "table.enabled": {
+            "title": "Diese Zeile verwenden",
+            "what": "Schaltet die Zeile ein oder aus, ohne sie zu löschen.",
+            "why": "So probieren Sie eine Anfrage schnell mit und ohne einen Wert.",
+            "example": "Entfernen Sie das Häkchen, um page=2 für ein Senden wegzulassen.",
+            "next": "Das Kreuz am Ende der Zeile löscht sie.",
+            "more": "Requests#parameter-und-header"
+        },
+        "response.status": {
+            "title": "Status, Zeit und Größe",
+            "what": "Das Urteil des Servers, wie lange es dauerte und wie groß die Antwort war.",
+            "why": "Der Status zeigt auf einen Blick, ob die Anfrage funktioniert hat.",
+            "example": "200 OK hat funktioniert, 404 nicht gefunden, 401 nicht erlaubt, 500 der Server ist gescheitert.",
+            "next": "Das Benutzerhandbuch erklärt die Codes, die Ihnen am häufigsten begegnen.",
+            "more": "Responses#status"
+        },
+        "response.tabs": {
+            "title": "Body und Header der Antwort",
+            "what": "Body zeigt den Inhalt der Antwort, Header die Informationen darüber.",
+            "why": "Meist brauchen Sie den Body; Header helfen, wenn etwas unklar ist.",
+            "example": "Content-Type unter Header sagt, welche Art Inhalt zurückkam.",
+            "next": "Wechseln Sie mit den Reitern oben.",
+            "more": "Responses"
+        },
+        "response.pretty": {
+            "title": "Formatiert und Raw",
+            "what": "Formatiert rückt JSON und XML ein, damit sie gut lesbar sind; Raw zeigt den Text genau so, wie er kam.",
+            "why": "Formatiert ist leichter zu lesen, Raw zeigt, was der Server wirklich gesendet hat.",
+            "example": "Ein langes einzeiliges JSON wird zu einem eingerückten Baum mit Zeilennummern.",
+            "next": "Kopieren Sie den Body aus Raw, wenn Sie ihn unverändert brauchen.",
+            "more": "Responses#body-und-header"
+        },
+        "response.body": {
+            "title": "Body der Antwort",
+            "what": "Der Inhalt, den der Server zurückgesendet hat.",
+            "why": "Das sind meist die Daten, die Sie angefordert haben.",
+            "example": "Eine Liste von Benutzern in JSON.",
+            "next": "Markieren Sie Text und drücken Sie Strg+C, um ihn zu kopieren.",
+            "more": "Responses#body-und-header"
+        },
+        "response.headers": {
+            "title": "Header der Antwort",
+            "what": "Informationen, die der Server über seine Antwort gesendet hat.",
+            "why": "Sie nennen Format, Caching, Cookies und mehr.",
+            "example": "Content-Type: application/json; charset=utf-8",
+            "next": "Meist können Sie sie ignorieren.",
+            "more": "Responses#body-und-header"
+        },
+        "environments.list": {
+            "title": "Umgebungen",
+            "what": "Ihre Gruppen von Variablen, zum Beispiel eine je Server.",
+            "why": "Wer die Umgebung wechselt, wechselt alle Werte auf einmal.",
+            "example": "„Local“, „Staging“, „Production“.",
+            "next": "Wählen Sie eine, um rechts ihre Variablen zu bearbeiten.",
+            "more": "Variables-and-Environments#umgebungen"
+        },
+        "environments.add": {
+            "title": "Umgebung hinzufügen",
+            "what": "Legt eine neue, leere Umgebung an.",
+            "why": "Zum Beispiel für einen anderen Server.",
+            "example": "Fügen Sie „Staging“ hinzu und geben Sie ihr eine eigene baseUrl.",
+            "next": "Geben Sie ihren Namen ein und fügen Sie dann Variablen hinzu.",
+            "more": "Variables-and-Environments#umgebungen"
+        },
+        "environments.duplicate": {
+            "title": "Umgebung duplizieren",
+            "what": "Kopiert die gewählte Umgebung mit allen Variablen.",
+            "why": "Schneller, als dieselben Variablen neu einzugeben.",
+            "example": "Kopieren Sie „Staging“, um mit „Production“ zu beginnen, und ändern Sie dann die Werte.",
+            "next": "Benennen Sie die Kopie um.",
+            "more": "Variables-and-Environments#umgebungen"
+        },
+        "environments.remove": {
+            "title": "Umgebung entfernen",
+            "what": "Löscht die gewählte Umgebung und ihre Variablen.",
+            "why": "Um eine loszuwerden, die Sie nicht mehr brauchen.",
+            "example": "ReqDeck fragt, bevor es löscht.",
+            "next": "Anfragen, die ihre Variablen verwendeten, zeigen sie als nicht aufgelöst.",
+            "more": "Variables-and-Environments#umgebungen"
+        },
+        "environments.name": {
+            "title": "Name der Umgebung",
+            "what": "Der Name, der oben in der Auswahl erscheint.",
+            "why": "Ein klarer Name verhindert, dass Sie an den falschen Server senden.",
+            "example": "„Production“",
+            "next": "Er wird gespeichert, wenn Sie das Feld verlassen.",
+            "more": "Variables-and-Environments#umgebungen"
+        },
+        "environments.variables": {
+            "title": "Variablen",
+            "what": "Namen mit Werten, die Anfragen als {{name}} verwenden können.",
+            "why": "Einen Wert einmal schreiben und in vielen Anfragen verwenden.",
+            "example": "baseUrl = https://httpbin.org, verwendet als {{baseUrl}}/get",
+            "next": "Setzen Sie bei Passwörtern und Schlüsseln das Häkchen Geheim: Der Wert bleibt außerhalb der Arbeitsbereichsdatei.",
+            "more": "Variables-and-Environments#geheime-variablen"
+        },
+        "curl.input": {
+            "title": "cURL-Befehl",
+            "what": "Fügen Sie hier einen curl-Befehl ein, um daraus eine Anfrage zu machen.",
+            "why": "API-Dokumentationen und Browser geben Anfragen oft als curl-Befehle an.",
+            "example": "Im Browser: Entwicklerwerkzeuge > Netzwerk > Rechtsklick > Copy as cURL (bash).",
+            "next": "Die Zeile darunter sagt, was verstanden wurde; drücken Sie Importieren.",
+            "more": "Import-and-Export#curl"
+        },
+        "curl.import": {
+            "title": "Importieren",
+            "what": "Fügt die Anfrage aus dem Befehl Ihrer Sammlung hinzu und öffnet sie.",
+            "why": "Danach können Sie sie wie jede andere bearbeiten und senden.",
+            "example": "Optionen, die ReqDeck nicht verwenden kann, werden vor dem Import aufgeführt.",
+            "next": "Prüfen Sie URL und Header und drücken Sie dann Senden.",
+            "more": "Import-and-Export#curl"
+        },
+        "launcher.open": {
+            "title": "Arbeitsbereich öffnen",
+            "what": "Öffnet eine Arbeitsbereichsdatei von Ihrer Festplatte.",
+            "why": "Ein Arbeitsbereich enthält Ihre Anfragen und Umgebungen.",
+            "example": "Eine Datei mit der Endung .reqdeck.",
+            "next": "Zuletzt verwendete Arbeitsbereiche stehen darüber, mit einem Klick erreichbar.",
+            "more": "Workspaces-and-Data#die-arbeitsbereichsdatei"
+        },
+        "launcher.create": {
+            "title": "Arbeitsbereich erstellen",
+            "what": "Beginnt eine neue, leere Arbeitsbereichsdatei.",
+            "why": "Verwenden Sie einen Arbeitsbereich je Projekt oder API.",
+            "example": "„Shop API“",
+            "next": "Fügen Sie dann mit Strg+N eine Anfrage hinzu.",
+            "more": "Getting-Started#5-einen-eigenen-arbeitsbereich-anlegen"
+        },
+        "launcher.samples": {
+            "title": "Beispiele öffnen",
+            "what": "Öffnet fertige Anfragen an kostenlose Testdienste.",
+            "why": "Der schnellste Weg zu sehen, wie ReqDeck arbeitet.",
+            "example": "Wählen Sie eine Anfrage und drücken Sie Senden.",
+            "next": "Die Beispiele öffnen sich bei Create a post, bereit zum Senden: Drücken Sie Senden.",
+            "more": "Getting-Started#1-beispiele-öffnen"
+        },
+        "launcher.recent": {
+            "title": "Zuletzt verwendete Arbeitsbereiche",
+            "what": "Arbeitsbereiche, die Sie zuvor geöffnet haben.",
+            "why": "Ein Klick öffnet sie wieder.",
+            "example": "Das Kreuz entfernt einen Eintrag aus der Liste, nicht die Datei.",
+            "next": "Klicken Sie auf eine Zeile, um sie zu öffnen.",
+            "more": "Workspaces-and-Data#die-arbeitsbereichsdatei"
+        },
+        "dialog.settings": {
+            "title": "Einstellungen",
+            "what": "Ordner für neue Arbeitsbereiche, Reiter und Update-Prüfung.",
+            "why": "Um ReqDeck an Ihre Arbeitsweise anzupassen.",
+            "example": "Schalten Sie die automatische Update-Prüfung aus, wenn Sie lieber selbst prüfen.",
+            "next": "Schließen Sie das Fenster, wenn Sie fertig sind; Änderungen gelten sofort.",
+            "more": "Requests#reiter"
+        },
+        "dialog.about": {
+            "title": "Über ReqDeck",
+            "what": "Version, Lizenz und die Teile, aus denen ReqDeck gebaut ist.",
+            "why": "Nützlich, wenn Sie ein Problem melden.",
+            "example": "Kopieren Sie die Version, wenn Sie dem Support schreiben.",
+            "next": "ReqDeck ist freie Software unter der GPL.",
+            "more": "Home"
+        },
+        "dialog.update": {
+            "title": "Updates",
+            "what": "Sagt, ob es ein neueres ReqDeck gibt, und installiert es.",
+            "why": "Neue Versionen beheben Probleme und bringen neue Funktionen.",
+            "example": "Installieren Sie das Update, wann es Ihnen passt.",
+            "next": "Ihre Arbeitsbereiche werden durch ein Update nicht verändert.",
+            "more": "Installation#updates"
+        },
+        "dialog.workspace": {
+            "title": "Arbeitsbereich",
+            "what": "Name und Ordner eines neuen Arbeitsbereichs.",
+            "why": "Der Arbeitsbereich ist eine Datei in diesem Ordner.",
+            "example": "„Shop API“ in Documents\\ReqDeck",
+            "next": "Drücken Sie OK, um ihn anzulegen.",
+            "more": "Getting-Started#5-einen-eigenen-arbeitsbereich-anlegen"
+        },
+        "dialog.confirm": {
+            "title": "Bestätigung",
+            "what": "ReqDeck fragt, bevor es etwas tut, das sich nicht rückgängig machen lässt.",
+            "why": "Damit nichts durch einen falschen Klick verloren geht.",
+            "example": "Ungespeicherte Änderungen: Speichern behält sie, Verwerfen lässt sie fallen, Abbrechen geht zurück.",
+            "next": "Lesen Sie die Frage und wählen Sie dann.",
+            "more": "Getting-Started#5-einen-eigenen-arbeitsbereich-anlegen"
+        },
+        "log.panel": {
+            "title": "Protokoll",
+            "what": "Meldungen der Anwendung: was sie getan hat und was schiefging.",
+            "why": "Hilft, ein Problem zu verstehen.",
+            "example": "Filtern Sie nach Stufe, um nur Warnungen und Fehler zu sehen.",
+            "next": "Ansicht > Protokollbereich ausblenden schließt es.",
+            "more": "Troubleshooting-and-FAQ#wenn-etwas-nicht-funktioniert"
+        },
+        "help.panel": {
+            "title": "Hilfe",
+            "what": "Eine kurze Erklärung dessen, worauf Sie gezeigt oder woran Sie gerade gearbeitet haben.",
+            "why": "So geht es weiter, ohne in einem Handbuch zu suchen.",
+            "example": "Zeigen Sie auf das Feld URL und drücken Sie F1.",
+            "next": "Drücken Sie F1 erneut oder Esc, um sie zu schließen. Mehr im Handbuch öffnet den passenden Abschnitt des Benutzerhandbuchs.",
+            "more": "Getting-Started#4-hilfe-zu-allem"
+        },
+        "notification": {
+            "title": "Meldung",
+            "what": "Eine Meldung über etwas, das gerade passiert ist, etwa eine Warnung.",
+            "why": "Manche Ergebnisse brauchen Ihre Aufmerksamkeit, zum Beispiel eine Datei, die sich nicht speichern ließ.",
+            "example": "„Die Arbeitsbereichsdatei konnte nicht geschrieben werden.“",
+            "next": "Schließen Sie sie mit dem Kreuz; das Protokoll behält alle Meldungen.",
+            "more": "Troubleshooting-and-FAQ#wenn-etwas-nicht-funktioniert"
+        },
+        "topbar.language": {
+            "title": "Sprache der Oberfläche",
+            "what": "Zeigt die Sprache von Menüs, Schaltflächen und Meldungen als EN oder DE; ein Klick bietet English und Deutsch an.",
+            "why": "Arbeiten Sie mit ReqDeck in der Sprache, die Sie am besten lesen.",
+            "example": "Klicken Sie auf DE und wählen Sie English: Die Menüs heißen dann File, Request, View, Help.",
+            "next": "Die Änderung gilt sofort und bleibt für den nächsten Start. Diese Hilfe und das Benutzerhandbuch folgen ihr.",
+            "more": "Home#die-oberfläche-und-ihre-sprache"
+        },
+        "response.tlsBanner": {
+            "title": "Nicht vertrauenswürdiges Zertifikat",
+            "what": "Der Server weist sich mit einem Zertifikat aus, und diesem vertraut Windows nicht.",
+            "why": "Ein falsches Zertifikat kann heißen, dass sich jemand als der Server ausgibt, deshalb hält ReqDeck an.",
+            "example": "Ein Testserver auf Ihrem eigenen Computer hat oft ein selbst erstelltes Zertifikat.",
+            "next": "Drücken Sie Fortfahren nur, wenn Sie den Server kennen. Fragen Sie sonst seinen Betreiber.",
+            "more": "Responses#zertifikate"
+        },
+        "response.tlsContinue": {
+            "title": "Ohne Prüfung fortfahren",
+            "what": "Sendet diese Anfrage noch einmal und überspringt die Prüfung des Zertifikats nur für diesen Server.",
+            "why": "Testserver verwenden oft Zertifikate, die niemand signiert hat, und Sie müssen sie trotzdem ausprobieren.",
+            "example": "https://localhost:8443 mit einem selbst erstellten Zertifikat.",
+            "next": "Die Antwort zeigt eine Warnung, und das Protokoll vermerkt es. Die nächste Anfrage wird wieder geprüft.",
+            "more": "Responses#zertifikate"
+        },
+        "response.save": {
+            "title": "Antwort speichern",
+            "what": "Schreibt die Antwort so in eine Datei, wie sie empfangen wurde, ohne die Formatierung. Eine komprimierte Antwort wird entpackt gespeichert.",
+            "why": "Um einen Download zu behalten, die Antwort in einem anderen Programm zu öffnen oder eine sehr große ganz zu bekommen.",
+            "example": "users.json in Ihrem Ordner Downloads.",
+            "next": "Wählen Sie, wohin gespeichert wird; eine Meldung sagt, wo die Datei liegt.",
+            "more": "Responses#antwort-speichern"
+        },
+        "response.find": {
+            "title": "In der Antwort suchen",
+            "what": "Sucht Text in der Antwort und markiert jede Stelle, an der er vorkommt. Groß- und Kleinschreibung zählen gleich.",
+            "why": "Eine lange Antwort lässt sich leichter lesen, wenn Sie zu dem Teil springen, den Sie brauchen.",
+            "example": "Geben Sie „email“ ein, um jedes E-Mail-Feld in einer Liste von Benutzern zu sehen.",
+            "next": "Eingabe oder F3 geht zum nächsten Treffer, Umschalt+Eingabe oder Umschalt+F3 zum vorherigen, Esc schließt.",
+            "more": "Responses#text-suchen"
+        },
+        "dialog.restoreCopy": {
+            "title": "Vorherige Kopie wiederherstellen",
+            "what": "Holt die Arbeitsbereichsdatei und ihre geheimen Werte so zurück, wie sie waren, bevor ReqDeck ihr Dateiformat änderte.",
+            "why": "Wenn nach einem Update etwas falsch aussieht, bekommen Sie Ihre Daten zurück, wie sie waren.",
+            "example": "Datei > Vorherige Kopie wiederherstellen…, nachdem geheime Werte ins verschlüsselte Format umgezogen sind.",
+            "next": "Wählen Sie Ja zum Wiederherstellen. Änderungen seit der Kopie, gespeichert oder nicht, gehen verloren.",
+            "more": "Workspaces-and-Data#formatänderungen-und-sicherungen"
+        },
+        "request.moveToSecret": {
+            "title": "In einen geheimen Wert verschieben",
+            "what": "Verschiebt das eingegebene Passwort, Token oder den Schlüssel in eine geheime Variable der aktiven Umgebung und setzt {{name}} in das Feld.",
+            "why": "In eine Anfrage getippter Text wird in der Arbeitsbereichsdatei gespeichert, die Sie vielleicht weitergeben. Geheime Werte bleiben verschlüsselt auf diesem Computer.",
+            "example": "Ein Token abc123 wird zur geheimen Variablen token, und das Feld zeigt {{token}}.",
+            "next": "Speichern Sie den Arbeitsbereich. Ohne aktive Umgebung legt ReqDeck eine mit dem Namen Default an.",
+            "more": "Variables-and-Environments#geheime-variablen"
+        },
+        "completer": {
+            "title": "Vorschläge für Variablen",
+            "what": "Nach {{ listet ReqDeck die Variablen der aktiven Umgebung, die mit dem Folgenden beginnen, und Vorlagen response(...) der Anfragen, die Sie seit dem Start gesendet haben.",
+            "why": "Sie müssen sich Namen von Variablen nicht merken oder buchstabieren.",
+            "example": "{{ba bietet {{baseUrl}} an; {{res bietet {{response(\"Login\", \"$\")}} an, sobald Login gesendet wurde. Ändern Sie $ in den Pfad des Werts, etwa $.token, oder verwenden Sie \"header:Location\" für einen Header.",
+            "next": "Pfeiltasten wählen, Eingabe oder Tab fügt ein, Esc schließt die Liste. Eine Vorlage response(...) verwendet die letzte Antwort dieser Anfrage; Antworten werden nur im Speicher gehalten, bis ReqDeck beendet wird.",
+            "more": "Variables-and-Environments#variablen"
+        },
+        "history.search": {
+            "title": "Verlauf durchsuchen",
+            "what": "Zeigt nur die Einträge, die jedes eingegebene Wort enthalten, in Methode, Adresse, Status oder Fehler.",
+            "why": "Um eine frühere Anfrage unter vielen zu finden.",
+            "example": "post orders findet POST-Anfragen an eine Adresse mit orders.",
+            "next": "Drücken Sie Pfeil nach unten, um in die Liste zu gehen, dann Eingabe, um aus dem Eintrag eine Anfrage zu machen.",
+            "more": "Responses#verlauf"
+        },
+        "dialog.confirmFiles": {
+            "title": "Dateien hochladen?",
+            "what": "Bevor eine Anfrage zum ersten Mal eine Datei von Ihrem Computer an einen Server sendet, zeigt ReqDeck Pfad und Server und fragt.",
+            "why": "Ein Arbeitsbereich oder eine importierte Sammlung kann jede Datei nennen, etwa einen privaten Schlüssel; nichts geht ohne Ihr Ja hinaus.",
+            "example": "Eine importierte Anfrage mit dem Dateifeld C:\\Users\\Sie\\.ssh\\id_rsa fragt, bevor sie diese Datei sendet.",
+            "next": "Dateien, die Sie selbst mit Durchsuchen… oder Datei hinzufügen… wählen, gelten als bestätigt. Die Antwort gilt, bis ein anderer Arbeitsbereich geöffnet wird. Ein relativer Pfad meint eine Datei neben der Arbeitsbereichsdatei. Eine Weiterleitung zu einem anderen Server nimmt die Dateien nicht mit.",
+            "more": "Security-and-Privacy#datei-uploads"
+        },
+        "dialog.missingValues": {
+            "title": "Werte benötigt",
+            "what": "Vor dem Senden fragt ReqDeck nach Variablen, die die Anfrage verwendet, die aktive Umgebung aber nicht hat.",
+            "why": "Damit keine Anfrage mit einem wörtlichen {{name}} hinausgeht.",
+            "example": "{{token}} hat keinen Wert: Geben Sie ihn einmal ein und drücken Sie OK.",
+            "next": "Setzen Sie das Häkchen zum Behalten, um die Werte in der aktiven Umgebung zu speichern; sonst gelten sie nur für dieses Senden.",
+            "more": "Variables-and-Environments#variablen"
+        },
+        "palette": {
+            "title": "Anfrage oder Befehl finden",
+            "what": "Strg+K öffnet eine Suche über alle Anfragen, nach Name und Adresse, und über die Menübefehle.",
+            "why": "Um überallhin zu kommen, ohne Maus oder Baum.",
+            "example": "list orders findet die Anfrage List orders.",
+            "next": "Pfeile wählen, Eingabe öffnet oder führt aus, Esc schließt.",
+            "more": "Requests#sammlung-und-ordner"
+        },
+        "dialog.folderSettings": {
+            "title": "Ordnereinstellungen",
+            "what": "Autorisierung und Variablen, die die Anfragen eines Ordners teilen.",
+            "why": "Ein Token einmal für eine ganze API festlegen statt in jeder Anfrage; importierte Postman-Sammlungen brauchen das.",
+            "example": "Ein Ordner mit Bearer {{token}}; seine Anfragen mit Vom Ordner erben senden dieses Token.",
+            "next": "Rechtsklick auf einen Ordner > Ordnereinstellungen…. Vom übergeordneten Ordner erben reicht die Frage nach oben weiter; Keine Authentifizierung beendet sie.",
+            "more": "Authentication#vererbung-von-ordnern"
+        },
+        "dialog.cookies": {
+            "title": "Cookies",
+            "what": "Die Cookies dieses Arbeitsbereichs: die, die Server gesetzt haben, und die mit den nächsten Anfragen an sie zurückgehen.",
+            "why": "Nach einer Anmeldung erkennt der Server Sie an einem Cookie; ReqDeck behält es, damit die Anfragen nach der Anmeldung funktionieren.",
+            "example": "Senden Sie die Anmeldeanfrage, dann die nächste: Ihr Cookie-Header trägt die Sitzung der Anmeldung.",
+            "next": "Ändern Sie einen Wert, löschen Sie ein Cookie oder schalten Sie Cookies für diesen Arbeitsbereich ab. Ein in einer Anfrage eingegebener Cookie-Header hat Vorrang vor den gespeicherten Cookies.",
+            "more": "Requests#cookies"
+        },
+        "dialog.import": {
+            "title": "Sammlung importieren",
+            "what": "Bringt eine Postman-Sammlung oder -Umgebung, einen Insomnia-Export oder ein OpenAPI-3-Dokument in diesen Arbeitsbereich.",
+            "why": "Um mit den Anfragen weiterzuarbeiten, die Sie in Postman oder Insomnia angelegt haben, oder um von einer API-Beschreibung auszugehen.",
+            "example": "Exportieren Sie in Postman eine Sammlung (Collection v2.1), in Insomnia Daten (Insomnia v4, JSON), oder nehmen Sie die openapi.json oder openapi.yaml eines Dienstes, und wählen Sie die Datei hier.",
+            "next": "Lesen Sie, was nicht übernommen wird, und drücken Sie dann Importieren. Die Sammlung wird ein neuer Ordner; speichern Sie den Arbeitsbereich, um sie zu behalten.",
+            "more": "Import-and-Export#sammlungen-aus-anderen-werkzeugen"
+        }
+    }
+}

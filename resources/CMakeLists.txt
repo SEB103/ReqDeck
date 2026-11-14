@@ -54,6 +54,7 @@ qt_add_resources(appReqDeck "help_resources"
 
     FILES
         help/help.en.json
+        help/help.de.json
 )
 
 qt_add_resources(appReqDeck "license_resources"
