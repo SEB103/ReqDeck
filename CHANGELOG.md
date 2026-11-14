@@ -18,6 +18,20 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 
 ## [Unreleased]
 
+### Added
+- User manual in its own window (*Help → User Manual*): pages on the left, Back
+  and Forward, find in page, in English and German, with the look of ReqDeck.
+  The pages are Markdown files in `docs/manual/`; the release workflow publishes
+  the same files, with the developer pages, to the GitHub wiki.
+- *More in the manual* in the F1 panel opens the matching section of the manual.
+
+### Changed
+- F1 help and the manual follow the interface language, English or German.
+  The Russian help and the PDF guide are gone.
+
+### Fixed
+- Discard in the unsaved-changes question on closing quits without asking again.
+
 ## [1.1.0] - 2026-11-14
 
 ### Added

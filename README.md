@@ -26,9 +26,9 @@ and explains every part of itself: point at anything and press F1.
 - **History** with search, **cURL** import and export, and import of Postman
   collections and environments (v2.1), Insomnia exports (v4), and OpenAPI 3
   documents, with a report of what did not carry over.
-- **Help:** F1 on any control in English and Russian, a beginner guide as PDF,
-  Ctrl+K to find a request or a command, a light and a dark theme, and the
-  interface in English or German.
+- **Help:** F1 on any control, a user manual in its own window (the same pages
+  as the GitHub wiki), Ctrl+K to find a request or a command, a light and a dark
+  theme, and everything in English or German.
 
 ## Promises
 
@@ -73,8 +73,8 @@ and explains every part of itself: point at anything and press F1.
   server does not take the files along. A relative path means a file next to the
   workspace.
 - **Windows 10 and 11, 64-bit only.** The user interface is in English or
-  German, switched with EN / DE at the top right; F1 help and the guide are in
-  English, and in Russian when Windows is set to display Russian.
+  German, switched with EN / DE at the top right; F1 help and the user manual
+  follow it.
 - **No scripts, plugins, cloud sync, or mock servers.** ReqDeck runs no code from
   workspaces or imports.
 - The installer is not code-signed yet, so Windows SmartScreen may warn before
