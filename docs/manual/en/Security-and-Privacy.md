@@ -70,8 +70,8 @@ not run; the import report lists them as not carried over.
 ## Installer
 
 The installer is **not code-signed yet**, so Windows SmartScreen may warn. Each release
-lists its files on the GitHub releases page, built by the public release workflow from the
-tagged source by the public release workflow.
+lists its files on the GitHub releases page, built from the tagged source by the public
+release workflow.
 
 ## Reporting a vulnerability
 

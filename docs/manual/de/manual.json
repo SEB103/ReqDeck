@@ -1,0 +1,54 @@
+{
+    "language": "de",
+    "title": "ReqDeck-Benutzerhandbuch",
+    "pages": [
+        {
+            "id": "Home",
+            "title": "Überblick"
+        },
+        {
+            "id": "Installation",
+            "title": "Installation"
+        },
+        {
+            "id": "Getting-Started",
+            "title": "Erste Schritte"
+        },
+        {
+            "id": "Requests",
+            "title": "Anfragen"
+        },
+        {
+            "id": "Responses",
+            "title": "Antworten"
+        },
+        {
+            "id": "Variables-and-Environments",
+            "title": "Variablen und Umgebungen"
+        },
+        {
+            "id": "Authentication",
+            "title": "Authentifizierung"
+        },
+        {
+            "id": "Workspaces-and-Data",
+            "title": "Arbeitsbereiche und Daten"
+        },
+        {
+            "id": "Import-and-Export",
+            "title": "Import und Export"
+        },
+        {
+            "id": "Keyboard-Shortcuts",
+            "title": "Tastenkürzel"
+        },
+        {
+            "id": "Security-and-Privacy",
+            "title": "Sicherheit und Datenschutz"
+        },
+        {
+            "id": "Troubleshooting-and-FAQ",
+            "title": "Fehlerbehebung und FAQ"
+        }
+    ]
+}
