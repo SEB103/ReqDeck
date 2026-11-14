@@ -29,6 +29,9 @@ ApplicationWindow {
     /*! Id of the page shown. */
     property string pageId: ""
 
+    /*! Whether pages get the ReqDeck look; false shows Qt's plain Markdown. */
+    property bool styled: true
+
     /*! Pages seen before the current one, as {page, anchor} entries. */
     property var backStack: []
 
@@ -54,13 +57,15 @@ ApplicationWindow {
         }
         root.pageId = page
         pageText.text = cppManual.markdown(page)
+        if (root.styled)
+            cppManual.decorate(pageText.textDocument, root.darkTheme, pageText.width)
         root.scrollTo(anchor ? anchor : "")
         root.findText()
     }
 
     /*! Scrolls to the heading \a anchor of the shown page, or to the top. */
     function scrollTo(anchor) {
-        const position = anchor.length > 0 ? cppManual.anchorPosition(root.pageId, anchor) : -1
+        const position = anchor.length > 0 ? cppManual.anchorIn(pageText.textDocument, anchor) : -1
         if (position < 0) {
             pageFlick.contentY = 0
             return
@@ -131,6 +136,8 @@ ApplicationWindow {
     minimumHeight: 360
     title: qsTr("ReqDeck User Manual")
     Material.theme: root.darkTheme ? Material.Dark : Material.Light
+    // The page colours follow the theme, so the page is laid out again.
+    onDarkThemeChanged: if (root.pageId.length > 0) root.openPage(root.pageId, "", true)
     Material.accent: Base.BsTheme.accent
 
     header: ToolBar {

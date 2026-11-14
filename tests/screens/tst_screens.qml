@@ -1770,7 +1770,8 @@ Item {
 
             help.followLink("Authentication#oauth-20");
             compare(help.pageId, "Authentication");
-            compare(text.cursorPosition, cppManual.anchorPosition("Authentication", "oauth-20"));
+            verify(text.cursorPosition > 0);
+            compare(text.cursorPosition, cppManual.anchorIn(text.textDocument, "oauth-20"));
 
             help.followLink("https://github.com/SEB103/ReqDeck/issues");
             compare(help.pageId, "Authentication");

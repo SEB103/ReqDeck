@@ -10,6 +10,9 @@
 #include <QVariantList>
 #include <QVariantMap>
 
+class QQuickTextDocument;
+class QTextDocument;
+
 /**
  * The user manual shown in the help window, exposed to QML as \c cppManual.
  *
@@ -61,6 +64,23 @@ public:
 
     /** Returns the text position of the heading \a anchor in the page \a pageId, or -1. */
     Q_INVOKABLE int anchorPosition(const QString &pageId, const QString &anchor) const;
+
+    /**
+     * Styles the page in \a document after it was loaded from Markdown: headings in the
+     * accent colour, callouts ("> [!TIP]", "> [!WARNING]", "> [!NOTE]") as coloured
+     * boxes, code on a shaded ground, tables with a shaded header. \a dark picks the
+     * colours of the dark theme; images are scaled down to \a width.
+     */
+    Q_INVOKABLE void decorate(QQuickTextDocument *document, bool dark, qreal width) const;
+
+    /** Styles \a document as decorate() does; the part that needs no Qt Quick. */
+    void decorateDocument(QTextDocument *document, bool dark, qreal width) const;
+
+    /** Returns the text position of the heading \a anchor in the shown \a document, or -1. */
+    Q_INVOKABLE int anchorIn(QQuickTextDocument *document, const QString &anchor) const;
+
+    /** Returns the text position of the heading \a anchor in \a document, or -1. */
+    static int headingPosition(const QTextDocument *document, const QString &anchor);
 
     /** Returns the anchor GitHub gives a heading with the text \a heading. */
     static QString slug(const QString &heading);

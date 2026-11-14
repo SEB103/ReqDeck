@@ -5,6 +5,10 @@
 #include <QFileInfo>
 #include <QRegularExpression>
 #include <QSignalSpy>
+#include <QTextBlock>
+#include <QTextDocument>
+#include <QTextFrame>
+#include <QTextTable>
 #include <QtTest>
 
 #include "qmlapi/helpmanual.h"
@@ -35,6 +39,9 @@ private slots:
 
     /*! Verifies that the languages have the same pages and that an unknown one falls back to English. */
     void languages();
+
+    /*! Verifies the ReqDeck look of a page: headings, callouts, links, tables. */
+    void decoratesPage();
 
 private:
     /*! Returns the language folders of the manual in the source tree. */
@@ -178,6 +185,40 @@ void HelpManualTest::languages()
     QCOMPARE(HelpManual::languageForCode(QStringLiteral("en_GB")), QStringLiteral("en"));
 }
 
-QTEST_GUILESS_MAIN(HelpManualTest)
+void HelpManualTest::decoratesPage()
+{
+    const HelpManual manual(QStringLiteral(REQDECK_MANUAL_DIR));
+    QTextDocument document;
+    document.setMarkdown(QStringLiteral("# Title\n\nSee [Home](Home).\n\n> [!TIP]\n> Try it.\n\n"
+                                        "## After\n\n| A | B |\n|---|---|\n| 1 | 2 |\n"));
+
+    manual.decorateDocument(&document, false, 800);
+
+    QTextCursor title(document.findBlockByNumber(0));
+    title.movePosition(QTextCursor::NextCharacter);
+    QCOMPARE(title.charFormat().foreground().color(), QColor(0xC2, 0x18, 0x5B));
+    QVERIFY(document.toPlainText().contains(QStringLiteral("Tip")));
+    QVERIFY(!document.toPlainText().contains(QStringLiteral("[!TIP]")));
+    int callouts = 0;
+    int tables = 0;
+    for (QTextFrame *frame : document.rootFrame()->childFrames()) {
+        if (qobject_cast<QTextTable *>(frame)) {
+            ++tables;
+            QCOMPARE(frame->frameFormat().border(), 1.0);
+        } else {
+            ++callouts;
+            QCOMPARE(frame->frameFormat().background().color(), QColor(0xE8, 0xF5, 0xE9));
+        }
+    }
+    QCOMPARE(callouts, 1);
+    QCOMPARE(tables, 1);
+    const int link = document.toPlainText().indexOf(QStringLiteral("Home"));
+    QTextCursor cursor(&document);
+    cursor.setPosition(link + 1);
+    QCOMPARE(cursor.charFormat().foreground().color(), QColor(0xC2, 0x18, 0x5B));
+    QVERIFY(HelpManual::headingPosition(&document, QStringLiteral("after")) > link);
+}
+
+QTEST_MAIN(HelpManualTest)
 
 #include "tst_helpmanual.moc"

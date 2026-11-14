@@ -43,9 +43,10 @@ What happens:
 3. Folders, requests, headers, bodies, auth settings (OAuth 2.0 included), and variables
    are brought along where ReqDeck has an equivalent.
 
-**Nothing in an imported file is run.** Pre-request scripts, tests, and other code from
-Postman or Insomnia are not executed. They are listed in the report as not carried over,
-because ReqDeck has no scripts at all.
+> [!WARNING]
+> **Nothing in an imported file is run.** Pre-request scripts, tests, and other code from
+> Postman or Insomnia are not executed. They are listed in the report as not carried over,
+> because ReqDeck has no scripts at all.
 
 ## Coming from Postman
 

@@ -90,8 +90,9 @@ Some data must not travel with the file. ReqDeck keeps it in its data folder (se
 | Copies before a format change | `backups\` | the secrets in them stay encrypted |
 | History of sent requests | `history.json` | plain JSON; credential values removed |
 
-Because the encryption is tied to your Windows account, secrets do not work on another
-computer. There, ReqDeck asks for the values again, and saving still works.
+> [!NOTE]
+> Because the encryption is tied to your Windows account, secrets do not work on another
+> computer. There, ReqDeck asks for the values again, and saving still works.
 
 ## History
 

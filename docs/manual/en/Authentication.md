@@ -11,9 +11,12 @@ The **Auth** tab of a request, and the settings of a folder, offer these types:
 | Inherit from folder | the auth of the nearest folder above that sets one |
 | OAuth 2.0 | `Authorization: Bearer <access token>`, with the token obtained as described below |
 
-All fields accept `{{variables}}`. Keep passwords, tokens, and keys in **secret variables**
-so that they stay out of the workspace file. When you type one straight into a field,
-ReqDeck offers **Move to a secret**. See [Variables and Environments](Variables-and-Environments).
+All fields accept `{{variables}}`.
+
+> [!TIP]
+> Keep passwords, tokens, and keys in **secret variables** so that they stay out of the
+> workspace file. When you type one straight into a field, ReqDeck offers **Move to a
+> secret**. See [Variables and Environments](Variables-and-Environments).
 
 ## Inheritance from folders
 

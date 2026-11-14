@@ -897,6 +897,21 @@
     </message>
 </context>
 <context>
+    <name>HelpManual</name>
+    <message>
+        <source>Tip</source>
+        <translation>Tipp</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>Warnung</translation>
+    </message>
+    <message>
+        <source>Note</source>
+        <translation>Hinweis</translation>
+    </message>
+</context>
+<context>
     <name>HelpWindow</name>
     <message>
         <source>ReqDeck User Manual</source>

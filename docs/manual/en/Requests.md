@@ -62,8 +62,11 @@ Requests open in tabs above the request. A click in the tree shows a request in 
 preview tab, whose name is in italics; the next click replaces it. A double click, an
 edit, or a send keeps the tab.
 
-Each tab keeps the response of its own last send, and a slow request in one tab does not
-hold up the others. **Ctrl+Tab** switches tabs and **Ctrl+W** closes one. *Settings →
+> [!TIP]
+> Each tab keeps the response of its own last send, and a slow request in one tab does not
+> hold up the others.
+
+**Ctrl+Tab** switches tabs and **Ctrl+W** closes one. *Settings →
 Show tabs* turns the tabs off if you prefer one request at a time.
 
 ## Cookies
@@ -78,6 +81,9 @@ included, so the requests after a login work:
 3. Choose *Request → Cookies…* to see the cookies of this workspace, change a value, or
    delete them. The dialog can also turn cookies off for the workspace.
 
-A Cookie header typed in a request wins: ReqDeck then sends just that one and says so
-above the response. Persistent cookies are kept beside the workspace, encrypted for your
+> [!NOTE]
+> A Cookie header typed in a request wins: ReqDeck then sends just that one and says so
+> above the response.
+
+Persistent cookies are kept beside the workspace, encrypted for your
 Windows user; session cookies are never written to disk.
