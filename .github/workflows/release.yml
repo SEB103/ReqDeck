@@ -354,3 +354,51 @@ jobs:
             --notes-file notes.md \
             --generate-notes \
             dist/*-Setup.exe dist/*-win64.zip
+
+  # GitHub Wiki: the user manual (docs/manual/<lang>/*.md) and the developer pages
+  # (docs/dev/*.md), turned into wiki pages by packaging/docs/manual2wiki.py and
+  # pushed to the wiki repository. Runs after the Release, so the wiki never
+  # describes a version that was not published. Pages the generator did not
+  # write are kept.
+  wiki:
+    name: Publish the manual (GitHub Wiki)
+    if: needs.check.outputs.is_release == 'true'
+    needs: [check, release]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Clone wiki repository
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! git clone --quiet "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki; then
+            echo "::error::Cannot clone ${GITHUB_REPOSITORY}.wiki.git - enable the Wiki and create its first page in the GitHub web UI"
+            exit 1
+          fi
+
+      - name: Generate wiki pages
+        shell: bash
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: python3 packaging/docs/manual2wiki.py --out wiki --clean --version "$VERSION"
+
+      - name: Commit and push
+        shell: bash
+        working-directory: wiki
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "wiki is already up to date"
+            exit 0
+          fi
+          git commit --quiet -m "docs: user manual for ${VERSION}"
+          git push --quiet

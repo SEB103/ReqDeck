@@ -85,3 +85,8 @@ jobs:
         run: |
           cmake --build build/ci --target update_translations
           git diff --exit-code -- translations
+
+      # The user manual becomes the GitHub wiki on each release; every link and
+      # image of the generated pages must resolve.
+      - name: Check the wiki pages made from the manual
+        run: python packaging/docs/manual2wiki.py --check
