@@ -3,6 +3,7 @@
 
 #include "core/http/curlconverter.h"
 
+#include <QCoreApplication>
 #include <QSet>
 #include <QUrl>
 
@@ -410,16 +411,16 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
 
     // "Copy as cURL (cmd)" escapes quotes as ^"; bash quoting would misread it.
     if (normalized.contains(QStringLiteral("^\"")))
-        return failure(QStringLiteral("Windows cmd syntax is not supported; copy the command as cURL (bash)."));
+        return failure(QCoreApplication::translate("CurlConverter", "Windows cmd syntax is not supported; copy the command as cURL (bash)."));
 
     const std::optional<QStringList> tokenized = tokenize(normalized);
     if (!tokenized)
-        return failure(QStringLiteral("Unterminated quote."));
+        return failure(QCoreApplication::translate("CurlConverter", "Unterminated quote."));
     const QStringList &tokens = *tokenized;
     if (tokens.isEmpty()
         || (tokens.first().compare(QLatin1StringView("curl"), Qt::CaseInsensitive) != 0
             && tokens.first().compare(QLatin1StringView("curl.exe"), Qt::CaseInsensitive) != 0)) {
-        return failure(QStringLiteral("Not a cURL command."));
+        return failure(QCoreApplication::translate("CurlConverter", "Not a cURL command."));
     }
 
     ParseResult result;
@@ -475,7 +476,7 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
             return std::nullopt;
         };
         const auto missingValue = [&name]() {
-            return failure(QStringLiteral("Missing value for option: %1").arg(name));
+            return failure(QCoreApplication::translate("CurlConverter", "Missing value for option: %1").arg(name));
         };
 
         if (name == QLatin1StringView("-I") || name == QLatin1StringView("--head")) {
@@ -486,7 +487,7 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
                 return missingValue();
             explicitMethod = httpMethodFromString(*value);
             if (!explicitMethod)
-                return failure(QStringLiteral("Unsupported method: %1").arg(*value));
+                return failure(QCoreApplication::translate("CurlConverter", "Unsupported method: %1").arg(*value));
         } else if (name == QLatin1StringView("-H") || name == QLatin1StringView("--header")) {
             const std::optional<QString> value = takeValue();
             if (!value)
@@ -505,16 +506,16 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
             if (!value)
                 return missingValue();
             if (name == QLatin1StringView("--data-binary") && *value == QLatin1StringView("@-"))
-                return failure(QStringLiteral("Data from standard input (@-) is not supported."));
+                return failure(QCoreApplication::translate("CurlConverter", "Data from standard input (@-) is not supported."));
             if (name == QLatin1StringView("--data-binary") && value->startsWith(u'@') && value->size() > 1) {
                 // Sent byte for byte, which is what a file body does.
                 if (uploadFile)
-                    return failure(QStringLiteral("Only one file can be sent as the body."));
+                    return failure(QCoreApplication::translate("CurlConverter", "Only one file can be sent as the body."));
                 uploadFile = value->mid(1);
                 continue;
             }
             if (name != QLatin1StringView("--data-raw") && value->startsWith(u'@'))
-                return failure(QStringLiteral("Files read with -d @file are changed by curl; use --data-binary @file."));
+                return failure(QCoreApplication::translate("CurlConverter", "Files read with -d @file are changed by curl; use --data-binary @file."));
             data.append(*value);
         } else if (name == QLatin1StringView("--data-urlencode")) {
             const std::optional<QString> value = takeValue();
@@ -526,7 +527,7 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
             const auto separator = std::find_if(value->cbegin(), value->cend(),
                                                 [](QChar c) { return c == u'=' || c == u'@'; });
             if (separator != value->cend() && *separator == u'@')
-                return failure(QStringLiteral("File uploads (@file) are not supported."));
+                return failure(QCoreApplication::translate("CurlConverter", "File uploads (@file) are not supported."));
             if (separator == value->cend()) {
                 data.append(QString::fromLatin1(QUrl::toPercentEncoding(*value)));
             } else {
@@ -540,7 +541,7 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
             if (!value)
                 return missingValue();
             if (value->startsWith(u'@'))
-                return failure(QStringLiteral("File uploads (@file) are not supported."));
+                return failure(QCoreApplication::translate("CurlConverter", "File uploads (@file) are not supported."));
             data.append(*value);
             json = true;
         } else if (name == QLatin1StringView("-G") || name == QLatin1StringView("--get")) {
@@ -555,13 +556,13 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
                 return missingValue();
             const qsizetype equals = value->indexOf(u'=');
             if (equals <= 0)
-                return failure(QStringLiteral("Invalid form field: %1").arg(*value));
+                return failure(QCoreApplication::translate("CurlConverter", "Invalid form field: %1").arg(*value));
             FormPart part;
             part.key = value->left(equals);
             QString content = value->mid(equals + 1);
             if (name != QLatin1StringView("--form-string")) {
                 if (content.startsWith(u'<'))
-                    return failure(QStringLiteral("Form text read from a file (name=<file) is not supported."));
+                    return failure(QCoreApplication::translate("CurlConverter", "Form text read from a file (name=<file) is not supported."));
                 // curl reads ";type=" and ";filename=" after the content, which
                 // may be double-quoted to hold ';' or a leading '@' or '<'.
                 QString quoted;
@@ -574,7 +575,7 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
                         quoted.append(content.at(i));
                     }
                     if (i >= content.size())
-                        return failure(QStringLiteral("Unterminated quote in form field %1.").arg(part.key));
+                        return failure(QCoreApplication::translate("CurlConverter", "Unterminated quote in form field %1.").arg(part.key));
                     content = content.mid(i + 1);
                 }
                 QStringList pieces = content.split(u';');
@@ -600,9 +601,9 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
             if (!value)
                 return missingValue();
             if (uploadFile)
-                return failure(QStringLiteral("Only one file can be sent as the body."));
+                return failure(QCoreApplication::translate("CurlConverter", "Only one file can be sent as the body."));
             if (*value == QLatin1StringView("-") || value->contains(u'{') || value->contains(u'['))
-                return failure(QStringLiteral("Uploads from standard input or of several files (-T) are not supported."));
+                return failure(QCoreApplication::translate("CurlConverter", "Uploads from standard input or of several files (-T) are not supported."));
             uploadFile = *value;
             uploadIsPut = true;
         } else if (name == QLatin1StringView("--oauth2-bearer")) {
@@ -638,7 +639,7 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
     }
 
     if (spec.url.isEmpty())
-        return failure(QStringLiteral("No URL found."));
+        return failure(QCoreApplication::translate("CurlConverter", "No URL found."));
 
     if (get && !data.isEmpty()) {
         spec.url += (spec.url.contains(u'?') ? u'&' : u'?') + data.join(u'&');
@@ -659,7 +660,7 @@ CurlConverter::ParseResult CurlConverter::parse(const QString &command)
     }
 
     if (int(form) + int(uploadFile.has_value()) + int(!data.isEmpty()) > 1)
-        return failure(QStringLiteral("Form fields (-F), a file body, and data (-d) cannot be combined."));
+        return failure(QCoreApplication::translate("CurlConverter", "Form fields (-F), a file body, and data (-d) cannot be combined."));
 
     if (head)
         spec.method = HttpMethod::Head;

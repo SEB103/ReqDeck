@@ -53,6 +53,7 @@ RequestEditor::RequestEditor(WorkspaceManager *manager, CollectionTreeModel *col
     connect(m_oauth, &OAuthClient::finished, this, &RequestEditor::finishOAuth);
     connect(m_manager->tokenStore(), &OAuthTokenStore::changed, this, &RequestEditor::oauthChanged);
     connect(this, &RequestEditor::requestChanged, this, &RequestEditor::oauthChanged);
+    connect(this, &RequestEditor::requestChanged, this, &RequestEditor::bodyFileInfoChanged);
     connect(m_collection, &CollectionTreeModel::collectionChanged, this,
             &RequestEditor::syncWithCollection);
     // Renamed or deleted requests change what response() templates find.
@@ -1169,6 +1170,19 @@ VariableResolver RequestEditor::resolverFor(const QList<KeyValue> &rows) const
         return m_responses.value(ids, selector);
     });
     return variables;
+}
+
+/*!
+ * \brief Announces the texts this editor builds again, after a switch of the interface language.
+ *
+ * The OAuth status, the plain-http warning, and the file note of the body are
+ * made when they are read, so announcing them is enough. requestChanged() is
+ * not emitted, because it would reload the fields being edited.
+ */
+void RequestEditor::retranslate()
+{
+    emit oauthChanged();
+    emit bodyFileInfoChanged();
 }
 
 /*!

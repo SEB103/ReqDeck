@@ -99,7 +99,7 @@
         "topbar.settings": {
             "title": "Settings",
             "what": "Opens the settings of the application.",
-            "why": "Here you choose the language, the folder for new workspaces, and update checks.",
+            "why": "Here you choose the folder for new workspaces and the update check.",
             "example": "Pick the folder where new workspaces are created.",
             "next": "Settings apply at once.",
             "chapter": "first-request"
@@ -568,12 +568,12 @@
             "next": "Close it with the cross; the log keeps all messages.",
             "chapter": "troubleshooting"
         },
-        "launcher.language": {
-            "title": "Language",
-            "what": "The language of menus, buttons, and messages.",
+        "topbar.language": {
+            "title": "Interface language",
+            "what": "Shows the language of menus, buttons, and messages as EN or DE; a click offers English and Deutsch.",
             "why": "Use ReqDeck in the language you read best.",
-            "example": "English.",
-            "next": "The change applies at once; Settings in the main window offers the same choice.",
+            "example": "Click EN and choose Deutsch: the menus show Datei, Anfrage, Ansicht, Hilfe.",
+            "next": "The change applies at once and is kept for the next start. This help stays in English, or in Russian when Windows displays Russian.",
             "chapter": "first-request"
         },
         "response.tlsBanner": {

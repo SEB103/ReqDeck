@@ -25,6 +25,7 @@
 #include <memory>
 
 #include "core/workspace/workspaceserializer.h"
+#include "localecontroller.h"
 #include "mockhttpserver.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/environmentmodel.h"
@@ -163,11 +164,14 @@ public:
         }
         context->setContextProperty(QStringLiteral("cppAppInfo"), info);
 
-        auto *locale = new QQmlPropertyMap(this);
-        locale->insert(QStringLiteral("availableLanguages"), QStringList());
-        locale->insert(QStringLiteral("currentFlag"), QString());
-        locale->insert(QStringLiteral("currentLanguage"), QStringLiteral("en"));
-        context->setContextProperty(QStringLiteral("cppLocale"), locale);
+        // The real controller without settings: the screens start in English
+        // whatever the language of the machine, and a switch is not saved.
+        m_locale.setEngine(context->engine());
+        m_locale.setLanguage(QStringLiteral("en_GB"));
+        // As the application does, the facades build their texts again on a switch.
+        QObject::connect(&m_locale, &LocaleController::languageChanged, &m_response, &ResponseView::retranslate);
+        QObject::connect(&m_locale, &LocaleController::languageChanged, &m_editor, &RequestEditor::retranslate);
+        context->setContextProperty(QStringLiteral("cppLocale"), &m_locale);
 
         auto *update = new QQmlPropertyMap(this);
         for (const char *key : {"featureEnabled", "checkAutomatically", "updateAvailable", "checking",
@@ -298,6 +302,69 @@ public:
                 : object->parent();
         }
         return false;
+    }
+
+    /*!
+     * Returns the visible items of \a window, its popups included, whose text does
+     * not fit: a text that is elided, or a button whose content is wider than the
+     * room it has.
+     */
+    Q_INVOKABLE QVariantList clippedItems(QQuickWindow *window) const
+    {
+        QVariantList clipped;
+        if (!window)
+            return clipped;
+        QQuickItem *content = window->contentItem();
+        QList<QQuickItem *> pending {content->parentItem() ? content->parentItem() : content};
+        for (QObject *object : window->findChildren<QObject *>()) {
+            if (object->inherits("QQuickPopup") && object->property("visible").toBool()) {
+                if (auto *item = object->property("contentItem").value<QQuickItem *>())
+                    pending.append(item);
+            }
+        }
+        QSet<QQuickItem *> seen;
+        while (!pending.isEmpty()) {
+            QQuickItem *item = pending.takeLast();
+            if (!item || seen.contains(item) || !item->isVisible() || item->width() <= 0)
+                continue;
+            seen.insert(item);
+            pending.append(item->childItems());
+            const bool elided = item->inherits("QQuickText") && item->property("truncated").toBool();
+            const bool tooWide = item->inherits("QQuickAbstractButton")
+                && !item->property("text").toString().isEmpty()
+                && item->property("implicitContentWidth").toReal() > item->property("availableWidth").toReal() + 1;
+            if (elided || tooWide)
+                clipped.append(QVariant::fromValue(static_cast<QObject *>(item)));
+        }
+        return clipped;
+    }
+
+    /*! Returns the dialogs declared in \a window, open or not. */
+    Q_INVOKABLE QVariantList dialogsOf(QQuickWindow *window) const
+    {
+        QVariantList dialogs;
+        if (!window)
+            return dialogs;
+        for (QObject *object : window->findChildren<QObject *>()) {
+            if (object->inherits("QQuickDialog"))
+                dialogs.append(QVariant::fromValue(object));
+        }
+        return dialogs;
+    }
+
+    /*! Returns the class, object name, and text of \a object and the names of its parents, for a message. */
+    Q_INVOKABLE QString describeItem(QObject *object) const
+    {
+        QStringList chain;
+        for (QObject *current = object; current && chain.size() < 5;
+             current = qobject_cast<QQuickItem *>(current) ? static_cast<QQuickItem *>(current)->parentItem()
+                                                          : current->parent()) {
+            const QString name = current->objectName();
+            chain.append(name.isEmpty() ? QString::fromLatin1(current->metaObject()->className()).section(u'_', 0, 0)
+                                        : name);
+        }
+        return chain.join(QStringLiteral(" < ")) + QStringLiteral(": \"") + object->property("text").toString()
+            + u'"';
     }
 
     /*!
@@ -525,6 +592,9 @@ private:
 
     /*! Real help topics in English, read from the source tree. */
     HelpLibrary m_help {QStringLiteral("en"), QStringLiteral(REQDECK_HELP_DIR)};
+
+    /*! Real interface language controller, without settings. */
+    LocaleController m_locale {nullptr};
 
     /*! Real history over a temporary file. */
     HistoryModel m_history {m_dir.filePath(QStringLiteral("history.json"))};

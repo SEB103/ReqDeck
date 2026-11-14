@@ -3,6 +3,7 @@
 
 #include "core/import/insomniaimporter.h"
 
+#include <QCoreApplication>
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -120,10 +121,10 @@ public:
             result.oauth2.clientSecret = text("clientSecret");
             result.oauth2.scope = text("scope");
             result.oauth2.audience = text("audience");
-            report.append(QStringLiteral("%1: OAuth 2.0 settings came over; get a token with Get Token").arg(where));
+            report.append(QCoreApplication::translate("InsomniaImporter", "%1: OAuth 2.0 settings came over; get a token with Get Token").arg(where));
         } else {
             result.type = AuthType::None;
-            report.append(QStringLiteral("%1: %2 authorization").arg(where, type));
+            report.append(QCoreApplication::translate("InsomniaImporter", "%1: %2 authorization").arg(where, type));
         }
         return result;
     }
@@ -137,10 +138,10 @@ public:
     void reportFile(const QString &path, const QString &field, const QString &where)
     {
         if (path.trimmed().isEmpty()) {
-            report.append(field.isEmpty() ? QStringLiteral("%1: no file for the body; choose one").arg(where)
-                                          : QStringLiteral("%1: field %2 has no file; choose one").arg(where, field));
+            report.append(field.isEmpty() ? QCoreApplication::translate("InsomniaImporter", "%1: no file for the body; choose one").arg(where)
+                                          : QCoreApplication::translate("InsomniaImporter", "%1: field %2 has no file; choose one").arg(where, field));
         } else {
-            report.append(QStringLiteral("%1: file %2 is a path of the computer the file came from; check it").arg(where, path));
+            report.append(QCoreApplication::translate("InsomniaImporter", "%1: file %2 is a path of the computer the file came from; check it").arg(where, path));
         }
     }
 
@@ -152,7 +153,7 @@ public:
     {
         static const QRegularExpression tag(QStringLiteral(R"(\{%.*?%\})"));
         for (QRegularExpressionMatchIterator it = tag.globalMatch(text); it.hasNext();) {
-            const QString line = QStringLiteral("%1: template tag %2").arg(where, it.next().captured(0));
+            const QString line = QCoreApplication::translate("InsomniaImporter", "%1: template tag %2").arg(where, it.next().captured(0));
             if (!report.contains(line))
                 report.append(line);
         }
@@ -172,7 +173,7 @@ public:
                 spec.method = candidate;
         }
         if (QString::fromLatin1(httpMethodVerb(spec.method)) != method)
-            report.append(QStringLiteral("%1: method %2, sent as GET").arg(where, method));
+            report.append(QCoreApplication::translate("InsomniaImporter", "%1: method %2, sent as GET").arg(where, method));
 
         spec.url = references(resource.value(QLatin1StringView("url")).toString());
         spec.queryParams = rows(resource.value(QLatin1StringView("parameters")));
@@ -203,7 +204,7 @@ public:
             spec.body.filePath = body.value(QLatin1StringView("fileName")).toString();
             reportFile(spec.body.filePath, QString(), where);
         } else if (mime.startsWith(QLatin1StringView("multipart/"))) {
-            report.append(QStringLiteral("%1: %2 body").arg(where, mime));
+            report.append(QCoreApplication::translate("InsomniaImporter", "%1: %2 body").arg(where, mime));
         } else if (body.contains(QLatin1StringView("text"))) {
             spec.body.mode = BodyMode::Raw;
             spec.body.raw = references(body.value(QLatin1StringView("text")).toString());
@@ -214,7 +215,7 @@ public:
 
         for (const char *script : {"preRequestScript", "afterResponseScript"}) {
             if (!resource.value(QLatin1StringView(script)).toString().trimmed().isEmpty()) {
-                report.append(QStringLiteral("%1: scripts").arg(where));
+                report.append(QCoreApplication::translate("InsomniaImporter", "%1: scripts").arg(where));
                 break;
             }
         }
@@ -244,20 +245,20 @@ public:
             const QString name = resource.value(QLatin1StringView("name")).toString();
             const QString path = where + QStringLiteral(" / ") + name;
             if (type == QLatin1StringView("grpc_request") || type == QLatin1StringView("websocket_request")) {
-                report.append(QStringLiteral("%1: %2").arg(path, type == QLatin1StringView("grpc_request")
-                                                                     ? QStringLiteral("gRPC request")
-                                                                     : QStringLiteral("WebSocket request")));
+                report.append(QCoreApplication::translate("InsomniaImporter", "%1: %2").arg(path, type == QLatin1StringView("grpc_request")
+                                                                     ? QCoreApplication::translate("InsomniaImporter", "gRPC request")
+                                                                     : QCoreApplication::translate("InsomniaImporter", "WebSocket request")));
                 continue;
             }
             if (type != QLatin1StringView("request_group") && type != QLatin1StringView("request"))
                 continue;
             if (depth > kMaxCollectionDepth) {
-                report.append(QStringLiteral("%1: nested deeper than %2 levels, left out").arg(path).arg(kMaxCollectionDepth));
+                report.append(QCoreApplication::translate("InsomniaImporter", "%1: nested deeper than %2 levels, left out").arg(path).arg(kMaxCollectionDepth));
                 continue;
             }
             const QString id = resource.value(QLatin1StringView("_id")).toString();
             if (type == QLatin1StringView("request_group") && visited.contains(id)) {
-                report.append(QStringLiteral("%1: folder inside itself, left out").arg(path));
+                report.append(QCoreApplication::translate("InsomniaImporter", "%1: folder inside itself, left out").arg(path));
                 continue;
             }
             CollectionNode node;
@@ -269,7 +270,7 @@ public:
                 node.folder.variables = environmentRows(resource.value(QLatin1StringView("environment")).toObject());
                 for (const KeyValue &row : std::as_const(node.folder.variables)) {
                     if (environmentKeys.contains(row.key))
-                        report.append(QStringLiteral("%1: variable %2 is also set by an environment, which wins in ReqDeck")
+                        report.append(QCoreApplication::translate("InsomniaImporter", "%1: variable %2 is also set by an environment, which wins in ReqDeck")
                                           .arg(path, row.key));
                 }
                 visited.insert(id);
@@ -328,10 +329,10 @@ bool InsomniaImporter::isExport(const QJsonObject &root)
 ImportResult InsomniaImporter::importExport(const QByteArray &json)
 {
     ImportResult result;
-    result.format = QStringLiteral("Insomnia export");
+    result.format = QCoreApplication::translate("InsomniaImporter", "Insomnia export");
     const QJsonObject root = QJsonDocument::fromJson(json).object();
     if (!isExport(root)) {
-        result.errorString = QStringLiteral("The file is not an Insomnia export of format 4.");
+        result.errorString = QCoreApplication::translate("InsomniaImporter", "The file is not an Insomnia export of format 4.");
         return result;
     }
 
@@ -345,13 +346,13 @@ ImportResult InsomniaImporter::importExport(const QByteArray &json)
         }
     }
     if (workspace.isEmpty()) {
-        result.errorString = QStringLiteral("The export holds no workspace.");
+        result.errorString = QCoreApplication::translate("InsomniaImporter", "The export holds no workspace.");
         return result;
     }
 
     const QString workspaceId = workspace.value(QLatin1StringView("_id")).toString();
     result.folder.id = newItemId();
-    result.folder.name = workspace.value(QLatin1StringView("name")).toString(QStringLiteral("Insomnia workspace"));
+    result.folder.name = workspace.value(QLatin1StringView("name")).toString(QCoreApplication::translate("InsomniaImporter", "Insomnia workspace"));
 
     for (const QJsonObject &base : builder.byParent.value(workspaceId)) {
         if (base.value(QLatin1StringView("_type")).toString() != QLatin1StringView("environment"))
@@ -378,7 +379,7 @@ ImportResult InsomniaImporter::importExport(const QByteArray &json)
         const QJsonObject other = value.toObject();
         if (other.value(QLatin1StringView("_type")).toString() == QLatin1StringView("workspace")
             && other.value(QLatin1StringView("_id")).toString() != workspaceId)
-            builder.report.append(QStringLiteral("%1: workspace left out; only the first one is imported")
+            builder.report.append(QCoreApplication::translate("InsomniaImporter", "%1: workspace left out; only the first one is imported")
                                       .arg(other.value(QLatin1StringView("name")).toString()));
     }
 

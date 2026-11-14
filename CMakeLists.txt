@@ -41,6 +41,7 @@ qt_standard_project_setup(
     I18N_SOURCE_LANGUAGE en
     I18N_TRANSLATED_LANGUAGES
         en_GB
+        de_DE
 )
 
 include(CTest)
@@ -119,17 +120,34 @@ reqdeck_add_windows_version_info(appReqDeck
     ICON "${PRODUCT_ICON_PATH}"
 )
 
-# The UI currently ships in English only; the catalog keeps the translation
-# plumbing (LocaleController, live retranslation) ready for further languages.
-qt_add_translations(appReqDeck
-    TS_FILES
-        translations/ReqDeck_en_GB.ts
-    RESOURCE_PREFIX "/translations"
-)
-
 if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()
+
+# English and German interface catalogs. lupdate reads the application code and
+# both QML modules; the compiled catalogs are embedded in the application and in
+# the tests that switch the language.
+set(REQDECK_TRANSLATION_TARGETS appReqDeck)
+if(BUILD_TESTING)
+    list(APPEND REQDECK_TRANSLATION_TARGETS tst_screens tst_translations)
+endif()
+qt_add_translations(
+    TARGETS ${REQDECK_TRANSLATION_TARGETS}
+    SOURCE_TARGETS
+        appReqDeck
+        MainQml
+        Base
+        ReqDeckQmlApi
+        ReqDeckCore
+        ReqDeckFramework
+    TS_FILES
+        translations/ReqDeck_en_GB.ts
+        translations/ReqDeck_de_DE.ts
+    # Without source locations a catalog changes only when a text does, so CI
+    # can rebuild it and fail when a new text has not been added to it.
+    LUPDATE_OPTIONS -locations none -no-obsolete
+    RESOURCE_PREFIX "/translations"
+)
 
 install(TARGETS appReqDeck
     BUNDLE DESTINATION .

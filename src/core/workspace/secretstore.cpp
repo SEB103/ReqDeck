@@ -3,6 +3,7 @@
 
 #include "core/workspace/secretstore.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QHash>
@@ -176,7 +177,7 @@ SecretStore::ReadStatus SecretStore::read(WorkspaceData &data, bool onlyEmpty) c
  */
 bool SecretStore::save(const WorkspaceData &data, QString *errorString) const
 {
-    const QString writeError = QStringLiteral("The secret values could not be written.");
+    const QString writeError = QCoreApplication::translate("SecretStore", "The secret values could not be written.");
     if (!isValidWorkspaceId(data.id))
         return fail(errorString, writeError);
 
@@ -192,7 +193,7 @@ bool SecretStore::save(const WorkspaceData &data, QString *errorString) const
     values.insert(QLatin1StringView("environments"), environments);
     const std::optional<QByteArray> sealed = m_cipher.protect(QJsonDocument(values).toJson(QJsonDocument::Compact));
     if (!sealed)
-        return fail(errorString, QStringLiteral("The secret values could not be encrypted."));
+        return fail(errorString, QCoreApplication::translate("SecretStore", "The secret values could not be encrypted."));
 
     QJsonObject root;
     root.insert(QLatin1StringView("schema"), kSecretsSchemaVersion);

@@ -21,7 +21,7 @@ QT_END_NAMESPACE
  * English is the source language baked into the tr()/qsTr() strings and stays the
  * fallback for any message a translation leaves empty. The controller installs the
  * application translator (\c :/translations/ReqDeck_<code>) and the matching
- * Qt-base translator (\c qtbase_<lang>) so both application and standard-control
+ * Qt translator (\c qt_<lang>) so both application and standard-control
  * text follow the chosen language.
  *
  * applyInitialLanguage() runs from main() before the QML UI is built; setLanguage()
@@ -36,13 +36,13 @@ class LocaleController : public QObject
     /** Locale code of the active UI language, for example \c "de_DE". */
     Q_PROPERTY(QString currentLanguage READ currentLanguage NOTIFY currentLanguageChanged)
 
-    /** Flag image resource (qrc) of the active UI language. */
-    Q_PROPERTY(QString currentFlag READ currentFlag NOTIFY currentLanguageChanged)
+    /** Short name of the active UI language, for example \c "DE". */
+    Q_PROPERTY(QString currentShortName READ currentShortName NOTIFY currentLanguageChanged)
 
     /** Endonym of the active UI language, for example \c "Deutsch". */
     Q_PROPERTY(QString currentLanguageName READ currentLanguageName NOTIFY currentLanguageChanged)
 
-    /** Selectable languages as {code, name, flag} rows for a ComboBox model. */
+    /** Selectable languages as {code, name, shortName} rows for a menu model. */
     Q_PROPERTY(QVariantList availableLanguages READ availableLanguages CONSTANT)
 
 public:
@@ -55,13 +55,13 @@ public:
     /** Returns the locale code of the active UI language. */
     QString currentLanguage() const;
 
-    /** Returns the flag image resource (qrc) of the active UI language. */
-    QString currentFlag() const;
+    /** Returns the short name of the active UI language. */
+    QString currentShortName() const;
 
     /** Returns the endonym of the active UI language. */
     QString currentLanguageName() const;
 
-    /** Returns the selectable languages as {code, name, flag} rows for QML. */
+    /** Returns the selectable languages as {code, name, shortName} rows for QML. */
     QVariantList availableLanguages() const;
 
     /**
@@ -76,6 +76,12 @@ public:
 
     /** Persists and applies the language \a code live; ignores unknown or current codes. */
     Q_INVOKABLE void setLanguage(const QString &code);
+
+    /**
+     * Returns the start language: \a saved when it is a known code, else the
+     * language whose language part matches the first of \a uiLanguages, else English.
+     */
+    QString resolveCode(const QStringList &uiLanguages, const QString &saved) const;
 
 signals:
     /** Emitted when the active UI language changes. */
@@ -92,8 +98,8 @@ private:
         QString code;
         /** Endonym shown in the selector, for example \c "Deutsch". */
         QString nativeName;
-        /** Flag image resource (qrc), for example \c "qrc:/images/flags/de.svg". */
-        QString flag;
+        /** Short name shown on the language button, for example \c "DE". */
+        QString shortName;
     };
 
     /** Loads and installs the application and Qt-base translators for \a code. */
@@ -114,7 +120,7 @@ private:
     /** Application translator ( :/translations/ReqDeck_<code> ); owned. */
     QTranslator *m_appTranslator {nullptr};
 
-    /** Qt-base translator ( qtbase_<lang> ) for standard controls; owned. */
+    /** Qt translator ( qt_<lang> ) for standard controls; owned. */
     QTranslator *m_qtTranslator {nullptr};
 
     /** Locale code of the active UI language. */

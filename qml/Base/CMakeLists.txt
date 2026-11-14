@@ -17,7 +17,7 @@ qt_add_qml_module(Base
         BsHelpPanel.qml
         BsInlineTitle.qml
         BsKeyValueTable.qml
-        BsLanguageSelector.qml
+        BsLanguageButton.qml
         BsLineNumbers.qml
         BsLogPanel.qml
         BsMenuBar.qml

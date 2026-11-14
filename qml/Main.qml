@@ -244,6 +244,9 @@ ApplicationWindow {
         recentWorkspaces: cppWorkspaceManager.recentWorkspaces
         environmentNames: cppEnvironments.names
         activeEnvironmentIndex: cppEnvironments.activeIndex
+        languages: cppLocale.availableLanguages
+        currentLanguage: cppLocale.currentLanguage
+        currentShortName: cppLocale.currentShortName
         hasRequest: cppRequestEditor.hasRequest
         canSend: cppRequestEditor.canSend
         canCancel: cppRequestEditor.busy
@@ -579,6 +582,11 @@ ApplicationWindow {
         function onSettingsRequested() {
             settingsDialog.open()
         }
+
+        function onLanguageRequested(code) {
+            mainWindow.commitFocusedEdit()
+            cppLocale.setLanguage(code)
+        }
     }
 
     Connections {
@@ -712,7 +720,8 @@ ApplicationWindow {
             }
             Button {
                 text: qsTr("Browse…")
-                Layout.preferredWidth: 100
+                // At least as wide as before; wider when a translation needs it.
+                Layout.minimumWidth: 100
                 Layout.preferredHeight: 44
                 onClicked: newWorkspaceFolderDialog.open()
             }
@@ -854,24 +863,6 @@ ApplicationWindow {
             columnSpacing: 10
             rowSpacing: 8
 
-            // The language row appears once more than one UI language ships; the
-            // choice applies live and is remembered for the next launch.
-            Label {
-                text: qsTr("Interface language:")
-                Layout.preferredWidth: 180
-                visible: settingsLanguageCombo.visible
-            }
-            Base.BsLanguageSelector {
-                id: settingsLanguageCombo
-                Layout.fillWidth: true
-                Layout.preferredHeight: 44
-                visible: cppLocale.availableLanguages.length > 1
-            }
-            Item {
-                Layout.preferredWidth: 100
-                visible: settingsLanguageCombo.visible
-            }
-
             Label { text: qsTr("Default workspaces folder:"); Layout.preferredWidth: 180 }
             TextField {
                 Layout.fillWidth: true
@@ -881,7 +872,8 @@ ApplicationWindow {
             }
             Button {
                 text: qsTr("Browse…")
-                Layout.preferredWidth: 100
+                // At least as wide as before; wider when a translation needs it.
+                Layout.minimumWidth: 100
                 Layout.preferredHeight: 44
                 onClicked: settingsFolderDialog.open()
             }

@@ -3,6 +3,7 @@
 
 #include "core/http/httpexecutor.h"
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
@@ -376,7 +377,7 @@ void HttpExecutor::abort()
         m_finishPending = false;
         ResponseData response = std::exchange(m_pendingResponse, {});
         response.error = ResponseError::Aborted;
-        response.errorString = QStringLiteral("Operation canceled");
+        response.errorString = QCoreApplication::translate("HttpExecutor", "Operation canceled");
         emit busyChanged(false);
         emit finished(response);
         return;
@@ -707,7 +708,7 @@ void HttpExecutor::handleFinished()
         response.error = classifyError(error, m_abortRequested);
     if (!m_bodyError.isEmpty()) {
         response.error = ResponseError::Network;
-        response.errorString = QStringLiteral("The response could not be stored on disk: %1").arg(m_bodyError);
+        response.errorString = QCoreApplication::translate("HttpExecutor", "The response could not be stored on disk: %1").arg(m_bodyError);
         // Nothing of the body is held, so nothing of it may look saveable.
         response.body.clear();
         response.bodyFile.reset();
@@ -733,7 +734,7 @@ void HttpExecutor::handleFinished()
         } else if (followable) {
             if (m_redirectCount >= kMaxRedirects) {
                 response.error = ResponseError::Network;
-                response.errorString = QStringLiteral("Too many redirects.");
+                response.errorString = QCoreApplication::translate("HttpExecutor", "Too many redirects.");
             } else {
                 ++m_redirectCount;
                 prepareRedirect(target, response.statusCode);

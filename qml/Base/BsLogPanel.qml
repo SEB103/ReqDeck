@@ -96,15 +96,24 @@ Rectangle {
                 ComboBox {
                     id: levelBox
 
+                    /*! Row of the chosen severity in levelChoices. */
+                    property int chosenIndex: 1
+
+                    objectName: "logLevelBox"
+
                     Layout.preferredWidth: 120
                     Layout.maximumHeight: 28
                     model: root.levelChoices
                     textRole: "label"
                     font.pixelSize: 12
                     // Info is the default so routine debug detail stays hidden.
-                    currentIndex: 1
-                    onActivated: cppAppEngine.logModel.minimumLevel =
-                                 root.levelChoices[currentIndex].level
+                    currentIndex: chosenIndex
+                    onActivated: {
+                        chosenIndex = currentIndex
+                        cppAppEngine.logModel.minimumLevel = root.levelChoices[currentIndex].level
+                    }
+                    // A language switch gives the box a new model and resets it to the first row.
+                    onModelChanged: currentIndex = Qt.binding(() => chosenIndex)
                 }
 
                 TextField {

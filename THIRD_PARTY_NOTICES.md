@@ -105,14 +105,6 @@ contain them.
 - **Source:** <https://code.qt.io/cgit/installer-framework/installer-framework.git/>;
   documentation at <https://doc.qt.io/qtinstallerframework/>.
 
-## Country flag (UI-language selector)
-
-The SVG flag `resources/images/flags/gb.svg` is used by the UI-language selector.
-It carries a Creative Commons Public Domain dedication in its source markup.
-
-- **License:** Public Domain (national flags are not subject to copyright; the SVG
-  artwork is released into the public domain).
-
 ## Before distributing binaries
 
 Verify that the license texts and notices for every component you actually ship

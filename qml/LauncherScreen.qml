@@ -68,6 +68,20 @@ Pane {
         color: Material.background
     }
 
+    // Interface language, at the top right as in the main window.
+    Base.BsLanguageButton {
+        objectName: "launcherLanguageButton"
+
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: 8
+        z: 1
+        languages: cppLocale.availableLanguages
+        currentLanguage: cppLocale.currentLanguage
+        currentShortName: cppLocale.currentShortName
+        onLanguageRequested: (code) => cppLocale.setLanguage(code)
+    }
+
     Flickable {
         anchors.fill: parent
         contentWidth: width
@@ -81,30 +95,6 @@ Pane {
             anchors.horizontalCenter: parent.horizontalCenter
             y: 40
             spacing: 16
-
-            // Language selector shown before any workspace is opened, so the start
-            // page itself already appears in the chosen language. Applies live. It
-            // appears once more than one UI language ships.
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                visible: cppLocale.availableLanguages.length > 1
-
-                Item { Layout.fillWidth: true }
-
-                Label {
-                    text: qsTr("Language:")
-                    color: Material.foreground
-                    opacity: 0.7
-                }
-
-                Base.BsLanguageSelector {
-                    id: launcherLanguageCombo
-
-                    /*! Topic of the F1 help. */
-                    property string helpTopic: "launcher.language"
-                }
-            }
 
             // Application logo shown at the top of the start page. The source is a
             // transparent-background PNG so it blends with either theme;

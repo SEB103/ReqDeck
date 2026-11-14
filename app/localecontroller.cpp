@@ -29,9 +29,9 @@ constexpr auto kDefaultLanguageCode = "en_GB";
  * \param parent Optional QObject parent.
  *
  * The language table is fixed and matches the I18N_TRANSLATED_LANGUAGES declared
- * in CMakeLists.txt. The UI currently ships in English only (the en_GB entry);
- * further languages are added here together with their .ts catalog. Untranslated
- * strings fall back to the English source text regardless of the selection.
+ * in CMakeLists.txt: English and German. Further languages are added here
+ * together with their .ts catalog. Untranslated strings fall back to the English
+ * source text regardless of the selection.
  */
 LocaleController::LocaleController(QSettings *settings, QObject *parent)
     : QObject(parent)
@@ -40,7 +40,8 @@ LocaleController::LocaleController(QSettings *settings, QObject *parent)
     , m_qtTranslator(new QTranslator(this))
 {
     m_languages = {
-        {QStringLiteral("en_GB"), QStringLiteral("English"), QStringLiteral("qrc:/images/flags/gb.svg")},
+        {QStringLiteral("en_GB"), QStringLiteral("English"), QStringLiteral("EN")},
+        {QStringLiteral("de_DE"), QStringLiteral("Deutsch"), QStringLiteral("DE")},
     };
 }
 
@@ -55,13 +56,13 @@ QString LocaleController::currentLanguage() const
 }
 
 /*!
- * \brief Returns the flag image resource (qrc) of the active UI language.
- * \return The flag path, or an empty string when the current code is unknown.
+ * \brief Returns the short name of the active UI language, such as "EN".
+ * \return The short name, or an empty string when the current code is unknown.
  */
-QString LocaleController::currentFlag() const
+QString LocaleController::currentShortName() const
 {
     const int index = indexOfCode(m_currentCode);
-    return index >= 0 ? m_languages.at(index).flag : QString();
+    return index >= 0 ? m_languages.at(index).shortName : QString();
 }
 
 /*!
@@ -75,11 +76,11 @@ QString LocaleController::currentLanguageName() const
 }
 
 /*!
- * \brief Returns the selectable languages as {code, name} rows for QML.
+ * \brief Returns the selectable languages as {code, name, shortName} rows for QML.
  *
  * Each row is a QVariantMap with a \c code key (the locale code passed to
- * setLanguage()), a \c name key (the endonym shown in the selector) and a
- * \c flag key (the qrc path of the country flag image).
+ * setLanguage()), a \c name key (the endonym shown in the menu) and a
+ * \c shortName key (the letters shown on the language button).
  */
 QVariantList LocaleController::availableLanguages() const
 {
@@ -89,7 +90,7 @@ QVariantList LocaleController::availableLanguages() const
         QVariantMap row;
         row.insert(QStringLiteral("code"), entry.code);
         row.insert(QStringLiteral("name"), entry.nativeName);
-        row.insert(QStringLiteral("flag"), entry.flag);
+        row.insert(QStringLiteral("shortName"), entry.shortName);
         rows.append(row);
     }
     return rows;
@@ -161,11 +162,13 @@ void LocaleController::loadTranslators(const QString &code)
     if (m_appTranslator->load(QLatin1String(kAppTranslationStem) + code))
         QCoreApplication::installTranslator(m_appTranslator);
 
-    // Qt ships its base translations keyed by language only (qtbase_de.qm), so map
-    // the full locale code to the language part when loading them.
+    // Qt's own texts, such as the standard dialog buttons, come from qt_<lang>.qm:
+    // windeployqt merges the Qt catalogs into that one file next to the
+    // application, and in a Qt installation it is a small catalog that loads
+    // qtbase and qtdeclarative. QLocale maps the full code to the language part.
     const QLocale locale(code);
     if (m_qtTranslator->load(locale,
-                             QStringLiteral("qtbase"),
+                             QStringLiteral("qt"),
                              QStringLiteral("_"),
                              QLibraryInfo::path(QLibraryInfo::TranslationsPath))) {
         QCoreApplication::installTranslator(m_qtTranslator);
@@ -185,34 +188,38 @@ int LocaleController::indexOfCode(const QString &code) const
 }
 
 /*!
- * \brief Returns the saved language, else the best system match, else English.
+ * \brief Returns the saved language, else the match of the Windows display language, else English.
  *
- * A stored preference always wins. Otherwise the system UI languages are matched
- * against the supported set, first by exact locale code and then by language, so a
- * system set to plain "de" or "ru" still selects the matching entry.
+ * Reads the saved preference and the display languages of the system and leaves
+ * the decision to resolveCode().
  */
 QString LocaleController::resolveInitialCode() const
 {
-    if (m_settings) {
-        const QString saved =
-            m_settings->value(QLatin1String(kLanguageSettingsKey)).toString();
-        if (indexOfCode(saved) >= 0)
-            return saved;
-    }
+    const QString saved =
+        m_settings ? m_settings->value(QLatin1String(kLanguageSettingsKey)).toString() : QString();
+    return resolveCode(QLocale::system().uiLanguages(), saved);
+}
 
-    const QStringList uiLanguages = QLocale::system().uiLanguages();
-    for (const QString &ui : uiLanguages) {
-        const QString name = QLocale(ui).name();
-        if (indexOfCode(name) >= 0)
-            return name;
-    }
-    for (const QString &ui : uiLanguages) {
-        const QString language = QLocale(ui).name().section(QLatin1Char('_'), 0, 0);
+/*!
+ * \brief Returns the start language for the display languages \a uiLanguages.
+ *
+ * Only the first display language counts, the one Windows itself is shown in:
+ * a German Windows starts in German, and an English or Russian one in English,
+ * whatever languages follow in the list. A saved choice wins when it is known.
+ * \param uiLanguages Language tags in order of preference, such as "de-DE".
+ * \param saved The saved locale code, or empty.
+ * \return A code from the language table.
+ */
+QString LocaleController::resolveCode(const QStringList &uiLanguages, const QString &saved) const
+{
+    if (indexOfCode(saved) >= 0)
+        return saved;
+    if (!uiLanguages.isEmpty()) {
+        const QString language = QLocale(uiLanguages.constFirst()).name().section(QLatin1Char('_'), 0, 0);
         for (const LanguageEntry &entry : m_languages) {
             if (entry.code.section(QLatin1Char('_'), 0, 0) == language)
                 return entry.code;
         }
     }
-
     return QLatin1String(kDefaultLanguageCode);
 }

@@ -486,21 +486,8 @@ void ResponseView::setResponse(const ResponseData &response, const QStringList &
     if (!response.bodyFile)
         m_rawBody = response.body;
     m_response.body.clear();
-    QStringList warnings;
-    for (const TlsCheck &check : response.tlsChecks) {
-        if (check.ignored) {
-            warnings.append(tr("The certificate of %1 was not checked: %2")
-                                .arg(check.server(), check.messages.join(QStringLiteral("; "))));
-        }
-    }
-    if (response.storedCookiesSkipped)
-        warnings.append(tr("Stored cookies were not sent: the request has a Cookie header of its own."));
-    if (response.filesNotRedirected)
-        warnings.append(tr("The redirect to another server was not followed: it would send your files there. "
-                           "Send the request to that address yourself if you want them there."));
-    if (!unresolvedVariables.isEmpty())
-        warnings.append(unresolvedWarning(unresolvedVariables));
-    m_warningText = warnings.join(u'\n');
+    m_unresolvedVariables = unresolvedVariables;
+    m_warningText = responseWarnings();
     applyFilter();
 
     if (response.error != ResponseError::None) {
@@ -534,9 +521,55 @@ void ResponseView::setBuildError(const QString &message, const QStringList &unre
 {
     resetResult();
     m_hasResponse = true;
+    m_buildError = true;
     m_errorText = message;
+    m_unresolvedVariables = unresolvedVariables;
     m_warningText = unresolvedWarning(unresolvedVariables);
     emit responseChanged();
+}
+
+/*!
+ * \brief Builds the texts of the shown result again, in the current interface language.
+ *
+ * Called after a language switch. The warnings and the filter result are made
+ * from the stored response again; an error message that came with the response
+ * keeps the language it was made in. A body that is not JSON is parsed again
+ * only to word its error anew.
+ */
+void ResponseView::retranslate()
+{
+    if (!m_hasResponse)
+        return;
+    m_warningText = m_buildError ? unresolvedWarning(m_unresolvedVariables) : responseWarnings();
+    if (!m_filterParseError.isEmpty()) {
+        m_filterParsed = false;
+        m_filterParseError.clear();
+    }
+    applyFilter();
+    emit responseChanged();
+}
+
+/*!
+ * \internal
+ * \brief Returns the warnings of the shown response, one per line.
+ */
+QString ResponseView::responseWarnings() const
+{
+    QStringList warnings;
+    for (const TlsCheck &check : m_response.tlsChecks) {
+        if (check.ignored) {
+            warnings.append(tr("The certificate of %1 was not checked: %2")
+                                .arg(check.server(), check.messages.join(QStringLiteral("; "))));
+        }
+    }
+    if (m_response.storedCookiesSkipped)
+        warnings.append(tr("Stored cookies were not sent: the request has a Cookie header of its own."));
+    if (m_response.filesNotRedirected)
+        warnings.append(tr("The redirect to another server was not followed: it would send your files there. "
+                           "Send the request to that address yourself if you want them there."));
+    if (!m_unresolvedVariables.isEmpty())
+        warnings.append(unresolvedWarning(m_unresolvedVariables));
+    return warnings.join(u'\n');
 }
 
 /*!
@@ -674,6 +707,8 @@ void ResponseView::resetResult()
     m_wrapAnywhere = false;
     m_errorText.clear();
     m_warningText.clear();
+    m_buildError = false;
+    m_unresolvedVariables.clear();
     m_hasResponse = false;
     m_busy = false;
     m_headers->setRows({});

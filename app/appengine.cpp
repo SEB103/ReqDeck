@@ -467,6 +467,10 @@ void AppEngine::setLocaleController(LocaleController* controller)
     connect(controller, &LocaleController::languageChanged, this, [this]() {
         if (m_workspaceManager)
             m_workspaceManager->retranslate();
+        if (m_response)
+            m_response->retranslate();
+        if (m_requestEditor)
+            m_requestEditor->retranslate();
     });
 }
 

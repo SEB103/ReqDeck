@@ -3,6 +3,7 @@
 
 #include "core/http/oauthtokenstore.h"
 
+#include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QFile>
 #include <QJsonDocument>
@@ -157,15 +158,15 @@ bool OAuthTokenStore::load(const QString &path, const SecretCipher &cipher, QStr
     if (!file.exists())
         return true;
     if (!file.open(QIODevice::ReadOnly))
-        return fail(errorString, QStringLiteral("The OAuth tokens could not be read."));
+        return fail(errorString, QCoreApplication::translate("OAuthTokenStore", "The OAuth tokens could not be read."));
     const QJsonObject root = QJsonDocument::fromJson(file.read(16 * 1024 * 1024)).object();
     if (root.value(QLatin1StringView("schema")).toInt() != kTokensSchemaVersion
         || root.value(QLatin1StringView("protection")).toString() != kDpapiProtection)
-        return fail(errorString, QStringLiteral("The OAuth tokens file is not one this version reads."));
+        return fail(errorString, QCoreApplication::translate("OAuthTokenStore", "The OAuth tokens file is not one this version reads."));
     const std::optional<QByteArray> plain =
         cipher.unprotect(QByteArray::fromBase64(root.value(QLatin1StringView("data")).toString().toLatin1()));
     if (!plain)
-        return fail(errorString, QStringLiteral("The OAuth tokens were saved for another Windows user or computer."));
+        return fail(errorString, QCoreApplication::translate("OAuthTokenStore", "The OAuth tokens were saved for another Windows user or computer."));
     const QJsonObject tokens = QJsonDocument::fromJson(*plain).object();
     for (auto it = tokens.begin(); it != tokens.end(); ++it) {
         const QJsonObject object = it.value().toObject();
@@ -195,7 +196,7 @@ bool OAuthTokenStore::save(const QString &path, const SecretCipher &cipher, QStr
 {
     if (m_tokens.isEmpty()) {
         if (QFile::exists(path) && !QFile::remove(path))
-            return fail(errorString, QStringLiteral("The OAuth tokens could not be written."));
+            return fail(errorString, QCoreApplication::translate("OAuthTokenStore", "The OAuth tokens could not be written."));
         return true;
     }
     QJsonObject tokens;
@@ -208,10 +209,10 @@ bool OAuthTokenStore::save(const QString &path, const SecretCipher &cipher, QStr
     }
     const std::optional<QByteArray> sealed = cipher.protect(QJsonDocument(tokens).toJson(QJsonDocument::Compact));
     if (!sealed)
-        return fail(errorString, QStringLiteral("The OAuth tokens could not be encrypted."));
+        return fail(errorString, QCoreApplication::translate("OAuthTokenStore", "The OAuth tokens could not be encrypted."));
     QJsonObject root;
     root.insert(QLatin1StringView("schema"), kTokensSchemaVersion);
     root.insert(QLatin1StringView("protection"), kDpapiProtection);
     root.insert(QLatin1StringView("data"), QString::fromLatin1(sealed->toBase64()));
-    return writeJsonFile(path, root) || fail(errorString, QStringLiteral("The OAuth tokens could not be written."));
+    return writeJsonFile(path, root) || fail(errorString, QCoreApplication::translate("OAuthTokenStore", "The OAuth tokens could not be written."));
 }

@@ -3,6 +3,7 @@
 
 #include "core/workspace/workspaceserializer.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -68,7 +69,7 @@ QString folderSettingsFromJson(const QJsonObject &object, FolderSettings &settin
     const QJsonValue auth = object.value(QLatin1StringView("auth"));
     if (!auth.isUndefined()) {
         if (!auth.isObject())
-            return QStringLiteral("Invalid folder settings: auth");
+            return QCoreApplication::translate("WorkspaceSerializer", "Invalid folder settings: auth");
         QString error;
         std::optional<RequestAuth> parsed = authFromJson(auth.toObject(), &error);
         if (!parsed)
@@ -78,11 +79,11 @@ QString folderSettingsFromJson(const QJsonObject &object, FolderSettings &settin
     const QJsonValue variables = object.value(QLatin1StringView("variables"));
     if (!variables.isUndefined()) {
         if (!variables.isArray())
-            return QStringLiteral("Invalid folder settings: variables");
+            return QCoreApplication::translate("WorkspaceSerializer", "Invalid folder settings: variables");
         for (const QJsonValue &row : variables.toArray()) {
             std::optional<KeyValue> parsed = keyValueFromJson(row);
             if (!parsed)
-                return QStringLiteral("Invalid folder settings: variables");
+                return QCoreApplication::translate("WorkspaceSerializer", "Invalid folder settings: variables");
             settings.variables.append(std::move(*parsed));
         }
     }
@@ -165,7 +166,7 @@ QString claimId(const QJsonValue &value, QSet<QString> &seenIds)
     if (id.isEmpty())
         return WorkspaceSerializer::errorToString(WorkspaceSerializer::Error::InvalidSchema);
     if (seenIds.contains(id))
-        return QStringLiteral("Duplicate item id: %1").arg(id);
+        return QCoreApplication::translate("WorkspaceSerializer", "Duplicate item id: %1").arg(id);
     seenIds.insert(id);
     return {};
 }
@@ -188,7 +189,7 @@ QString nodesFromJson(const QJsonArray &items, QSet<QString> &seenIds, QList<Col
 {
     // Every folder recurses, also an empty one, so only items count as too deep.
     if (depth > kMaxCollectionDepth && !items.isEmpty())
-        return QStringLiteral("Folders are nested too deeply.");
+        return QCoreApplication::translate("WorkspaceSerializer", "Folders are nested too deeply.");
 
     const QString invalid =
         WorkspaceSerializer::errorToString(WorkspaceSerializer::Error::InvalidSchema);
@@ -217,7 +218,7 @@ QString nodesFromJson(const QJsonArray &items, QSet<QString> &seenIds, QList<Col
             QString requestError;
             std::optional<RequestSpec> spec = requestFromJson(request.toObject(), &requestError);
             if (!spec)
-                return QStringLiteral("Item %1: %2").arg(node.id, requestError);
+                return QCoreApplication::translate("WorkspaceSerializer", "Item %1: %2").arg(node.id, requestError);
             node.kind = CollectionNode::Kind::Request;
             node.request = std::move(*spec);
         } else if (kind == QLatin1StringView("folder")) {
@@ -228,7 +229,7 @@ QString nodesFromJson(const QJsonArray &items, QSet<QString> &seenIds, QList<Col
             if (const QString error = folderSettingsFromJson(object.value(QLatin1StringView("settings")).toObject(),
                                                              node.folder);
                 !error.isEmpty()) {
-                return QStringLiteral("Item %1: %2").arg(node.id, error);
+                return QCoreApplication::translate("WorkspaceSerializer", "Item %1: %2").arg(node.id, error);
             }
             const QJsonArray children = object.value(QLatin1StringView("children")).toArray();
             if (const QString error = nodesFromJson(children, seenIds, node.children, depth + 1);
@@ -383,7 +384,7 @@ WorkspaceSerializer::LoadResult WorkspaceSerializer::load(const QString &filePat
     result.data.schemaVersion = schemaVersion;
     result.data.id = root.value(QLatin1StringView("id")).toString();
     if (!result.data.id.isEmpty() && !isValidWorkspaceId(result.data.id))
-        return failure(Error::InvalidSchema, QStringLiteral("Invalid workspace id."));
+        return failure(Error::InvalidSchema, QCoreApplication::translate("WorkspaceSerializer", "Invalid workspace id."));
 
     result.data.displayName = root.value(QLatin1StringView("displayName")).toString();
 
@@ -453,17 +454,17 @@ QString WorkspaceSerializer::errorToString(Error error)
     case Error::None:
         return QString();
     case Error::FileNotFound:
-        return QStringLiteral("The workspace file does not exist.");
+        return QCoreApplication::translate("WorkspaceSerializer", "The workspace file does not exist.");
     case Error::ReadFailed:
-        return QStringLiteral("The workspace file could not be opened for reading.");
+        return QCoreApplication::translate("WorkspaceSerializer", "The workspace file could not be opened for reading.");
     case Error::InvalidJson:
-        return QStringLiteral("The workspace file does not contain valid JSON.");
+        return QCoreApplication::translate("WorkspaceSerializer", "The workspace file does not contain valid JSON.");
     case Error::InvalidSchema:
-        return QStringLiteral("The file is not a valid ReqDeck workspace.");
+        return QCoreApplication::translate("WorkspaceSerializer", "The file is not a valid ReqDeck workspace.");
     case Error::UnsupportedVersion:
-        return QStringLiteral("The workspace file uses an unsupported schema version.");
+        return QCoreApplication::translate("WorkspaceSerializer", "The workspace file uses an unsupported schema version.");
     case Error::WriteFailed:
-        return QStringLiteral("The workspace file could not be written.");
+        return QCoreApplication::translate("WorkspaceSerializer", "The workspace file could not be written.");
     }
     return QString();
 }

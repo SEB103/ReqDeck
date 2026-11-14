@@ -259,6 +259,9 @@ public:
     /** Removes everything shown. */
     void clear();
 
+    /** Builds the warning and filter texts of the shown result again, in the current interface language. */
+    void retranslate();
+
 signals:
     /** Emitted when anything shown changes. */
     void responseChanged();
@@ -275,6 +278,9 @@ signals:
 private:
     /** Forgets the shown result, keeping requestName() and pretty(). */
     void resetResult();
+
+    /** Returns the warnings of the shown response, one per line. */
+    QString responseWarnings() const;
 
     /** Returns the formatted body, building it on first use. */
     const QString &formattedBody() const;
@@ -341,6 +347,12 @@ private:
 
     /** Whether a result is available. */
     bool m_hasResponse {false};
+
+    /** Whether the shown result is a request that could not be built. */
+    bool m_buildError {false};
+
+    /** Variables without a value when the shown request was built. */
+    QStringList m_unresolvedVariables;
 
     /** Whether a request is running. */
     bool m_busy {false};

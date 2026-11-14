@@ -24,6 +24,46 @@ target_link_libraries(tst_updatecontroller
 
 add_test(NAME UpdateController.Unit COMMAND tst_updatecontroller)
 
+# The language controller lives in the application layer as well.
+qt_add_executable(tst_localecontroller
+    unit/tst_localecontroller.cpp
+    "${CMAKE_SOURCE_DIR}/app/localecontroller.cpp"
+    "${CMAKE_SOURCE_DIR}/app/localecontroller.h"
+)
+
+target_include_directories(tst_localecontroller
+    PRIVATE
+        "${CMAKE_SOURCE_DIR}/app"
+)
+
+target_link_libraries(tst_localecontroller
+    PRIVATE
+        Qt6::Qml
+        Qt6::Test
+)
+
+add_test(NAME LocaleController.Unit COMMAND tst_localecontroller)
+
+# Interface catalogs: the QML sources are scanned for text that bypasses qsTr(),
+# and the German catalog is checked for completeness; the top-level
+# CMakeLists.txt embeds the compiled catalogs.
+qt_add_executable(tst_translations
+    unit/tst_translations.cpp
+)
+
+target_compile_definitions(tst_translations
+    PRIVATE REQDECK_QML_DIR="${CMAKE_SOURCE_DIR}/qml"
+    PRIVATE REQDECK_TS_DIR="${CMAKE_SOURCE_DIR}/translations"
+)
+
+target_link_libraries(tst_translations
+    PRIVATE
+        Qt6::Core
+        Qt6::Test
+)
+
+add_test(NAME Translations.Unit COMMAND tst_translations)
+
 qt_add_executable(tst_apppaths
     unit/tst_apppaths.cpp
 )
@@ -596,8 +636,12 @@ set_tests_properties(ReqDeck.QmlSmoke PROPERTIES
 
 # The application's screens read its context, so they run against the real
 # facades instead of the smoke test's mock.
+# The real language controller switches the interface catalogs the top-level
+# CMakeLists.txt embeds into this test.
 qt_add_executable(tst_screens
     screens/tst_screens.cpp
+    "${CMAKE_SOURCE_DIR}/app/localecontroller.cpp"
+    "${CMAKE_SOURCE_DIR}/app/localecontroller.h"
 )
 
 target_sources(tst_screens
@@ -626,6 +670,7 @@ qt_add_resources(tst_screens "screens_images"
 
 target_include_directories(tst_screens
     PRIVATE
+        "${CMAKE_SOURCE_DIR}/app"
         "${REQDECK_GENERATED_DIR}"
 )
 

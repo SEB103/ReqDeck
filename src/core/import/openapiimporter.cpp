@@ -3,6 +3,7 @@
 
 #include "core/import/openapiimporter.h"
 
+#include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -82,7 +83,7 @@ public:
             if (ref.isEmpty())
                 return value;
             if (!ref.startsWith(QLatin1StringView("#/"))) {
-                note(where, QStringLiteral("external reference %1").arg(ref));
+                note(where, QCoreApplication::translate("OpenApiImporter", "external reference %1").arg(ref));
                 return QJsonObject();
             }
             QJsonValue target = m_root;
@@ -91,7 +92,7 @@ public:
                 target = target.toObject().value(part);
             }
             if (target.isUndefined()) {
-                note(where, QStringLiteral("unresolved reference %1").arg(ref));
+                note(where, QCoreApplication::translate("OpenApiImporter", "unresolved reference %1").arg(ref));
                 return QJsonObject();
             }
             value = target;
@@ -189,7 +190,7 @@ public:
         m_exampleBudget = kMaxExampleValues;
         const QJsonValue value = example(object.value(QLatin1StringView("schema")), where);
         if (m_exampleBudget < 0)
-            note(where, QStringLiteral("example cut short at %1 values").arg(kMaxExampleValues));
+            note(where, QCoreApplication::translate("OpenApiImporter", "example cut short at %1 values").arg(kMaxExampleValues));
         return value;
     }
 
@@ -227,7 +228,7 @@ public:
             result.apiKeyValue = QStringLiteral("{{apiKey}}");
             result.apiKeyLocation = in == QLatin1StringView("query") ? ApiKeyLocation::Query : ApiKeyLocation::Header;
         } else if (type == QLatin1StringView("apiKey")) {
-            note(where, QStringLiteral("API key in %1").arg(in));
+            note(where, QCoreApplication::translate("OpenApiImporter", "API key in %1").arg(in));
         } else if (type == QLatin1StringView("oauth2")) {
             // The authorization code flow wins when a scheme offers both.
             const QJsonObject flows = scheme.value(QLatin1StringView("flows")).toObject();
@@ -235,7 +236,7 @@ public:
             const QJsonObject client = flows.value(QLatin1StringView("clientCredentials")).toObject();
             const QJsonObject flow = !code.isEmpty() ? code : client;
             if (flow.isEmpty()) {
-                note(where, QStringLiteral("oauth2 authorization without an authorization code or client credentials flow"));
+                note(where, QCoreApplication::translate("OpenApiImporter", "oauth2 authorization without an authorization code or client credentials flow"));
             } else {
                 result.type = AuthType::OAuth2;
                 result.oauth2.grant = !code.isEmpty() ? OAuthGrant::AuthorizationCode : OAuthGrant::ClientCredentials;
@@ -246,10 +247,10 @@ public:
                 for (const QJsonValue &scope : requirement.value(name).toArray())
                     scopes.append(scope.toString());
                 result.oauth2.scope = scopes.join(u' ');
-                note(where, QStringLiteral("OAuth 2.0 settings came over; fill in {{clientId}} and get a token"));
+                note(where, QCoreApplication::translate("OpenApiImporter", "OAuth 2.0 settings came over; fill in {{clientId}} and get a token"));
             }
         } else {
-            note(where, QStringLiteral("%1 authorization").arg(type.isEmpty() ? name : type));
+            note(where, QCoreApplication::translate("OpenApiImporter", "%1 authorization").arg(type.isEmpty() ? name : type));
         }
         return result;
     }
@@ -293,7 +294,7 @@ public:
             else if (in == QLatin1StringView("path") && !value.isEmpty())
                 addVariable(name, value); // Without an example, Send asks for the value.
             else if (in != QLatin1StringView("path"))
-                note(where, QStringLiteral("%1 parameter %2").arg(in, name));
+                note(where, QCoreApplication::translate("OpenApiImporter", "%1 parameter %2").arg(in, name));
         }
 
         const QJsonObject content = resolve(operation.value(QLatin1StringView("requestBody")), where)
@@ -342,7 +343,7 @@ public:
                     part.isFile = format == QLatin1StringView("binary") || format == QLatin1StringView("base64")
                                   || property.value(QLatin1StringView("contentMediaType")).isString();
                     if (part.isFile)
-                        note(where, QStringLiteral("field %1 needs a file; choose one").arg(part.key));
+                        note(where, QCoreApplication::translate("OpenApiImporter", "field %1 needs a file; choose one").arg(part.key));
                     else
                         part.value = text(example(it.value(), where));
                     spec.body.parts.append(part);
@@ -351,9 +352,9 @@ public:
                        || mime.startsWith(QLatin1StringView("audio/")) || mime.startsWith(QLatin1StringView("video/"))
                        || mime == QLatin1StringView("application/pdf") || mime == QLatin1StringView("*/*")) {
                 spec.body.mode = BodyMode::File;
-                note(where, QStringLiteral("the body is a file (%1); choose one").arg(mime));
+                note(where, QCoreApplication::translate("OpenApiImporter", "the body is a file (%1); choose one").arg(mime));
             } else {
-                note(where, QStringLiteral("%1 body").arg(mime));
+                note(where, QCoreApplication::translate("OpenApiImporter", "%1 body").arg(mime));
             }
         }
 
@@ -473,14 +474,14 @@ bool OpenApiImporter::isDocument(const QJsonObject &root)
 ImportResult OpenApiImporter::importDocument(const QByteArray &json)
 {
     ImportResult result;
-    result.format = QStringLiteral("OpenAPI document");
+    result.format = QCoreApplication::translate("OpenApiImporter", "OpenAPI document");
     const QJsonObject root = QJsonDocument::fromJson(json).object();
     if (!isDocument(root)) {
-        result.errorString = QStringLiteral("The file is not an OpenAPI 3 document.");
+        result.errorString = QCoreApplication::translate("OpenApiImporter", "The file is not an OpenAPI 3 document.");
         return result;
     }
     if (root.contains(QLatin1StringView("swagger"))) {
-        result.errorString = QStringLiteral("Swagger 2.0 is not supported. Convert the document to OpenAPI 3 first.");
+        result.errorString = QCoreApplication::translate("OpenApiImporter", "Swagger 2.0 is not supported. Convert the document to OpenAPI 3 first.");
         return result;
     }
 
@@ -491,7 +492,7 @@ ImportResult OpenApiImporter::importDocument(const QByteArray &json)
 
     const QJsonArray servers = root.value(QLatin1StringView("servers")).toArray();
     if (servers.isEmpty())
-        reader.note(title, QStringLiteral("no servers; Send asks for {{baseUrl}}"));
+        reader.note(title, QCoreApplication::translate("OpenApiImporter", "no servers; Send asks for {{baseUrl}}"));
     else
         reader.addVariable(QStringLiteral("baseUrl"), serverUrl(servers.first().toObject()));
     if (servers.size() > 1) {
@@ -525,7 +526,7 @@ ImportResult OpenApiImporter::importDocument(const QByteArray &json)
         const QJsonObject item = reader.resolve(it.value(), title + QStringLiteral(" / ") + path).toObject();
         const QJsonArray shared = item.value(QLatin1StringView("parameters")).toArray();
         if (item.contains(QLatin1StringView("trace")))
-            reader.note(title + QStringLiteral(" / ") + path, QStringLiteral("TRACE operation"));
+            reader.note(title + QStringLiteral(" / ") + path, QCoreApplication::translate("OpenApiImporter", "TRACE operation"));
         for (const auto &[key, method] : methods) {
             if (!item.contains(QLatin1StringView(key)))
                 continue;

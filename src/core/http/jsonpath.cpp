@@ -3,6 +3,7 @@
 
 #include "core/http/jsonpath.h"
 
+#include <QCoreApplication>
 #include <QJsonObject>
 #include <QList>
 
@@ -78,7 +79,7 @@ public:
     QList<Segment> parse()
     {
         if (!m_text.startsWith(u'$'))
-            fail(QStringLiteral("A path starts with $."));
+            fail(QCoreApplication::translate("JsonPath", "A path starts with $."));
         m_pos = 1;
         QList<Segment> segments;
         while (!atEnd()) {
@@ -94,7 +95,7 @@ public:
             } else if (peek() == u'[') {
                 segment.selectors = bracket();
             } else {
-                fail(QStringLiteral("Unexpected \"%1\" at %2.").arg(peek()).arg(m_pos + 1));
+                fail(QCoreApplication::translate("JsonPath", "Unexpected \"%1\" at %2.").arg(peek()).arg(m_pos + 1));
             }
             segments.append(segment);
         }
@@ -135,7 +136,7 @@ private:
         while (!atEnd() && (peek().isLetterOrNumber() || peek() == u'_' || peek() == u'-' || peek() == u'$'))
             ++m_pos;
         if (m_pos == from)
-            fail(QStringLiteral("A name is missing at %1.").arg(from + 1));
+            fail(QCoreApplication::translate("JsonPath", "A name is missing at %1.").arg(from + 1));
         return m_text.mid(from, m_pos - from);
     }
 
@@ -151,7 +152,7 @@ private:
             ++m_pos;
         }
         if (atEnd())
-            fail(QStringLiteral("A quote is not closed."));
+            fail(QCoreApplication::translate("JsonPath", "A quote is not closed."));
         ++m_pos;
         return value;
     }
@@ -169,7 +170,7 @@ private:
         bool ok = false;
         const qint64 value = m_text.mid(from, m_pos - from).toLongLong(&ok);
         if (!ok)
-            fail(QStringLiteral("The number at %1 is too large.").arg(from + 1));
+            fail(QCoreApplication::translate("JsonPath", "The number at %1 is too large.").arg(from + 1));
         return value;
     }
 
@@ -200,12 +201,12 @@ private:
                             selector.step = *step;
                     }
                     if (selector.step <= 0)
-                        fail(QStringLiteral("A slice step must be positive."));
+                        fail(QCoreApplication::translate("JsonPath", "A slice step must be positive."));
                 } else if (first) {
                     selector.kind = Selector::Kind::Index;
                     selector.index = *first;
                 } else {
-                    fail(QStringLiteral("Unexpected \"%1\" in brackets at %2.").arg(peek()).arg(m_pos + 1));
+                    fail(QCoreApplication::translate("JsonPath", "Unexpected \"%1\" in brackets at %2.").arg(peek()).arg(m_pos + 1));
                 }
             }
             selectors.append(selector);
@@ -214,7 +215,7 @@ private:
                 continue;
             if (take(QStringLiteral("]")))
                 return selectors;
-            fail(QStringLiteral("A bracket is not closed."));
+            fail(QCoreApplication::translate("JsonPath", "A bracket is not closed."));
         }
     }
 
@@ -226,7 +227,7 @@ private:
         const bool parenthesis = take(QStringLiteral("("));
         skipSpaces();
         if (!take(QStringLiteral("@")))
-            fail(QStringLiteral("A filter starts with @."));
+            fail(QCoreApplication::translate("JsonPath", "A filter starts with @."));
         while (true) {
             if (take(QStringLiteral(".")))
                 selector.filterPath.append(identifier());
@@ -234,11 +235,11 @@ private:
                 ++m_pos;
                 skipSpaces();
                 if (peek() != u'\'' && peek() != u'"')
-                    fail(QStringLiteral("A filter names its members in quotes."));
+                    fail(QCoreApplication::translate("JsonPath", "A filter names its members in quotes."));
                 selector.filterPath.append(quoted());
                 skipSpaces();
                 if (!take(QStringLiteral("]")))
-                    fail(QStringLiteral("A bracket is not closed."));
+                    fail(QCoreApplication::translate("JsonPath", "A bracket is not closed."));
             } else {
                 break;
             }
@@ -267,13 +268,13 @@ private:
                 bool ok = false;
                 const double value = m_text.mid(from, m_pos - from).toDouble(&ok);
                 if (!ok)
-                    fail(QStringLiteral("A filter compares with a number, a string, true, false, or null."));
+                    fail(QCoreApplication::translate("JsonPath", "A filter compares with a number, a string, true, false, or null."));
                 selector.literal = value;
             }
         }
         skipSpaces();
         if (parenthesis && !take(QStringLiteral(")")))
-            fail(QStringLiteral("A filter parenthesis is not closed."));
+            fail(QCoreApplication::translate("JsonPath", "A filter parenthesis is not closed."));
         return selector;
     }
 
@@ -364,7 +365,7 @@ private:
     void add(QJsonArray &out, const QJsonValue &value)
     {
         if (++m_visited > JsonPath::kMaxVisited)
-            throw PathError {QStringLiteral("The query visits more than %L1 values.").arg(JsonPath::kMaxVisited)};
+            throw PathError {QCoreApplication::translate("JsonPath", "The query visits more than %L1 values.").arg(JsonPath::kMaxVisited)};
         out.append(value);
     }
 

@@ -3,6 +3,7 @@
 
 #include "core/workspace/workspacebackup.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -84,7 +85,7 @@ bool WorkspaceBackup::save(const QString &workspaceId, const Copy &copy, QString
 {
     const auto fail = [errorString] {
         if (errorString)
-            *errorString = QStringLiteral("A copy of the workspace could not be written.");
+            *errorString = QCoreApplication::translate("WorkspaceBackup", "A copy of the workspace could not be written.");
         return false;
     };
     if (!isValidWorkspaceId(workspaceId))

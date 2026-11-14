@@ -256,8 +256,10 @@ Item {
             // and shortcuts only reach an active window.
             root.Window.window.requestActivate();
             tryVerify(() => root.Window.window.active);
-            // A test that failed halfway must not leave the next one in the dark theme.
+            // A test that failed halfway must not leave the next one in the dark theme
+            // or in another interface language.
             BsTheme.dark = false;
+            cppLocale.setLanguage("en_GB");
             verify(cppTestHost.reset());
             selectedSpy.clear();
             limitSpy.clear();
@@ -1570,6 +1572,126 @@ Item {
             compare(findChild(panel, "helpTitle").text, "Manage environments");
         }
 
+        /*! Verifies the interface language button at the very right of the top bar. */
+        function test_languageButton() {
+            const window = createMain();
+            const button = findChild(window.contentItem, "languageButton");
+            verify(button.visible);
+            compare(button.text, "EN");
+            // Only the trailing spacing of the row lies to the right of it.
+            verify(button.x + button.width >= button.parent.width - 12, "button.x " + button.x);
+
+            mouseClick(button);
+            const menu = findChild(button, "languageMenu");
+            tryCompare(menu, "opened", true);
+            compare(menu.count, 2);
+            compare(menu.itemAt(0).text, "English");
+            compare(menu.itemAt(0).checked, true);
+            compare(menu.itemAt(1).text, "Deutsch");
+            compare(menu.itemAt(1).checked, false);
+
+            mouseClick(menu.itemAt(1));
+            tryCompare(cppLocale, "currentLanguage", "de_DE");
+            // The menu is gone only once its closing animation ended.
+            tryCompare(menu, "visible", false);
+            compare(button.text, "DE");
+            // The interface follows at once, the button's own tooltip included.
+            compare(button.ToolTip.text, "Sprache der Oberfläche");
+
+            mouseClick(button);
+            tryCompare(menu, "opened", true);
+            compare(menu.itemAt(1).checked, true);
+            compare(menu.itemAt(0).checked, false);
+            keyClick(Qt.Key_Escape);
+            tryCompare(menu, "visible", false);
+            compare(cppLocale.currentLanguage, "de_DE");
+        }
+
+        /*!
+            Returns the descriptions of the items in \a window that are clipped in
+            German but not in English. Every request and response tab is shown, and
+            every dialog is opened in turn, so that their labels are measured too.
+        */
+        function clippedInGerman(window) {
+            const views = (switched) => {
+                const clipped = [];
+                // Rendering is awaited only after a change: an unchanged window
+                // renders no frame, and the wait would run into its timeout.
+                const add = (changed) => {
+                    if (changed)
+                        waitForRendering(window.contentItem);
+                    for (const item of cppTestHost.clippedItems(window))
+                        clipped.push(item);
+                };
+                add(switched);
+                for (const tabs of ["tabs", "responseTabs"]) {
+                    const bar = findChild(window.contentItem, tabs);
+                    for (let i = 1; i < bar.count; ++i) {
+                        bar.currentIndex = i;
+                        add(true);
+                    }
+                    bar.currentIndex = 0;
+                }
+                for (const dialog of cppTestHost.dialogsOf(window)) {
+                    // A dialog that needs a state to open, such as a file to import,
+                    // stays closed; the others are measured open.
+                    dialog.open();
+                    for (let tries = 0; tries < 10 && !dialog.opened; ++tries)
+                        wait(50);
+                    // Open means its animation has run, so it is laid out and drawn.
+                    if (dialog.opened)
+                        add(false);
+                    dialog.close();
+                    tryCompare(dialog, "visible", false);
+                }
+                return clipped;
+            };
+            const english = views(false);
+            cppLocale.setLanguage("de_DE");
+            const german = views(true);
+            const found = [];
+            for (const item of german) {
+                const text = cppTestHost.describeItem(item);
+                if (english.indexOf(item) < 0 && found.indexOf(text) < 0)
+                    found.push(text);
+            }
+            return found;
+        }
+
+        /*! Verifies that a language switch keeps what the choice boxes show. */
+        function test_languageSwitchKeepsChoices() {
+            const window = createMain();
+            findChild(window.contentItem, "tree").parent.selectNode("r2");
+            cppRequestEditor.bodyMode = 1;
+            cppRequestEditor.rawBodyType = 2;
+            cppRequestEditor.authType = 3;
+            cppRequestEditor.apiKeyInQuery = true;
+            const level = findChild(window, "logLevelBox");
+            const names = ["bodyModeBox", "rawTypeBox", "authTypeBox", "apiKeyPlaceBox"];
+            const expected = [1, 2, 3, 1];
+            for (let i = 0; i < names.length; ++i)
+                compare(findChild(window.contentItem, names[i]).currentIndex, expected[i], names[i]);
+            compare(level.currentIndex, 1);
+
+            cppLocale.setLanguage("de_DE");
+            waitForRendering(window.contentItem);
+
+            compare(findChild(window.contentItem, "authTypeBox").currentText, "API-Schlüssel");
+            for (let i = 0; i < names.length; ++i)
+                compare(findChild(window.contentItem, names[i]).currentIndex, expected[i], names[i]);
+            compare(level.currentIndex, 1, "log level");
+        }
+
+        /*! Verifies that the German interface fits where the English one does. */
+        function test_labelsFitInGerman() {
+            const window = createMain();
+            findChild(window.contentItem, "tree").parent.selectNode("r2");
+
+            const clipped = clippedInGerman(window);
+
+            verify(clipped.length === 0, clipped.length + " clipped in German:\n" + clipped.join("\n"));
+        }
+
         /*! Verifies that F1 shows a topic in the panel. */
         function test_panelShowsTopic() {
             const window = createMain();
@@ -1629,6 +1751,29 @@ Item {
 
             compare(cppTestHost.openedUrls().length, 1);
             verify(cppTestHost.openedUrls()[0].endsWith("/help/ReqDeck-Guide.en.pdf"));
+        }
+
+        /*! Verifies the interface language button at the top right of the launcher. */
+        function test_launcherLanguageButton() {
+            verify(cppTestHost.prepareLauncherSamples());
+            const window = createMain();
+            const button = findChild(window.contentItem, "launcherLanguageButton");
+            tryCompare(button, "visible", true);
+            waitForRendering(window.contentItem);
+            compare(button.text, "EN");
+            const corner = button.mapToItem(window.contentItem, button.width, 0);
+            verify(corner.y < 40 && corner.x > window.contentItem.width - 40, "at " + corner.x + ", " + corner.y);
+
+            mouseClick(button);
+            const menu = findChild(button, "languageMenu");
+            tryCompare(menu, "opened", true);
+            compare(menu.count, 2);
+            mouseClick(menu.itemAt(1));
+
+            tryCompare(cppLocale, "currentLanguage", "de_DE");
+            tryCompare(menu, "visible", false);
+            compare(button.text, "DE");
+            compare(findChild(window.contentItem, "openSamplesButton").text, "Beispiele öffnen");
         }
 
         /*! Verifies that Open Samples on the launcher opens the request the guide starts with. */
@@ -3391,6 +3536,24 @@ Item {
             verify(sent.text.indexOf("/redirect") > 0, sent.text);
             verify(sent.text.indexOf("/echo") > 0, sent.text);
             tabs.currentIndex = 0;
+        }
+
+        /*! Verifies that texts built before a language switch follow it. */
+        function test_languageSwitchRetranslatesBuiltTexts() {
+            const host = createSender(cppTestHost.serverUrl("/json/3"));
+            sendAndWait(host);
+            cppResponse.filterText = "oops";
+            compare(cppResponse.filterError, "A path starts with $.");
+            cppRequestEditor.authType = 5;
+            compare(cppRequestEditor.oauthStatus, "No token yet.");
+            cppRequestEditor.bodyMode = 4;
+            compare(cppRequestEditor.bodyFileInfo, "No file chosen.");
+
+            cppLocale.setLanguage("de_DE");
+
+            compare(cppResponse.filterError, "Ein Pfad beginnt mit $.");
+            compare(cppRequestEditor.oauthStatus, "Noch kein Token.");
+            compare(cppRequestEditor.bodyFileInfo, "Keine Datei ausgewählt.");
         }
 
         /*! Verifies the JSONPath filter field of the response. */

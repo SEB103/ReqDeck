@@ -39,10 +39,6 @@ qt_add_resources(appReqDeck "application_resources"
         images/svg/settings.svg
         images/svg/stop.svg
         images/svg/update.svg
-
-        # Country flag for the UI-language selector (4:3 SVG; public-domain flag
-        # artwork). The file name is the ISO country part of the locale: en_GB->gb.
-        images/flags/gb.svg
 )
 
 # License and notice documents shown by the Help > About dialog. The canonical

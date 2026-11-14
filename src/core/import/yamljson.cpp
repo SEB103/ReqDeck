@@ -3,6 +3,7 @@
 
 #include "core/import/yamljson.h"
 
+#include <QCoreApplication>
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -197,7 +198,7 @@ private:
     {
         m_total += count;
         if (m_total > YamlJson::kMaxValues)
-            throw Refused {QStringLiteral("The YAML file expands to more than %L1 values.").arg(YamlJson::kMaxValues)};
+            throw Refused {QCoreApplication::translate("YamlJson", "The YAML file expands to more than %L1 values.").arg(YamlJson::kMaxValues)};
     }
 
     /*!
@@ -207,9 +208,9 @@ private:
     void open(bool map, YAML::anchor_t anchor)
     {
         if (!m_stack.isEmpty() && m_stack.last().map && !m_stack.last().haveKey)
-            throw Refused {QStringLiteral("The YAML file uses a mapping or list as a key, which JSON cannot hold.")};
+            throw Refused {QCoreApplication::translate("YamlJson", "The YAML file uses a mapping or list as a key, which JSON cannot hold.")};
         if (m_stack.size() >= YamlJson::kMaxDepth)
-            throw Refused {QStringLiteral("The YAML file is nested more than %1 levels deep.").arg(YamlJson::kMaxDepth)};
+            throw Refused {QCoreApplication::translate("YamlJson", "The YAML file is nested more than %1 levels deep.").arg(YamlJson::kMaxDepth)};
         spend(1);
         Frame frame;
         frame.map = map;
@@ -320,18 +321,18 @@ std::optional<QJsonDocument> YamlJson::toJson(const QByteArray &yaml, QString *e
             return QJsonDocument(value.toObject());
         if (value.isArray())
             return QJsonDocument(value.toArray());
-        return fail(QStringLiteral("The YAML file holds no mapping or list."));
+        return fail(QCoreApplication::translate("YamlJson", "The YAML file holds no mapping or list."));
     } catch (const Refused &refused) {
         return fail(refused.what);
     } catch (const YAML::Exception &exception) {
         const QString message = QString::fromStdString(exception.msg);
         if (exception.mark.is_null())
-            return fail(QStringLiteral("The YAML file cannot be read: %1").arg(message));
-        return fail(QStringLiteral("The YAML file cannot be read: line %1, column %2: %3")
+            return fail(QCoreApplication::translate("YamlJson", "The YAML file cannot be read: %1").arg(message));
+        return fail(QCoreApplication::translate("YamlJson", "The YAML file cannot be read: line %1, column %2: %3")
                         .arg(exception.mark.line + 1)
                         .arg(exception.mark.column + 1)
                         .arg(message));
     } catch (const std::exception &exception) {
-        return fail(QStringLiteral("The YAML file cannot be read: %1").arg(QString::fromLocal8Bit(exception.what())));
+        return fail(QCoreApplication::translate("YamlJson", "The YAML file cannot be read: %1").arg(QString::fromLocal8Bit(exception.what())));
     }
 }

@@ -133,7 +133,7 @@ class RequestEditor : public QObject
     Q_PROPERTY(QString bodyFilePath READ bodyFilePath WRITE setBodyFilePath NOTIFY requestChanged)
 
     /** Size of the body file, or why it cannot be sent; empty while the path holds variables. */
-    Q_PROPERTY(QString bodyFileInfo READ bodyFileInfo NOTIFY requestChanged)
+    Q_PROPERTY(QString bodyFileInfo READ bodyFileInfo NOTIFY bodyFileInfoChanged)
 
     /** response() templates for the completion, one per other request with a response in this run. */
     Q_PROPERTY(QStringList responseTemplates READ responseTemplates NOTIFY responseTemplatesChanged)
@@ -344,6 +344,9 @@ public:
     /** Adds a request made from a cURL \a command to \a parentId; returns its id or "". */
     Q_INVOKABLE QString importCurl(const QString &command, const QString &parentId);
 
+    /** Announces the texts this editor builds again, after a switch of the interface language. */
+    void retranslate();
+
 signals:
     /** Emitted when the open request or any of its fields changes. */
     void requestChanged();
@@ -359,6 +362,9 @@ signals:
 
     /** Emitted when oauthBusy() or oauthStatus() changes. */
     void oauthChanged();
+
+    /** Emitted when bodyFileInfo() may have changed. */
+    void bodyFileInfoChanged();
 
     /** Emitted when busy() changes. */
     void busyChanged();

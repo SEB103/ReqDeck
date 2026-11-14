@@ -68,6 +68,15 @@ Pane {
     /*! Row of the active environment forwarded to the top bar. */
     property int activeEnvironmentIndex: -1
 
+    /*! Interface languages forwarded to the top bar. */
+    property var languages: []
+
+    /*! Code of the active interface language forwarded to the top bar. */
+    property string currentLanguage: ""
+
+    /*! Letters of the active interface language forwarded to the top bar. */
+    property string currentShortName: ""
+
     /*! Recent-workspace rows forwarded to the menu bar. */
     property var recentWorkspaces: []
 
@@ -130,6 +139,9 @@ Pane {
                     canSave: main.hasWorkspace && main.workspaceDirty
                     environmentNames: main.environmentNames
                     activeEnvironmentIndex: main.activeEnvironmentIndex
+                    languages: main.languages
+                    currentLanguage: main.currentLanguage
+                    currentShortName: main.currentShortName
                 }
             }
 

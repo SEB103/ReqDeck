@@ -3,6 +3,8 @@
 
 #include "core/http/bodysource.h"
 
+#include <QCoreApplication>
+
 #include <algorithm>
 #include <cstring>
 
@@ -41,7 +43,7 @@ SegmentedBodyDevice::~SegmentedBodyDevice()
 bool SegmentedBodyDevice::open(OpenMode mode)
 {
     if ((mode & WriteOnly) || !(mode & ReadOnly)) {
-        setErrorString(QStringLiteral("The body can only be read."));
+        setErrorString(QCoreApplication::translate("BodySource", "The body can only be read."));
         return false;
     }
     m_files.clear();
@@ -56,7 +58,7 @@ bool SegmentedBodyDevice::open(OpenMode mode)
         }
         auto file = std::make_shared<QFile>(segment.filePath);
         if (!file->open(QIODevice::ReadOnly)) {
-            setErrorString(QStringLiteral("The file %1 could not be read: %2").arg(segment.filePath, file->errorString()));
+            setErrorString(QCoreApplication::translate("BodySource", "The file %1 could not be read: %2").arg(segment.filePath, file->errorString()));
             m_files.clear();
             m_offsets.clear();
             m_size = 0;

@@ -78,3 +78,10 @@ jobs:
 
       - name: Run QML lint targets
         run: cmake --build build/ci --target all_qmllint
+
+      # The catalogs carry no source locations, so lupdate changes them only when
+      # a translatable text was added, changed, or removed without updating them.
+      - name: Check translation catalogs are current
+        run: |
+          cmake --build build/ci --target update_translations
+          git diff --exit-code -- translations

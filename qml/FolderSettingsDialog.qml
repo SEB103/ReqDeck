@@ -60,6 +60,8 @@ Dialog {
             currentIndex: dialog.authTypes.indexOf(cppFolderEditor.authType)
             Accessible.name: qsTr("Folder authentication")
             onActivated: (index) => cppFolderEditor.authType = dialog.authTypes[index]
+            // A language switch gives the box a new model and resets it to the first row.
+            onModelChanged: currentIndex = Qt.binding(() => dialog.authTypes.indexOf(cppFolderEditor.authType))
         }
 
         TextField {
@@ -125,6 +127,8 @@ Dialog {
                 currentIndex: cppFolderEditor.apiKeyInQuery ? 1 : 0
                 Accessible.name: qsTr("Where to send the key")
                 onActivated: (index) => cppFolderEditor.apiKeyInQuery = index === 1
+                // A language switch gives the box a new model and resets it to the first row.
+                onModelChanged: currentIndex = Qt.binding(() => cppFolderEditor.apiKeyInQuery ? 1 : 0)
             }
         }
 

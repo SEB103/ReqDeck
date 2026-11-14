@@ -37,6 +37,8 @@ ColumnLayout {
         currentIndex: fields.settings.grant !== undefined ? fields.settings.grant : 0
         Accessible.name: qsTr("How the token is obtained")
         onActivated: (index) => fields.fieldEdited("grant", index)
+        // A language switch gives the box a new model and resets it to the first row.
+        onModelChanged: currentIndex = Qt.binding(() => fields.settings.grant !== undefined ? fields.settings.grant : 0)
     }
 
     TextField {

@@ -287,21 +287,29 @@ Item {
                         /*! Topic of the F1 help. */
                         property string helpTopic: "request.bodyMode"
 
+                        objectName: "bodyModeBox"
+
                         Layout.preferredWidth: 180
                         model: [qsTr("No body"), qsTr("Raw"), qsTr("Form URL encoded"), qsTr("Form data"), qsTr("File")]
                         currentIndex: cppRequestEditor.bodyMode
                         onActivated: (index) => cppRequestEditor.bodyMode = index
+                        // A language switch gives the box a new model and resets it to the first row.
+                        onModelChanged: currentIndex = Qt.binding(() => cppRequestEditor.bodyMode)
                     }
 
                     ComboBox {
                         /*! Topic of the F1 help. */
                         property string helpTopic: "request.rawType"
 
+                        objectName: "rawTypeBox"
+
                         Layout.preferredWidth: 120
                         visible: cppRequestEditor.bodyMode === 1 // BodyMode::Raw
                         model: ["JSON", qsTr("Text"), "XML"]
                         currentIndex: cppRequestEditor.rawBodyType
                         onActivated: (index) => cppRequestEditor.rawBodyType = index
+                        // A language switch gives the box a new model and resets it to the first row.
+                        onModelChanged: currentIndex = Qt.binding(() => cppRequestEditor.rawBodyType)
                     }
                 }
 
@@ -489,11 +497,15 @@ Item {
                     /*! Topic of the F1 help. */
                     property string helpTopic: "request.authType"
 
+                    objectName: "authTypeBox"
+
                     Layout.preferredWidth: 180
                     // The order follows AuthType, so the index is the value.
                     model: [qsTr("No authentication"), qsTr("Basic"), qsTr("Bearer token"), qsTr("API key"),
                             qsTr("Inherit from folder"), qsTr("OAuth 2.0")]
                     currentIndex: cppRequestEditor.authType
+                    // A language switch gives the box a new model and resets it to the first row.
+                    onModelChanged: currentIndex = Qt.binding(() => cppRequestEditor.authType)
                     onActivated: (index) => cppRequestEditor.authType = index
                 }
 
@@ -684,11 +696,15 @@ Item {
                     /*! Topic of the F1 help. */
                     property string helpTopic: "request.apiKeyPlace"
 
+                    objectName: "apiKeyPlaceBox"
+
                     Layout.preferredWidth: 180
                     visible: cppRequestEditor.authType === 3 // AuthType::ApiKey
                     model: [qsTr("Send as header"), qsTr("Send as query parameter")]
                     currentIndex: cppRequestEditor.apiKeyInQuery ? 1 : 0
                     onActivated: (index) => cppRequestEditor.apiKeyInQuery = index === 1
+                    // A language switch gives the box a new model and resets it to the first row.
+                    onModelChanged: currentIndex = Qt.binding(() => cppRequestEditor.apiKeyInQuery ? 1 : 0)
                 }
 
                 OAuthFields {

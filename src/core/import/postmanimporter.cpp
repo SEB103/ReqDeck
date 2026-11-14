@@ -3,6 +3,7 @@
 
 #include "core/import/postmanimporter.h"
 
+#include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -61,10 +62,10 @@ public:
     void reportFile(const QString &path, const QString &field, const QString &where)
     {
         if (path.trimmed().isEmpty()) {
-            report.append(field.isEmpty() ? QStringLiteral("%1: no file for the body; choose one").arg(where)
-                                          : QStringLiteral("%1: field %2 has no file; choose one").arg(where, field));
+            report.append(field.isEmpty() ? QCoreApplication::translate("PostmanImporter", "%1: no file for the body; choose one").arg(where)
+                                          : QCoreApplication::translate("PostmanImporter", "%1: field %2 has no file; choose one").arg(where, field));
         } else {
-            report.append(QStringLiteral("%1: file %2 is a path of the computer the file came from; check it").arg(where, path));
+            report.append(QCoreApplication::translate("PostmanImporter", "%1: file %2 is a path of the computer the file came from; check it").arg(where, path));
         }
     }
 
@@ -127,11 +128,11 @@ public:
             result.oauth2.clientSecret = valueOf(list, QLatin1StringView("clientSecret"));
             result.oauth2.scope = valueOf(list, QLatin1StringView("scope"));
             result.oauth2.audience = valueOf(list, QLatin1StringView("audience"));
-            report.append(QStringLiteral("%1: OAuth 2.0 settings came over; get a token with Get Token").arg(where));
+            report.append(QCoreApplication::translate("PostmanImporter", "%1: OAuth 2.0 settings came over; get a token with Get Token").arg(where));
         } else if (!type.isEmpty() && type != QLatin1StringView("inherit")) {
             // An auth ReqDeck cannot send must not fall back to the folder's.
             result.type = AuthType::None;
-            report.append(QStringLiteral("%1: %2 authorization").arg(where, authName(type)));
+            report.append(QCoreApplication::translate("PostmanImporter", "%1: %2 authorization").arg(where, authName(type)));
         }
         return result;
     }
@@ -146,12 +147,12 @@ public:
             const QJsonValue exec = event.toObject().value(QLatin1StringView("script")).toObject().value(QLatin1StringView("exec"));
             const bool empty = exec.isArray() ? exec.toArray().isEmpty() : exec.toString().trimmed().isEmpty();
             if (!empty) {
-                report.append(QStringLiteral("%1: scripts").arg(where));
+                report.append(QCoreApplication::translate("PostmanImporter", "%1: scripts").arg(where));
                 break;
             }
         }
         if (!item.value(QLatin1StringView("response")).toArray().isEmpty())
-            report.append(QStringLiteral("%1: saved example responses").arg(where));
+            report.append(QCoreApplication::translate("PostmanImporter", "%1: saved example responses").arg(where));
     }
 
     /*!
@@ -162,7 +163,7 @@ public:
     {
         static const QRegularExpression dynamic(QStringLiteral(R"(\{\{\s*(\$[A-Za-z0-9_.\-]+)\s*\}\})"));
         for (QRegularExpressionMatchIterator it = dynamic.globalMatch(text); it.hasNext();) {
-            const QString line = QStringLiteral("%1: dynamic variable {{%2}}").arg(where, it.next().captured(1));
+            const QString line = QCoreApplication::translate("PostmanImporter", "%1: dynamic variable {{%2}}").arg(where, it.next().captured(1));
             if (!report.contains(line))
                 report.append(line);
         }
@@ -191,7 +192,7 @@ public:
                 spec.method = candidate;
         }
         if (QString::fromLatin1(httpMethodVerb(spec.method)) != method)
-            report.append(QStringLiteral("%1: method %2, sent as GET").arg(where, method));
+            report.append(QCoreApplication::translate("PostmanImporter", "%1: method %2, sent as GET").arg(where, method));
 
         const QJsonValue url = request.value(QLatin1StringView("url"));
         QString raw = url.isObject() ? url.toObject().value(QLatin1StringView("raw")).toString() : url.toString();
@@ -232,7 +233,7 @@ public:
                     const QJsonArray sources = src.toArray();
                     part.value = src.isArray() ? sources.at(0).toString() : src.toString();
                     if (sources.size() > 1)
-                        report.append(QStringLiteral("%1: field %2 has %3 files; only the first is kept").arg(where, part.key).arg(sources.size()));
+                        report.append(QCoreApplication::translate("PostmanImporter", "%1: field %2 has %3 files; only the first is kept").arg(where, part.key).arg(sources.size()));
                     reportFile(part.value, part.key, where);
                 } else {
                     part.value = item.value(QLatin1StringView("value")).toVariant().toString();
@@ -244,7 +245,7 @@ public:
             spec.body.filePath = body.value(QLatin1StringView("file")).toObject().value(QLatin1StringView("src")).toString();
             reportFile(spec.body.filePath, QString(), where);
         } else if (!mode.isEmpty() && mode != QLatin1StringView("none")) {
-            report.append(QStringLiteral("%1: %2 body").arg(where, mode));
+            report.append(QCoreApplication::translate("PostmanImporter", "%1: %2 body").arg(where, mode));
         }
 
         QStringList texts {spec.url, spec.body.raw, spec.auth.token, spec.auth.password, spec.auth.apiKeyValue};
@@ -272,7 +273,7 @@ public:
             node.name = item.value(QLatin1StringView("name")).toString();
             const QString path = where + QStringLiteral(" / ") + node.name;
             if (depth > kMaxCollectionDepth) {
-                report.append(QStringLiteral("%1: nested deeper than %2 levels, left out").arg(path).arg(kMaxCollectionDepth));
+                report.append(QCoreApplication::translate("PostmanImporter", "%1: nested deeper than %2 levels, left out").arg(path).arg(kMaxCollectionDepth));
                 continue;
             }
             reportExtras(item, path);
@@ -304,7 +305,7 @@ std::optional<QJsonObject> parseObject(const QByteArray &json, ImportResult &res
     QJsonParseError error;
     const QJsonDocument document = QJsonDocument::fromJson(json, &error);
     if (error.error != QJsonParseError::NoError || !document.isObject()) {
-        result.errorString = QStringLiteral("The file is not valid JSON.");
+        result.errorString = QCoreApplication::translate("PostmanImporter", "The file is not valid JSON.");
         return std::nullopt;
     }
     return document.object();
@@ -347,19 +348,19 @@ bool PostmanImporter::isEnvironment(const QJsonObject &root)
 ImportResult PostmanImporter::importCollection(const QByteArray &json)
 {
     ImportResult result;
-    result.format = QStringLiteral("Postman collection");
+    result.format = QCoreApplication::translate("PostmanImporter", "Postman collection");
     const std::optional<QJsonObject> root = parseObject(json, result);
     if (!root)
         return result;
     if (!isCollection(*root)) {
-        result.errorString = QStringLiteral("The file is not a Postman collection.");
+        result.errorString = QCoreApplication::translate("PostmanImporter", "The file is not a Postman collection.");
         return result;
     }
 
     Reader reader;
     const QString name = root->value(QLatin1StringView("info")).toObject().value(QLatin1StringView("name")).toString();
     result.folder.id = newItemId();
-    result.folder.name = name.isEmpty() ? QStringLiteral("Postman collection") : name;
+    result.folder.name = name.isEmpty() ? QCoreApplication::translate("PostmanImporter", "Postman collection") : name;
     result.folder.folder.auth = reader.auth(root->value(QLatin1StringView("auth")), result.folder.name);
     result.folder.folder.variables = Reader::rows(root->value(QLatin1StringView("variable")));
     reader.reportExtras(*root, result.folder.name);
@@ -383,18 +384,18 @@ ImportResult PostmanImporter::importCollection(const QByteArray &json)
 ImportResult PostmanImporter::importEnvironment(const QByteArray &json)
 {
     ImportResult result;
-    result.format = QStringLiteral("Postman environment");
+    result.format = QCoreApplication::translate("PostmanImporter", "Postman environment");
     const std::optional<QJsonObject> root = parseObject(json, result);
     if (!root)
         return result;
     if (!isEnvironment(*root)) {
-        result.errorString = QStringLiteral("The file is not a Postman environment.");
+        result.errorString = QCoreApplication::translate("PostmanImporter", "The file is not a Postman environment.");
         return result;
     }
 
     Environment environment;
     environment.id = newItemId();
-    environment.name = root->value(QLatin1StringView("name")).toString(QStringLiteral("Postman environment"));
+    environment.name = root->value(QLatin1StringView("name")).toString(QCoreApplication::translate("PostmanImporter", "Postman environment"));
     for (const QJsonValue &value : root->value(QLatin1StringView("values")).toArray()) {
         const QJsonObject object = value.toObject();
         environment.variables.append({object.value(QLatin1StringView("key")).toString(),

@@ -3,6 +3,7 @@
 
 #include "core/http/requestbuilder.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QHttpHeaders>
@@ -71,10 +72,10 @@ bool isValidHeaderValue(QStringView value)
 QString appendHeader(QHttpHeaders &headers, const QString &name, const QString &value)
 {
     if (!isValidHeaderName(name))
-        return QStringLiteral("Invalid header name: %1").arg(name);
+        return QCoreApplication::translate("RequestBuilder", "Invalid header name: %1").arg(name);
     const QByteArray bytes = value.toUtf8();
     if (!isValidHeaderValue(value) || !headers.append(name, QLatin1StringView(bytes)))
-        return QStringLiteral("Invalid value for header: %1").arg(name);
+        return QCoreApplication::translate("RequestBuilder", "Invalid value for header: %1").arg(name);
     return {};
 }
 
@@ -123,7 +124,7 @@ QString absoluteFile(const QString &path, const QString &baseDirectory)
 QString unreadableFile(const QString &path)
 {
     if (path.trimmed().isEmpty())
-        return QStringLiteral("No file is chosen for the body.");
+        return QCoreApplication::translate("RequestBuilder", "No file is chosen for the body.");
     // Looking at a file on a share would contact that computer, with the
     // user's Windows credentials, before the upload was confirmed; the send
     // opens it and reports a failure then.
@@ -131,9 +132,9 @@ QString unreadableFile(const QString &path)
         return {};
     const QFileInfo info(path);
     if (!info.isFile())
-        return QStringLiteral("The file to send was not found: %1").arg(path);
+        return QCoreApplication::translate("RequestBuilder", "The file to send was not found: %1").arg(path);
     if (!info.isReadable())
-        return QStringLiteral("The file to send cannot be read: %1").arg(path);
+        return QCoreApplication::translate("RequestBuilder", "The file to send cannot be read: %1").arg(path);
     return {};
 }
 
@@ -227,12 +228,12 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
     }
 
     if (urlText.isEmpty())
-        return failure(std::move(built), QStringLiteral("URL is empty."));
+        return failure(std::move(built), QCoreApplication::translate("RequestBuilder", "URL is empty."));
     if (!urlUnresolved.isEmpty()) {
         QStringList references;
         for (const QString &name : std::as_const(urlUnresolved))
             references.append(QStringLiteral("{{%1}}").arg(name));
-        return failure(std::move(built), QStringLiteral("Unresolved variable in URL: %1")
+        return failure(std::move(built), QCoreApplication::translate("RequestBuilder", "Unresolved variable in URL: %1")
                                              .arg(references.join(QStringLiteral(", "))));
     }
     if (!hasScheme(urlText))
@@ -241,10 +242,10 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
     QUrl url(urlText, QUrl::TolerantMode);
     if (!url.isValid() || url.host().isEmpty())
         // The text as typed: the resolved one may show the value of a secret variable.
-        return failure(std::move(built), QStringLiteral("Invalid URL: %1").arg(spec.url.trimmed()));
+        return failure(std::move(built), QCoreApplication::translate("RequestBuilder", "Invalid URL: %1").arg(spec.url.trimmed()));
     const QString scheme = url.scheme().toLower();
     if (scheme != QLatin1StringView("http") && scheme != QLatin1StringView("https"))
-        return failure(std::move(built), QStringLiteral("Unsupported URL scheme: %1").arg(scheme));
+        return failure(std::move(built), QCoreApplication::translate("RequestBuilder", "Unsupported URL scheme: %1").arg(scheme));
 
     const QByteArray extraQuery = encodeKeyValuePairs(queryPairs);
     if (!extraQuery.isEmpty()) {
@@ -345,11 +346,11 @@ BuiltRequest RequestBuilder::build(const RequestSpec &spec, const VariableResolv
                 pending += "--" + boundary + "\r\nContent-Disposition: form-data; name=\"" + dispositionValue(key) + '"';
                 QString partType = resolve(part.contentType).trimmed();
                 if (hasControlCharacter(partType))
-                    return failure(std::move(built), QStringLiteral("The Content-Type of form field %1 is not valid.").arg(key));
+                    return failure(std::move(built), QCoreApplication::translate("RequestBuilder", "The Content-Type of form field %1 is not valid.").arg(key));
                 if (part.isFile) {
                     const QString path = absoluteFile(value.trimmed(), options.baseDirectory);
                     if (const QString error = unreadableFile(path); !error.isEmpty())
-                        return failure(std::move(built), QStringLiteral("%1 (form field %2)").arg(error, key));
+                        return failure(std::move(built), QCoreApplication::translate("RequestBuilder", "%1 (form field %2)").arg(error, key));
                     pending += "; filename=\"" + dispositionValue(QFileInfo(path).fileName()) + '"';
                     if (partType.isEmpty())
                         partType = QString::fromLatin1(contentTypeForFile(QFileInfo(path).fileName()));

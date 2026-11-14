@@ -3,6 +3,7 @@
 
 #include "core/history/historystore.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -342,9 +343,9 @@ bool HistoryStore::load(QString *errorString)
     const FileState state = readEntries(m_entries);
     m_unread = state == FileState::Unreadable;
     if (state == FileState::Unreadable)
-        return fail(errorString, QStringLiteral("The history file could not be read."));
+        return fail(errorString, QCoreApplication::translate("HistoryStore", "The history file could not be read."));
     if (state == FileState::SetAside)
-        return fail(errorString, QStringLiteral("The history file is not valid."));
+        return fail(errorString, QCoreApplication::translate("HistoryStore", "The history file is not valid."));
     return true;
 }
 
@@ -447,8 +448,8 @@ HistoryStore::Update HistoryStore::prepareAdd(HistoryEntry entry)
     if (!locked || readEntries(inFile) == FileState::Unreadable) {
         m_pending.prepend(std::move(entry));
         m_unread = true;
-        update.errorString = locked ? QStringLiteral("The history file could not be read.")
-                                    : QStringLiteral("The history file is in use.");
+        update.errorString = locked ? QCoreApplication::translate("HistoryStore", "The history file could not be read.")
+                                    : QCoreApplication::translate("HistoryStore", "The history file is in use.");
         update.entries = std::move(expected);
         return update;
     }
@@ -477,7 +478,7 @@ HistoryStore::Update HistoryStore::prepareAdd(HistoryEntry entry)
         m_unread = false;
     } else {
         m_pending.prepend(std::move(entry));
-        update.errorString = QStringLiteral("The history file could not be written.");
+        update.errorString = QCoreApplication::translate("HistoryStore", "The history file could not be written.");
     }
     update.prependsOne = merged == expected;
     update.entries = std::move(merged);
@@ -522,9 +523,9 @@ bool HistoryStore::clear(QString *errorString)
 {
     QLockFile lock(m_filePath + QStringLiteral(".lock"));
     if (QFileInfo(m_filePath).absoluteDir().exists() && !lock.tryLock(kLockTimeoutMs))
-        return fail(errorString, QStringLiteral("The history file is in use."));
+        return fail(errorString, QCoreApplication::translate("HistoryStore", "The history file is in use."));
     if (QFile::exists(m_filePath) && !QFile::remove(m_filePath))
-        return fail(errorString, QStringLiteral("The history file could not be removed."));
+        return fail(errorString, QCoreApplication::translate("HistoryStore", "The history file could not be removed."));
     const QString corrupt = m_filePath + QStringLiteral(".corrupt");
     if (QFile::exists(corrupt))
         QFile::remove(corrupt);

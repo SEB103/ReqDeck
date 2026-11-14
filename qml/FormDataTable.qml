@@ -98,6 +98,8 @@ ColumnLayout {
                 currentIndex: part.isFile ? 1 : 0
                 Accessible.name: qsTr("Text or file")
                 onActivated: (index) => table.model.setField(part.index, table.isFileRole, index === 1)
+                // A language switch gives the box a new model and resets it to the first row.
+                onModelChanged: currentIndex = Qt.binding(() => part.isFile ? 1 : 0)
             }
 
             TextField {

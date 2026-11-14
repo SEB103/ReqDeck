@@ -3,6 +3,7 @@
 
 #include "core/workspace/requestjson.h"
 
+#include <QCoreApplication>
 #include <QJsonArray>
 #include <QList>
 
@@ -276,7 +277,7 @@ QJsonObject authObject(const RequestAuth &auth)
 std::nullopt_t invalidMember(QString *errorString, const QString &member)
 {
     if (errorString)
-        *errorString = QStringLiteral("Invalid request member: %1").arg(member);
+        *errorString = QCoreApplication::translate("RequestJson", "Invalid request member: %1").arg(member);
     return std::nullopt;
 }
 } // namespace
@@ -413,7 +414,7 @@ std::optional<RequestSpec> requestFromJson(const QJsonObject &object, QString *e
         const std::optional<HttpMethod> parsed = httpMethodFromString(method.toString());
         if (!parsed) {
             if (errorString)
-                *errorString = QStringLiteral("Invalid method: %1").arg(method.toString());
+                *errorString = QCoreApplication::translate("RequestJson", "Invalid method: %1").arg(method.toString());
             return std::nullopt;
         }
         request.method = *parsed;

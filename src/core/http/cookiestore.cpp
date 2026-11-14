@@ -3,6 +3,7 @@
 
 #include "core/http/cookiestore.h"
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QFile>
 #include <QJsonDocument>
@@ -217,15 +218,15 @@ bool CookieStore::load(const QString &path, const SecretCipher &cipher, QString 
     if (!file.exists())
         return true;
     if (!file.open(QIODevice::ReadOnly))
-        return fail(errorString, QStringLiteral("The cookies could not be read."));
+        return fail(errorString, QCoreApplication::translate("CookieStore", "The cookies could not be read."));
     const QJsonObject root = QJsonDocument::fromJson(file.read(64 * 1024 * 1024)).object();
     if (root.value(QLatin1StringView("schema")).toInt() != kCookiesSchemaVersion
         || root.value(QLatin1StringView("protection")).toString() != kDpapiProtection)
-        return fail(errorString, QStringLiteral("The cookies file is not one this version reads."));
+        return fail(errorString, QCoreApplication::translate("CookieStore", "The cookies file is not one this version reads."));
     const std::optional<QByteArray> plain =
         cipher.unprotect(QByteArray::fromBase64(root.value(QLatin1StringView("data")).toString().toLatin1()));
     if (!plain)
-        return fail(errorString, QStringLiteral("The cookies were saved for another Windows user or computer."));
+        return fail(errorString, QCoreApplication::translate("CookieStore", "The cookies were saved for another Windows user or computer."));
 
     QList<QNetworkCookie> list;
     for (const QByteArray &line : plain->split('\n')) {
@@ -259,18 +260,18 @@ bool CookieStore::save(const QString &path, const SecretCipher &cipher, QString 
     }
     if (lines.isEmpty()) {
         if (QFile::exists(path) && !QFile::remove(path))
-            return fail(errorString, QStringLiteral("The cookies could not be written."));
+            return fail(errorString, QCoreApplication::translate("CookieStore", "The cookies could not be written."));
         return true;
     }
     const std::optional<QByteArray> sealed = cipher.protect(lines.join('\n'));
     if (!sealed)
-        return fail(errorString, QStringLiteral("The cookies could not be encrypted."));
+        return fail(errorString, QCoreApplication::translate("CookieStore", "The cookies could not be encrypted."));
 
     QJsonObject root;
     root.insert(QLatin1StringView("schema"), kCookiesSchemaVersion);
     root.insert(QLatin1StringView("protection"), kDpapiProtection);
     root.insert(QLatin1StringView("data"), QString::fromLatin1(sealed->toBase64()));
-    return writeJsonFile(path, root) || fail(errorString, QStringLiteral("The cookies could not be written."));
+    return writeJsonFile(path, root) || fail(errorString, QCoreApplication::translate("CookieStore", "The cookies could not be written."));
 }
 
 /*!

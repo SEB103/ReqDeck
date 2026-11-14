@@ -14,7 +14,8 @@ import QtQuick.Layouts
     \brief Right-aligned quick-action buttons for the top row.
 
     Sits next to the menu bar in the same top row and offers the most-used
-    workspace actions and the environment selector. The host supplies the state
+    workspace actions, the environment selector, and, at the very right, the
+    interface language as letters such as EN. The host supplies the state
     through properties and wires the signals to the matching handlers; the
     component reads no application context property.
 */
@@ -32,6 +33,15 @@ RowLayout {
 
     /*! Row of the active environment in \l environmentNames, or -1. */
     property int activeEnvironmentIndex: -1
+
+    /*! Interface languages as {code, name, shortName} rows; the button shows with two or more. */
+    property var languages: []
+
+    /*! Code of the active interface language, for example "de_DE". */
+    property string currentLanguage: ""
+
+    /*! Letters of the active interface language shown on the button, for example "DE". */
+    property string currentShortName: ""
 
     /*! Neutral tint used for inactive action icons. */
     readonly property color mutedColor: Qt.rgba(Material.foreground.r,
@@ -53,6 +63,9 @@ RowLayout {
 
     /*! Emitted to open the application settings. */
     signal settingsRequested()
+
+    /*! Emitted when the user chooses the interface language \a code. */
+    signal languageRequested(string code)
 
     spacing: 2
 
@@ -122,6 +135,16 @@ RowLayout {
         ToolTip.visible: hovered
         ToolTip.text: qsTr("Settings")
         onClicked: root.settingsRequested()
+    }
+
+    // Interface language: the letters of the active one; a click offers all of
+    // them, and the choice applies at once and is kept for the next start.
+    BsLanguageButton {
+        Layout.alignment: Qt.AlignVCenter
+        languages: root.languages
+        currentLanguage: root.currentLanguage
+        currentShortName: root.currentShortName
+        onLanguageRequested: (code) => root.languageRequested(code)
     }
 
     // Trailing spacing so the last item is not flush against the window edge.
