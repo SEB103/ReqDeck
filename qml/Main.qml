@@ -30,6 +30,15 @@ ApplicationWindow {
     /*! The window of the user manual, made the first time it is opened. */
     property var helpWindow: null
 
+    /*!
+        Whether the user has agreed to quit with the workspace as it is: saved, or
+        with its changes discarded. Closing then asks nothing more.
+    */
+    property bool quitConfirmed: false
+
+    /*! Ends the application; tests replace it to stay alive. */
+    property var quitAction: () => Qt.quit()
+
     /*! Whether the collapsible log panel is shown in the workspace. */
     property bool logPanelVisible: false
 
@@ -187,6 +196,15 @@ ApplicationWindow {
         }
     }
 
+    /*!
+        Quits the application. Qt.quit() closes the window first, and the closing
+        handler must not ask about unsaved changes again, so the answer is noted.
+    */
+    function quitApplication() {
+        mainWindow.quitConfirmed = true
+        mainWindow.quitAction()
+    }
+
     /*! Runs and clears the deferred action stored by runGuarded(). */
     function proceedPending() {
         const action = mainWindow.pendingAction
@@ -213,12 +231,14 @@ ApplicationWindow {
 
     // Guard application exit: prompt to save when the open workspace is dirty.
     onClosing: (close) => {
+        if (mainWindow.quitConfirmed)
+            return
         // A field being edited commits when it loses the focus, and that edit
         // must count before asking about unsaved changes.
         mainWindow.contentItem.forceActiveFocus()
         if (cppWorkspaceManager.dirty) {
             close.accepted = false
-            runGuarded(() => Qt.quit())
+            runGuarded(() => mainWindow.quitApplication())
         }
     }
 
@@ -634,7 +654,7 @@ ApplicationWindow {
         }
 
         function onQuitRequested() {
-            Qt.quit()
+            mainWindow.quitApplication()
         }
     }
 
@@ -764,6 +784,8 @@ ApplicationWindow {
 
     Dialog {
         id: unsavedDialog
+
+        objectName: "unsavedDialog"
 
         /*! Topic of the F1 help. */
         property string helpTopic: "dialog.confirm"

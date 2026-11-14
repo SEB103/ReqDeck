@@ -1783,6 +1783,89 @@ Item {
             help.close();
         }
 
+        /*!
+            Returns a main window with unsaved changes whose quit is recorded in
+            \a quits instead of ending the test.
+        */
+        function createDirtyMain(quits) {
+            const window = createMain();
+            findChild(window.contentItem, "tree").parent.selectNode("r2");
+            cppRequestEditor.url = "https://example.com/changed";
+            verify(cppWorkspaceManager.dirty);
+            window.quitAction = () => quits.push(1);
+            return window;
+        }
+
+        /*! Verifies that Discard on closing quits without saving and does not ask again. */
+        function test_discardQuitsWithoutSaving() {
+            const quits = [];
+            const window = createDirtyMain(quits);
+            const dialog = findChild(window, "unsavedDialog");
+
+            window.close();
+            tryCompare(dialog, "opened", true);
+            mouseClick(dialog.standardButton(Dialog.Discard));
+
+            compare(quits.length, 1);
+            tryCompare(dialog, "visible", false);
+            // Qt.quit() closes the window next; it must close without the question.
+            window.close();
+            compare(dialog.opened, false);
+            compare(window.visible, false);
+            compare(cppWorkspaceManager.dirty, true);
+        }
+
+        /*! Verifies that the buttons of the unsaved-changes dialog show their whole German names. */
+        function test_unsavedDialogFitsInGerman() {
+            cppLocale.setLanguage("de_DE");
+            const quits = [];
+            const window = createDirtyMain(quits);
+            const dialog = findChild(window, "unsavedDialog");
+            window.close();
+            tryCompare(dialog, "opened", true);
+            waitForRendering(window.contentItem);
+
+            const discard = dialog.standardButton(Dialog.Discard);
+            compare(discard.text, "Verwerfen");
+            for (const kind of [Dialog.Save, Dialog.Discard, Dialog.Cancel]) {
+                const button = dialog.standardButton(kind);
+                verify(button.implicitContentWidth <= button.availableWidth + 1,
+                       button.text + " " + button.implicitContentWidth + " > " + button.availableWidth);
+            }
+            mouseClick(dialog.standardButton(Dialog.Cancel));
+            tryCompare(dialog, "visible", false);
+        }
+
+        /*! Verifies that Cancel on closing keeps the window and the changes. */
+        function test_cancelKeepsWindow() {
+            const quits = [];
+            const window = createDirtyMain(quits);
+            const dialog = findChild(window, "unsavedDialog");
+
+            window.close();
+            tryCompare(dialog, "opened", true);
+            mouseClick(dialog.standardButton(Dialog.Cancel));
+
+            tryCompare(dialog, "visible", false);
+            compare(quits.length, 0);
+            compare(window.visible, true);
+            compare(cppWorkspaceManager.dirty, true);
+        }
+
+        /*! Verifies that Save on closing saves and then quits. */
+        function test_saveThenQuits() {
+            const quits = [];
+            const window = createDirtyMain(quits);
+            const dialog = findChild(window, "unsavedDialog");
+
+            window.close();
+            tryCompare(dialog, "opened", true);
+            mouseClick(dialog.standardButton(Dialog.Save));
+
+            compare(quits.length, 1);
+            compare(cppWorkspaceManager.dirty, false);
+        }
+
         /*! Verifies that the find field of the help window counts and selects matches. */
         function test_helpFindInPage() {
             const help = openManual(createMain(), "Requests");
