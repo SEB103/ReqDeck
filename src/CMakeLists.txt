@@ -135,6 +135,8 @@ target_sources(ReqDeckQmlApi
         qmlapi/environmentvariablesmodel.cpp
         qmlapi/environmentvariablesmodel.h
         qmlapi/helplibrary.cpp
+        qmlapi/helpmanual.cpp
+        qmlapi/helpmanual.h
         qmlapi/helplibrary.h
         qmlapi/helplocator.cpp
         qmlapi/helplocator.h

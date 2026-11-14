@@ -69,3 +69,18 @@ qt_add_resources(appReqDeck "license_resources"
         "${CMAKE_SOURCE_DIR}/LICENSES/Apache-2.0.txt"
         "${CMAKE_SOURCE_DIR}/LICENSES/MIT.txt"
 )
+
+# The user manual of the help window: the Markdown pages of docs/manual/<lang>/
+# with their manifests and screenshots, the same files the GitHub wiki is made of.
+file(GLOB_RECURSE reqdeck_manual_files CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/docs/manual/*.md"
+    "${CMAKE_SOURCE_DIR}/docs/manual/*.json"
+    "${CMAKE_SOURCE_DIR}/docs/manual/*.png"
+)
+qt_add_resources(appReqDeck "manual_resources"
+    PREFIX "/manual"
+    BASE "${CMAKE_SOURCE_DIR}/docs/manual"
+
+    FILES
+        ${reqdeck_manual_files}
+)

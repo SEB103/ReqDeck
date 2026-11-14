@@ -604,6 +604,23 @@ target_link_libraries(tst_helplibrary
 
 add_test(NAME HelpLibrary.Unit COMMAND tst_helplibrary)
 
+# The user manual is read from the source tree, every language at once.
+qt_add_executable(tst_helpmanual
+    unit/tst_helpmanual.cpp
+)
+
+target_compile_definitions(tst_helpmanual
+    PRIVATE REQDECK_MANUAL_DIR="${CMAKE_SOURCE_DIR}/docs/manual"
+)
+
+target_link_libraries(tst_helpmanual
+    PRIVATE
+        ReqDeckQmlApi
+        Qt6::Test
+)
+
+add_test(NAME HelpManual.Unit COMMAND tst_helpmanual)
+
 find_package(Qt6 6.11 REQUIRED COMPONENTS QuickTest)
 
 qt_add_executable(tst_qml
