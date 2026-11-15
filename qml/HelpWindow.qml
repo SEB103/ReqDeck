@@ -140,14 +140,23 @@ ApplicationWindow {
     onDarkThemeChanged: if (root.pageId.length > 0) root.openPage(root.pageId, "", true)
     Material.accent: Base.BsTheme.accent
 
+    // The tool bar has the ground of the menu band of the main window.
     header: ToolBar {
+        background: Rectangle {
+            color: Base.BsTheme.menuBandColor
+        }
+
         RowLayout {
             anchors.fill: parent
             spacing: 2
 
             ToolButton {
                 objectName: "helpBack"
-                text: "←"
+                display: AbstractButton.IconOnly
+                icon.source: "qrc:/images/svg/arrow_back.svg"
+                icon.width: 24
+                icon.height: 24
+                icon.color: enabled ? Base.BsTheme.accent : Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.35)
                 enabled: root.backStack.length > 0
                 Accessible.name: qsTr("Back")
                 ToolTip.visible: hovered
@@ -157,7 +166,11 @@ ApplicationWindow {
 
             ToolButton {
                 objectName: "helpForward"
-                text: "→"
+                display: AbstractButton.IconOnly
+                icon.source: "qrc:/images/svg/arrow_forward.svg"
+                icon.width: 24
+                icon.height: 24
+                icon.color: enabled ? Base.BsTheme.accent : Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.35)
                 enabled: root.forwardStack.length > 0
                 Accessible.name: qsTr("Forward")
                 ToolTip.visible: hovered
@@ -215,6 +228,20 @@ ApplicationWindow {
         onActivated: root.goForward()
     }
 
+    Timer {
+        id: relayout
+
+        interval: 150
+        onTriggered: {
+            if (root.pageId.length === 0 || !root.styled)
+                return
+            const ratio = pageFlick.contentHeight > 0 ? pageFlick.contentY / pageFlick.contentHeight : 0
+            pageText.text = cppManual.markdown(root.pageId)
+            cppManual.decorate(pageText.textDocument, root.darkTheme, pageText.width)
+            pageFlick.contentY = ratio * pageFlick.contentHeight
+        }
+    }
+
     Connections {
         target: cppManual
 
@@ -261,6 +288,10 @@ ApplicationWindow {
 
             TextArea.flickable: TextArea {
                 id: pageText
+
+                // Images are fitted to the width the page has, so the page is
+                // laid out again when the window gets its size or is resized.
+                onWidthChanged: relayout.restart()
 
                 objectName: "helpText"
 

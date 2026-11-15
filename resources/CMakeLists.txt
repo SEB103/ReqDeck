@@ -20,6 +20,8 @@ qt_add_resources(appReqDeck "application_resources"
         images/app/ReqDeckLogo.png
 
         # Menu, toolbar, and panel icons.
+        images/svg/arrow_back.svg
+        images/svg/arrow_forward.svg
         images/svg/article.svg
         images/svg/close.svg
         images/svg/code.svg
