@@ -47,6 +47,7 @@
 #include "qmlapi/requesteditor.h"
 #include "qmlapi/responseview.h"
 #include "qmlapi/workspacemanager.h"
+#include "uizoomcontroller.h"
 #include "updatecontroller.h"
 
 namespace {
@@ -496,4 +497,17 @@ void AppEngine::setUpdateController(UpdateController* controller)
         return;
 
     rootContext()->setContextProperty("cppUpdate", controller);
+}
+
+/*!
+ * \brief Publishes the global UI zoom \a controller to QML as \c cppUiZoom.
+ * \param controller The zoom controller; it is not owned and must outlive the
+ *        engine. A null pointer is ignored.
+ */
+void AppEngine::setUiZoomController(UiZoomController* controller)
+{
+    if (!controller)
+        return;
+
+    rootContext()->setContextProperty("cppUiZoom", controller);
 }

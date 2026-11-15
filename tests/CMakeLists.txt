@@ -659,6 +659,8 @@ qt_add_executable(tst_screens
     screens/tst_screens.cpp
     "${CMAKE_SOURCE_DIR}/app/localecontroller.cpp"
     "${CMAKE_SOURCE_DIR}/app/localecontroller.h"
+    "${CMAKE_SOURCE_DIR}/app/uizoomcontroller.cpp"
+    "${CMAKE_SOURCE_DIR}/app/uizoomcontroller.h"
 )
 
 target_sources(tst_screens

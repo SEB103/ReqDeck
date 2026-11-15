@@ -324,6 +324,22 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>&amp;Zoom (%1%)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Zoom &amp;In</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Zoom &amp;Out</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Reset to 100%</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>&amp;Help</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1339,6 +1355,10 @@
     </message>
     <message>
         <source>%1 — %2%3</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Zoom: %1%</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

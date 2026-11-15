@@ -69,6 +69,8 @@ qt_add_executable(appReqDeck
     app/licensemodel.h
     app/localecontroller.cpp
     app/localecontroller.h
+    app/uizoomcontroller.cpp
+    app/uizoomcontroller.h
     app/updatecontroller.cpp
     app/updatecontroller.h
 )

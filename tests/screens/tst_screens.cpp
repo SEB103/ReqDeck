@@ -26,6 +26,7 @@
 
 #include "core/workspace/workspaceserializer.h"
 #include "localecontroller.h"
+#include "uizoomcontroller.h"
 #include "mockhttpserver.h"
 #include "qmlapi/collectiontreemodel.h"
 #include "qmlapi/environmentmodel.h"
@@ -177,6 +178,7 @@ public:
         });
         QObject::connect(&m_locale, &LocaleController::languageChanged, &m_editor, &RequestEditor::retranslate);
         context->setContextProperty(QStringLiteral("cppLocale"), &m_locale);
+        context->setContextProperty(QStringLiteral("cppUiZoom"), &m_zoom);
 
         auto *update = new QQmlPropertyMap(this);
         for (const char *key : {"featureEnabled", "checkAutomatically", "updateAvailable", "checking",
@@ -588,6 +590,9 @@ private:
 
     /*! Real interface language controller, without settings. */
     LocaleController m_locale {nullptr};
+
+    /*! Real UI zoom controller, without settings, so every test starts at 100 %. */
+    UiZoomController m_zoom {nullptr};
 
     /*! Real user manual, read from the source tree. */
     HelpManual m_manual {QStringLiteral(REQDECK_MANUAL_DIR)};

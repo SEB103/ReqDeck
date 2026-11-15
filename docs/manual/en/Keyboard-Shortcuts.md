@@ -14,6 +14,8 @@ The menus show these shortcuts next to their commands.
 | **Ctrl+S** | save the workspace |
 | **Ctrl+Shift+S** | save the workspace under another name |
 | **Ctrl+Q** | quit |
+| **Ctrl++** / **Ctrl+-** or **Ctrl** + mouse wheel | zoom the interface in / out (50 % to 200 %) |
+| **Ctrl+0** | reset the zoom to 100 % |
 
 ## Requests and tabs
 

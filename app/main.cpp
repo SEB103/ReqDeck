@@ -18,6 +18,7 @@
 #include "localecontroller.h"
 #include "productinfo.h"
 #include "qmlapi/workspacemanager.h"
+#include "uizoomcontroller.h"
 #include "updatecontroller.h"
 
 Q_IMPORT_QML_PLUGIN(ReqDeckPlugin)
@@ -71,6 +72,10 @@ int main(int argc, char *argv[])
     // preference through the same INI store and outlives the engine.
     UpdateController updateController(app.settings());
 
+    // Global UI zoom (Ctrl++ / Ctrl+- / Ctrl+0) exposed to QML as cppUiZoom. It
+    // persists the zoom through the same INI store and outlives the engine.
+    UiZoomController uiZoomController(app.settings());
+
     QCommandLineParser parser;
     parser.setApplicationDescription(
         QStringLiteral("Desktop client for composing, sending, and saving HTTP/REST requests."));
@@ -91,6 +96,7 @@ int main(int argc, char *argv[])
     engine.setLocaleController(&localeController);
     localeController.setEngine(&engine);
     engine.setUpdateController(&updateController);
+    engine.setUiZoomController(&uiZoomController);
 
     QObject::connect(
         &engine,
@@ -105,6 +111,9 @@ int main(int argc, char *argv[])
         qCritical() << "Application startup failed because no QML root objects were created.";
         return -1;
     }
+
+    // Ctrl + mouse wheel over the main window steps the zoom like Ctrl++ / Ctrl+-.
+    uiZoomController.attachToWindow(engine.rootObjects().constFirst());
 
     // A workspace passed on the command line (for example through a file
     // association) opens once the UI exists, so its errors reach the user.

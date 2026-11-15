@@ -49,6 +49,40 @@ ApplicationWindow {
     property int statusMessageLevel: 1
 
     /*!
+        Global UI zoom as a scale factor (1.0 = 100 %), driven by \c cppUiZoom.
+        It scales \c zoomLayer and the popup overlay, so screens, menus, dialogs,
+        and tooltips all follow one value.
+    */
+    readonly property real uiZoomFactor: cppUiZoom.zoomFactor
+
+    /*!
+        Window width in logical (zoom-adjusted) units: the width the UI and its
+        popups lay out in. It is valid from the start, unlike the width of the
+        content item, which is still 0 while the window is being created.
+    */
+    readonly property real uiWidth: width / uiZoomFactor
+
+    /*! Window height in logical (zoom-adjusted) units; see \l uiWidth. */
+    readonly property real uiHeight: height / uiZoomFactor
+
+    /*!
+        Gives the popup overlay the scale and logical size of \c zoomLayer, so
+        dialogs, menus, and tooltips follow the global UI zoom.
+    */
+    function syncOverlayZoom() {
+        const overlay = mainWindow.Overlay.overlay
+        if (!overlay)
+            return
+        overlay.transformOrigin = Item.TopLeft
+        if (overlay.scale !== zoomLayer.scale)
+            overlay.scale = zoomLayer.scale
+        if (overlay.width !== zoomLayer.width)
+            overlay.width = zoomLayer.width
+        if (overlay.height !== zoomLayer.height)
+            overlay.height = zoomLayer.height
+    }
+
+    /*!
         Stores a name or timeout still being edited: a shortcut leaves the focus
         where it is, unlike a click on a menu.
     */
@@ -252,58 +286,88 @@ ApplicationWindow {
         value: mainWindow.darkTheme
     }
 
-    // The workspace is present but hidden until a workspace is open, so its menu
-    // bindings stay wired across open/close.
-    MainScreen {
-        id: mainScreen
+    // Global UI zoom, like the page zoom of a web browser: the whole window UI is
+    // laid out at the logical size window / zoom and scaled back up to the window
+    // size. Layouts therefore reflow (more room at 80 %, less at 150 %) instead of
+    // being clipped. Popups follow through syncOverlayZoom().
+    Item {
+        id: zoomLayer
 
-        anchors.fill: parent
-        visible: cppWorkspaceManager.hasActiveWorkspace
-        darkTheme: mainWindow.darkTheme
-        logPanelVisible: mainWindow.logPanelVisible
-        appName: cppAppInfo.appName
-        hasWorkspace: cppWorkspaceManager.hasActiveWorkspace
-        workspaceDirty: cppWorkspaceManager.dirty
-        hasPreviousCopy: cppWorkspaceManager.hasPreviousCopy
-        recentWorkspaces: cppWorkspaceManager.recentWorkspaces
-        environmentNames: cppEnvironments.names
-        activeEnvironmentIndex: cppEnvironments.activeIndex
-        languages: cppLocale.availableLanguages
-        currentLanguage: cppLocale.currentLanguage
-        currentShortName: cppLocale.currentShortName
-        hasRequest: cppRequestEditor.hasRequest
-        canSend: cppRequestEditor.canSend
-        canCancel: cppRequestEditor.busy
-    }
+        // The window has no header, footer, or menuBar, so the zoom layer covers
+        // the whole window, exactly like the popup overlay.
+        width: mainWindow.uiWidth
+        height: mainWindow.uiHeight
+        scale: mainWindow.uiZoomFactor
+        transformOrigin: Item.TopLeft
 
-    // The status bar belongs to the workspace; the launcher has nothing to report.
-    footer: Base.BsStatusBar {
-        visible: cppWorkspaceManager.hasActiveWorkspace
-        workspaceName: cppWorkspaceManager.activeWorkspaceName
-        workspaceDirty: cppWorkspaceManager.dirty
-        message: mainWindow.statusMessage
-        messageLevel: mainWindow.statusMessageLevel
-        logPanelVisible: mainWindow.logPanelVisible
+        onWidthChanged: mainWindow.syncOverlayZoom()
+        onHeightChanged: mainWindow.syncOverlayZoom()
+        onScaleChanged: mainWindow.syncOverlayZoom()
 
-        onLogToggleRequested: mainWindow.logPanelVisible = !mainWindow.logPanelVisible
-    }
+        // The workspace is present but hidden until a workspace is open, so its menu
+        // bindings stay wired across open/close.
+        MainScreen {
+            id: mainScreen
 
-    // The launcher is the entry point while no workspace is open.
-    LauncherScreen {
-        id: launcherScreen
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: statusBar.visible ? statusBar.top : parent.bottom
+            visible: cppWorkspaceManager.hasActiveWorkspace
+            darkTheme: mainWindow.darkTheme
+            logPanelVisible: mainWindow.logPanelVisible
+            appName: cppAppInfo.appName
+            hasWorkspace: cppWorkspaceManager.hasActiveWorkspace
+            workspaceDirty: cppWorkspaceManager.dirty
+            hasPreviousCopy: cppWorkspaceManager.hasPreviousCopy
+            recentWorkspaces: cppWorkspaceManager.recentWorkspaces
+            environmentNames: cppEnvironments.names
+            activeEnvironmentIndex: cppEnvironments.activeIndex
+            languages: cppLocale.availableLanguages
+            currentLanguage: cppLocale.currentLanguage
+            currentShortName: cppLocale.currentShortName
+            hasRequest: cppRequestEditor.hasRequest
+            canSend: cppRequestEditor.canSend
+            canCancel: cppRequestEditor.busy
+            zoomPercent: cppUiZoom.zoomPercent
+            canZoomIn: cppUiZoom.canZoomIn
+            canZoomOut: cppUiZoom.canZoomOut
+        }
 
-        anchors.fill: parent
-        visible: !cppWorkspaceManager.hasActiveWorkspace
-        darkTheme: mainWindow.darkTheme
+        // The status bar belongs to the workspace; the launcher has nothing to report.
+        Base.BsStatusBar {
+            id: statusBar
 
-        onOpenWorkspaceRequested: openWorkspaceDialog.open()
-        onCreateWorkspaceRequested: newWorkspaceDialog.open()
-        // The samples open at the request the guide starts with, ready to send.
-        onSamplesOpened: {
-            const id = cppCollection.startRequestId()
-            if (id.length > 0) {
-                mainScreen.collectionPane.selectNode(id)
-                mainScreen.collectionPane.revealNode(id)
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            visible: cppWorkspaceManager.hasActiveWorkspace
+            workspaceName: cppWorkspaceManager.activeWorkspaceName
+            workspaceDirty: cppWorkspaceManager.dirty
+            message: mainWindow.statusMessage
+            messageLevel: mainWindow.statusMessageLevel
+            logPanelVisible: mainWindow.logPanelVisible
+
+            onLogToggleRequested: mainWindow.logPanelVisible = !mainWindow.logPanelVisible
+        }
+
+        // The launcher is the entry point while no workspace is open.
+        LauncherScreen {
+            id: launcherScreen
+
+            anchors.fill: parent
+            visible: !cppWorkspaceManager.hasActiveWorkspace
+            darkTheme: mainWindow.darkTheme
+
+            onOpenWorkspaceRequested: openWorkspaceDialog.open()
+            onCreateWorkspaceRequested: newWorkspaceDialog.open()
+            // The samples open at the request the guide starts with, ready to send.
+            onSamplesOpened: {
+                const id = cppCollection.startRequestId()
+                if (id.length > 0) {
+                    mainScreen.collectionPane.selectNode(id)
+                    mainScreen.collectionPane.revealNode(id)
+                }
             }
         }
     }
@@ -380,6 +444,18 @@ ApplicationWindow {
             mainWindow.logPanelVisible = !mainWindow.logPanelVisible
         }
 
+        function onZoomInRequested() {
+            cppUiZoom.zoomIn()
+        }
+
+        function onZoomOutRequested() {
+            cppUiZoom.zoomOut()
+        }
+
+        function onZoomResetRequested() {
+            cppUiZoom.resetZoom()
+        }
+
         function onCheckForUpdatesRequested() {
             cppUpdate.checkNow()
             updateDialog.open()
@@ -421,6 +497,58 @@ ApplicationWindow {
 
         function onCancelRequested() {
             cppRequestEditor.cancel()
+        }
+    }
+
+    // Zoom shortcuts work on every screen of the main window. "Ctrl+=" covers
+    // layouts where "+" needs Shift; numeric keypad keys match as well. Ctrl +
+    // mouse wheel is handled in C++ by UiZoomController::eventFilter().
+    Shortcut {
+        sequences: [StandardKey.ZoomIn, "Ctrl+="]
+        onActivated: cppUiZoom.zoomIn()
+    }
+
+    Shortcut {
+        sequences: [StandardKey.ZoomOut]
+        onActivated: cppUiZoom.zoomOut()
+    }
+
+    Shortcut {
+        sequence: "Ctrl+0"
+        onActivated: cppUiZoom.resetZoom()
+    }
+
+    // Short-lived zoom badge in the top-right corner, so a zoom change is
+    // confirmed on every screen, including the launcher.
+    ToolTip {
+        id: zoomIndicator
+
+        parent: zoomLayer
+        x: zoomLayer.width - width - 12
+        y: 52
+        timeout: 1200
+        text: qsTr("Zoom: %1%").arg(cppUiZoom.zoomPercent)
+    }
+
+    Connections {
+        target: cppUiZoom
+
+        function onZoomChanged() {
+            zoomIndicator.open()
+        }
+    }
+
+    // QQuickOverlay re-applies the window size on every window resize; restore
+    // the zoomed logical size right afterwards.
+    Connections {
+        target: mainWindow.Overlay.overlay
+
+        function onWidthChanged() {
+            mainWindow.syncOverlayZoom()
+        }
+
+        function onHeightChanged() {
+            mainWindow.syncOverlayZoom()
         }
     }
 

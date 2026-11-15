@@ -32,6 +32,15 @@ MenuBar {
     /*! Whether the log panel is currently shown, used to word the menu item. */
     property bool logPanelVisible: false
 
+    /*! Active global UI zoom in percent, shown in the View > Zoom submenu title. */
+    property int zoomPercent: 100
+
+    /*! Whether a larger zoom step is available; enables Zoom In. */
+    property bool canZoomIn: true
+
+    /*! Whether a smaller zoom step is available; enables Zoom Out. */
+    property bool canZoomOut: true
+
     /*! Whether a workspace is open; enables the workspace-scoped actions. */
     property bool hasWorkspace: false
 
@@ -137,6 +146,15 @@ MenuBar {
 
     /*! Emitted to cancel the running request. */
     signal cancelRequested()
+
+    /*! Emitted when the user selects View > Zoom > Zoom In. */
+    signal zoomInRequested()
+
+    /*! Emitted when the user selects View > Zoom > Zoom Out. */
+    signal zoomOutRequested()
+
+    /*! Emitted when the user resets the zoom to 100 % from View > Zoom. */
+    signal zoomResetRequested()
 
     background: Rectangle {
         implicitHeight: 40
@@ -377,6 +395,37 @@ MenuBar {
                                              : qsTr("Show &Log Panel")
             icon.source: "qrc:/images/svg/article.svg"
             onTriggered: appMenuBar.logPanelToggleRequested()
+        }
+
+        // Global UI zoom. The same actions are bound to Ctrl++, Ctrl+- and Ctrl+0
+        // and to Ctrl + mouse wheel in the main window.
+        Menu {
+            /*! Topic of the F1 help. */
+            property string helpTopic: "menu"
+
+            title: qsTr("&Zoom (%1%)").arg(appMenuBar.zoomPercent)
+            width: 260
+
+            BsMenuItem {
+                text: qsTr("Zoom &In")
+                shortcutText: "Ctrl++"
+                enabled: appMenuBar.canZoomIn
+                onTriggered: appMenuBar.zoomInRequested()
+            }
+
+            BsMenuItem {
+                text: qsTr("Zoom &Out")
+                shortcutText: "Ctrl+-"
+                enabled: appMenuBar.canZoomOut
+                onTriggered: appMenuBar.zoomOutRequested()
+            }
+
+            BsMenuItem {
+                text: qsTr("&Reset to 100%")
+                shortcutText: "Ctrl+0"
+                enabled: appMenuBar.zoomPercent !== 100
+                onTriggered: appMenuBar.zoomResetRequested()
+            }
         }
     }
 

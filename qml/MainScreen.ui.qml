@@ -53,6 +53,15 @@ Pane {
     /*! Product name shown in the Help menu. */
     property string appName: ""
 
+    /*! Active global UI zoom in percent, forwarded to the menu bar. */
+    property int zoomPercent: 100
+
+    /*! Whether a larger zoom step is available, forwarded to the menu bar. */
+    property bool canZoomIn: true
+
+    /*! Whether a smaller zoom step is available, forwarded to the menu bar. */
+    property bool canZoomOut: true
+
     /*! Whether a workspace is open. */
     property bool hasWorkspace: false
 
@@ -129,6 +138,9 @@ Pane {
                     hasRequest: main.hasRequest
                     canSend: main.canSend
                     canCancel: main.canCancel
+                    zoomPercent: main.zoomPercent
+                    canZoomIn: main.canZoomIn
+                    canZoomOut: main.canZoomOut
                 }
 
                 Base.BsTopBarActions {

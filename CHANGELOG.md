@@ -24,6 +24,8 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
   The pages are Markdown files in `docs/manual/`; the release workflow publishes
   the same files, with the developer pages, to the GitHub wiki.
 - *More in the manual* in the F1 panel opens the matching section of the manual.
+- Interface zoom from 50 % to 200 % (*View → Zoom*, **Ctrl++**, **Ctrl+-**,
+  **Ctrl+0**, or **Ctrl** + mouse wheel); the zoom is remembered.
 
 ### Changed
 - F1 help and the manual follow the interface language, English or German.

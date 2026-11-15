@@ -24,6 +24,7 @@ class TabsModel;
 class ImportController;
 class RequestEditor;
 class ResponseView;
+class UiZoomController;
 class UpdateController;
 class WorkspaceManager;
 
@@ -69,6 +70,9 @@ public:
 
     /** Publishes the update \a controller to QML as \c cppUpdate. */
     void setUpdateController(UpdateController* controller);
+
+    /** Publishes the global UI zoom controller to QML as \c cppUiZoom; \a controller is not owned. */
+    void setUiZoomController(UiZoomController* controller);
 
     /** Returns the workspace facade exposed to QML as \c cppWorkspaceManager. */
     WorkspaceManager* workspaceManager() const { return m_workspaceManager; }

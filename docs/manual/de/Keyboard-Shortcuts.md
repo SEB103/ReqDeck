@@ -14,6 +14,8 @@ Die Menüs zeigen diese Tastenkürzel neben ihren Befehlen.
 | **Strg+S** | Arbeitsbereich speichern |
 | **Strg+Umschalt+S** | Arbeitsbereich unter anderem Namen speichern |
 | **Strg+Q** | beenden |
+| **Strg++** / **Strg+-** oder **Strg** + Mausrad | Oberfläche vergrößern / verkleinern (50 % bis 200 %) |
+| **Strg+0** | Zoom auf 100 % zurücksetzen |
 
 ## Anfragen und Reiter
 

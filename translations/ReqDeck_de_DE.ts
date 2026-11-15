@@ -324,6 +324,22 @@
         <translation>&amp;Protokollbereich einblenden</translation>
     </message>
     <message>
+        <source>&amp;Zoom (%1%)</source>
+        <translation>&amp;Zoom (%1 %)</translation>
+    </message>
+    <message>
+        <source>Zoom &amp;In</source>
+        <translation>Ver&amp;größern</translation>
+    </message>
+    <message>
+        <source>Zoom &amp;Out</source>
+        <translation>Ver&amp;kleinern</translation>
+    </message>
+    <message>
+        <source>&amp;Reset to 100%</source>
+        <translation>Auf 100 % &amp;zurücksetzen</translation>
+    </message>
+    <message>
         <source>&amp;Help</source>
         <translation>&amp;Hilfe</translation>
     </message>
@@ -1340,6 +1356,10 @@
     <message>
         <source>%1 — %2%3</source>
         <translation>%1 — %2%3</translation>
+    </message>
+    <message>
+        <source>Zoom: %1%</source>
+        <translation>Zoom: %1 %</translation>
     </message>
     <message>
         <source>Saved the response to %1.</source>
