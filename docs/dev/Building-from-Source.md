@@ -21,35 +21,30 @@ git clone https://github.com/SEB103/ReqDeck.git
 cd ReqDeck
 ```
 
-## Build with the presets
+## Build on the command line
 
-Qt Creator takes Qt from its kit. On the command line, name the Qt kit in the
-standard CMake variable:
-
-```powershell
-$env:CMAKE_PREFIX_PATH = "C:\Qt\6.11.1\msvc2022_64"
-```
-
-Debug:
+`CMAKE_PREFIX_PATH` names the Qt kit. Debug:
 
 ```powershell
-cmake --preset windows-msvc2022-debug
-cmake --build --preset windows-msvc2022-debug
+cmake -S . -B build/windows-msvc2022-debug -G "Visual Studio 17 2022" -A x64 `
+      -DCMAKE_PREFIX_PATH=C:/Qt/6.11.1/msvc2022_64 -DCMAKE_CONFIGURATION_TYPES=Debug -DBUILD_TESTING=ON
+cmake --build build/windows-msvc2022-debug --config Debug
 ```
 
 Release:
 
 ```powershell
-cmake --preset windows-msvc2022-release
-cmake --build --preset windows-msvc2022-release
+cmake -S . -B build/windows-msvc2022-release -G "Visual Studio 17 2022" -A x64 `
+      -DCMAKE_PREFIX_PATH=C:/Qt/6.11.1/msvc2022_64 -DCMAKE_CONFIGURATION_TYPES=Release -DBUILD_TESTING=ON
+cmake --build build/windows-msvc2022-release --config Release
 ```
 
-The presets use the Visual Studio 2022 x64 generator and put the build trees below
-`build/`. `CMakeUserPresets.json` is ignored by Git and may hold machine-local overrides.
+Other generators, such as Ninja from a Visual Studio developer prompt, work too.
 
 ## Build with Qt Creator
 
-Open `CMakeLists.txt` in Qt Creator and choose a Qt 6.11 MSVC 2022 64-bit kit.
+Open `CMakeLists.txt` in Qt Creator and choose a Qt 6.11 MSVC 2022 64-bit kit; Qt Creator
+takes Qt from the kit. The project has no CMake presets, so every kit stays available.
 
 ## Run
 
@@ -65,7 +60,7 @@ lies next to the executable. See [Where data is stored](Installation#where-data-
 ## Tests
 
 ```powershell
-ctest --preset windows-msvc2022-debug
+ctest --test-dir build/windows-msvc2022-debug -C Debug
 ```
 
 See [Testing](Testing) for what the tests cover and how to run a single one.
@@ -73,7 +68,7 @@ See [Testing](Testing) for what the tests cover and how to run a single one.
 ## Lint the QML
 
 ```powershell
-cmake --build --preset windows-msvc2022-debug --target all_qmllint
+cmake --build build/windows-msvc2022-debug --config Debug --target all_qmllint
 ```
 
 The CI runs this target on every push; it must stay free of warnings.

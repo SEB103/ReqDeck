@@ -7,7 +7,7 @@ core on top of Qt Network.
 |---|---|
 | Framework | Qt 6.11: Core, Gui, Network, Qml, Quick, QuickControls2, QuickDialogs2, Svg, LinguistTools |
 | Language | C++20 for the logic, QML for the user interface |
-| Build | CMake 3.21+, target-based, presets for MSVC 2022 |
+| Build | CMake 3.21+, target-based, any generator with a Qt 6.11 MSVC 2022 kit |
 | Platform | Windows x86_64 |
 | HTTPS | Qt Network with the TLS backend plugins deployed with Qt (Windows Schannel); OpenSSL is not bundled |
 | Third-party code | Qt (LGPL-3.0), yaml-cpp 0.9.0 (MIT, vendored), Material Symbols icons (Apache 2.0), Qt Installer Framework (GPL-3.0 with the Qt GPL exception) for the installer |

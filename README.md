@@ -92,32 +92,28 @@ installed version, or as a new ZIP.
 The project uses Qt 6.11 (Qt Quick / QML, Qt Network), C++20, CMake, and
 Microsoft Visual Studio 2022 / MSVC 2022 on Windows x86_64.
 
-Qt Creator takes Qt from its kit. On the command line, name the Qt 6.11 MSVC 2022
-kit in the standard CMake variable, for example:
-
-```powershell
-$env:CMAKE_PREFIX_PATH = "C:\Qt\6.11.1\msvc2022_64"
-```
-
 Configure and build Debug or Release:
 
 ```powershell
-cmake --preset windows-msvc2022-debug
-cmake --build --preset windows-msvc2022-debug
+cmake -S . -B build/windows-msvc2022-debug -G "Visual Studio 17 2022" -A x64 `
+      -DCMAKE_PREFIX_PATH=C:/Qt/6.11.1/msvc2022_64 -DCMAKE_CONFIGURATION_TYPES=Debug -DBUILD_TESTING=ON
+cmake --build build/windows-msvc2022-debug --config Debug
 ```
 
 ```powershell
-cmake --preset windows-msvc2022-release
-cmake --build --preset windows-msvc2022-release
+cmake -S . -B build/windows-msvc2022-release -G "Visual Studio 17 2022" -A x64 `
+      -DCMAKE_PREFIX_PATH=C:/Qt/6.11.1/msvc2022_64 -DCMAKE_CONFIGURATION_TYPES=Release -DBUILD_TESTING=ON
+cmake --build build/windows-msvc2022-release --config Release
 ```
 
-The presets use the Visual Studio 2022 x64 generator and create build trees below
-`build/`. `CMakeUserPresets.json` is ignored and may hold machine-local overrides.
+`CMAKE_PREFIX_PATH` names the Qt kit; any generator and a Qt 6.11 MSVC 2022 kit work.
+In Qt Creator, open `CMakeLists.txt` and choose your Qt 6.11 MSVC 2022 64-bit kit;
+Qt Creator then takes Qt from the kit.
 
 Run the tests:
 
 ```powershell
-ctest --preset windows-msvc2022-debug
+ctest --test-dir build/windows-msvc2022-debug -C Debug
 ```
 
 The installer, the portable ZIP, and the update repository are made by

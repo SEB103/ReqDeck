@@ -28,7 +28,6 @@ path = [
     "installer/**",
     ".github/**",
     "CMakeLists.txt",
-    "CMakePresets.json",
     ".gitattributes",
     ".gitignore",
     "resources/CMakeLists.txt",

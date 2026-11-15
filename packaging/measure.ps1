@@ -49,7 +49,7 @@ if (-not $AppDir) {
 }
 if (-not (Test-Path (Join-Path $AppDir 'ReqDeck.exe'))) { throw "ReqDeck.exe not found in $AppDir" }
 if (-not $BenchExe) { $BenchExe = Join-Path $Root 'build/windows-msvc2022-release/Release/reqdeck_bench.exe' }
-if (-not (Test-Path $BenchExe)) { throw "reqdeck_bench.exe not found at $BenchExe; build the Release preset first." }
+if (-not (Test-Path $BenchExe)) { throw "reqdeck_bench.exe not found at $BenchExe; build the Release configuration first." }
 
 # A portable copy: all its data stays inside the temporary folder.
 $work = Join-Path ([System.IO.Path]::GetTempPath()) ("ReqDeck-measure-" + [guid]::NewGuid().ToString('N'))

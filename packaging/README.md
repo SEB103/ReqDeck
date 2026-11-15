@@ -100,7 +100,7 @@ powershell -ExecutionPolicy Bypass -File .\packaging\release.ps1 -Theme dark
 ## 5. Building just the application (development)
 
 For day-to-day development you do not need the packaging script; build with the
-CMake presets (see the top-level [`README.md`](../README.md)) or open
+CMake commands of the top-level [`README.md`](../README.md) or open
 `CMakeLists.txt` in Qt Creator.
 
 ---

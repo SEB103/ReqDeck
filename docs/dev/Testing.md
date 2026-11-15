@@ -38,14 +38,14 @@ application build.
 All tests:
 
 ```powershell
-ctest --preset windows-msvc2022-debug
+ctest --test-dir build/windows-msvc2022-debug -C Debug
 ```
 
 Only the unit tests, or one test:
 
 ```powershell
-ctest --preset windows-msvc2022-debug -R Unit
-ctest --preset windows-msvc2022-debug -R JsonPath.Unit --output-on-failure
+ctest --test-dir build/windows-msvc2022-debug -C Debug -R Unit
+ctest --test-dir build/windows-msvc2022-debug -C Debug -R JsonPath.Unit --output-on-failure
 ```
 
 One test function of a unit test program, directly:
@@ -55,13 +55,13 @@ build\windows-msvc2022-debug\Debug\tst_jsonpath.exe evaluatesRfcExamples
 ```
 
 The Quick Test programs write their report to a file (`tst_qml.txt`, `tst_screens.txt` in
-`build\<preset>\tests`), because they print nothing to the console there. The CI shows
+`build\windows-msvc2022-debug\tests`), because they print nothing to the console there. The CI shows
 the report when a screen test fails.
 
 ## Lint
 
 ```powershell
-cmake --build --preset windows-msvc2022-debug --target all_qmllint
+cmake --build build/windows-msvc2022-debug --config Debug --target all_qmllint
 ```
 
 `qmllint` must report no warnings.
