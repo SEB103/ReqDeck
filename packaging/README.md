@@ -216,23 +216,24 @@ and About), and the 1024 px sources in `resources/images/app/source/`, from whic
 `make-installer-images.ps1` draws the installer header. The icons contain 16 to
 256 px layers. Replace all of them together.
 
-**Beginner guide.** The application opens `help/ReqDeck-Guide.<en|ru>.pdf` next to
-the executable from Help > Beginner Guide and from the F1 help panel. The CMake
-install rule copies both files from `resources/help/`, and
-`verify-deployment.ps1` checks that they are there. The PDF files are committed;
-make them again after a change to the chapters in `resources/help/help.*.json`
-or to the screens they show:
+**User manual.** The manual is Markdown in `docs/manual/<en|de>/` (pages, a
+`manual.json` with their order, and `images/`). CMake compiles it into the
+application as resources, so the deployment has no separate help files; Help >
+User Manual and *More in the manual* in the F1 panel open it in its own window.
+The release workflow publishes the same files, with `docs/dev/`, to the GitHub
+wiki (`packaging/docs/manual2wiki.py`, job `wiki`); CI runs
+`python packaging/docs/manual2wiki.py --check`. Retake the screenshots after a
+change to the screens they show:
 
 ```powershell
-# 1. Retake the screenshots (needs the internet: it sends the sample requests).
-$env:REQDECK_GUIDE_SHOTS = "$PWD/packaging/help/shots"
+# Needs the internet: it sends the sample requests. The shots are taken in the
+# English interface; copy them to docs/manual/de/images as well.
+$env:REQDECK_GUIDE_SHOTS = "$PWD/docs/manual/en/images"
 $env:QT_QUICK_CONTROLS_CONF = "$PWD/resources/qtquickcontrols2.conf"
 $env:QT_ENABLE_HIGHDPI_SCALING = "0"
 $env:QML2_IMPORT_PATH = "$PWD/build/windows-msvc2022-debug/qml"
 $env:PATH = "C:/Qt/6.11.1/msvc2022_64/bin;$env:PATH"
 build/windows-msvc2022-debug/Debug/tst_screens.exe Screens::test_guideShots
-# 2. Print both PDF files with Microsoft Edge (pass --edge for another path).
-python packaging/help/build_guide.py
 ```
 
 ---
