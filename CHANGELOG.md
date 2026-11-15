@@ -18,6 +18,8 @@ bump that single field, then rebuild and run `packaging/release.ps1`.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-15
+
 ### Added
 - User manual in its own window (*Help → User Manual*): pages on the left, Back
   and Forward, find in page, in English and German, with the look of ReqDeck.
