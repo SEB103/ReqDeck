@@ -92,10 +92,11 @@ installed version, or as a new ZIP.
 The project uses Qt 6.11 (Qt Quick / QML, Qt Network), C++20, CMake, and
 Microsoft Visual Studio 2022 / MSVC 2022 on Windows x86_64.
 
-Set `QTDIR` to the root of a Qt 6.11 MSVC 2022 kit, for example:
+Qt Creator takes Qt from its kit. On the command line, name the Qt 6.11 MSVC 2022
+kit in the standard CMake variable, for example:
 
 ```powershell
-$env:QTDIR = "C:\Qt\6.11.1\msvc2022_64"
+$env:CMAKE_PREFIX_PATH = "C:\Qt\6.11.1\msvc2022_64"
 ```
 
 Configure and build Debug or Release:

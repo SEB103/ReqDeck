@@ -17,7 +17,6 @@
       },
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_PREFIX_PATH": "$env{QTDIR}",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "ON"
       }

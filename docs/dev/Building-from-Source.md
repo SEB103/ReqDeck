@@ -23,10 +23,11 @@ cd ReqDeck
 
 ## Build with the presets
 
-Point `QTDIR` at the Qt kit:
+Qt Creator takes Qt from its kit. On the command line, name the Qt kit in the
+standard CMake variable:
 
 ```powershell
-$env:QTDIR = "C:\Qt\6.11.1\msvc2022_64"
+$env:CMAKE_PREFIX_PATH = "C:\Qt\6.11.1\msvc2022_64"
 ```
 
 Debug:
