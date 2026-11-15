@@ -84,7 +84,7 @@ public:
     Q_INVOKABLE void resetZoom();
 
     /** Lets Ctrl + mouse wheel over \a window step the zoom; \a window may be null. */
-    void attachToWindow(QObject *window);
+    Q_INVOKABLE void attachToWindow(QObject *window);
 
     /** Steps the zoom for Ctrl + wheel events on the attached window and consumes them. */
     bool eventFilter(QObject *watched, QEvent *event) override;

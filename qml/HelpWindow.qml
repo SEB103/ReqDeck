@@ -45,6 +45,12 @@ ApplicationWindow {
     property int matchIndex: -1
 
     /*!
+        Global UI zoom as a scale factor (1.0 = 100 %), shared with the main window
+        through \c cppUiZoom. It scales \c zoomLayer and the popup overlay.
+    */
+    readonly property real uiZoomFactor: cppUiZoom.zoomFactor
+
+    /*!
         Shows the page \a page and scrolls to its section \a anchor, if any.
         The page left goes onto the Back list unless \a fromHistory is true.
     */
@@ -130,6 +136,23 @@ ApplicationWindow {
             pageFlick.contentY = Math.max(0, Math.min(top - 40, pageFlick.contentHeight - pageFlick.height))
     }
 
+    /*!
+        Gives the popup overlay of this window the scale and logical size of
+        \c zoomLayer, so tooltips follow the global UI zoom.
+    */
+    function syncOverlayZoom() {
+        const overlay = root.Overlay.overlay
+        if (!overlay)
+            return
+        overlay.transformOrigin = Item.TopLeft
+        if (overlay.scale !== zoomLayer.scale)
+            overlay.scale = zoomLayer.scale
+        if (overlay.width !== zoomLayer.width)
+            overlay.width = zoomLayer.width
+        if (overlay.height !== zoomLayer.height)
+            overlay.height = zoomLayer.height
+    }
+
     width: 1000
     height: 700
     minimumWidth: 560
@@ -139,66 +162,24 @@ ApplicationWindow {
     // The page colours follow the theme, so the page is laid out again.
     onDarkThemeChanged: if (root.pageId.length > 0) root.openPage(root.pageId, "", true)
     Material.accent: Base.BsTheme.accent
+    // Ctrl + mouse wheel over this window steps the zoom like in the main window.
+    Component.onCompleted: cppUiZoom.attachToWindow(root)
 
-    // The tool bar has the ground of the menu band of the main window.
-    header: ToolBar {
-        background: Rectangle {
-            color: Base.BsTheme.menuBandColor
-        }
+    // The zoom keys of the main window work here too and change the same zoom.
+    // Ctrl + mouse wheel is handled in C++ by UiZoomController::eventFilter().
+    Shortcut {
+        sequences: [StandardKey.ZoomIn, "Ctrl+="]
+        onActivated: cppUiZoom.zoomIn()
+    }
 
-        RowLayout {
-            anchors.fill: parent
-            spacing: 2
+    Shortcut {
+        sequences: [StandardKey.ZoomOut]
+        onActivated: cppUiZoom.zoomOut()
+    }
 
-            ToolButton {
-                objectName: "helpBack"
-                display: AbstractButton.IconOnly
-                icon.source: "qrc:/images/svg/arrow_back.svg"
-                icon.width: 24
-                icon.height: 24
-                icon.color: enabled ? Base.BsTheme.accent : Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.35)
-                enabled: root.backStack.length > 0
-                Accessible.name: qsTr("Back")
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Back")
-                onClicked: root.goBack()
-            }
-
-            ToolButton {
-                objectName: "helpForward"
-                display: AbstractButton.IconOnly
-                icon.source: "qrc:/images/svg/arrow_forward.svg"
-                icon.width: 24
-                icon.height: 24
-                icon.color: enabled ? Base.BsTheme.accent : Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.35)
-                enabled: root.forwardStack.length > 0
-                Accessible.name: qsTr("Forward")
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Forward")
-                onClicked: root.goForward()
-            }
-
-            Item { Layout.fillWidth: true }
-
-            TextField {
-                id: findField
-
-                objectName: "helpFind"
-
-                Layout.preferredWidth: 220
-                placeholderText: qsTr("Find in page")
-                Accessible.name: qsTr("Find in page")
-                onTextEdited: root.findText(0)
-                onAccepted: root.findText(root.matchIndex + 1)
-            }
-
-            Label {
-                Layout.rightMargin: 8
-                text: findField.text.length === 0 ? ""
-                      : root.matchCount === 0 ? qsTr("No matches")
-                      : qsTr("%1 of %2").arg(root.matchIndex + 1).arg(root.matchCount)
-            }
-        }
+    Shortcut {
+        sequence: "Ctrl+0"
+        onActivated: cppUiZoom.resetZoom()
     }
 
     Shortcut {
@@ -242,6 +223,20 @@ ApplicationWindow {
         }
     }
 
+    // QQuickOverlay re-applies the window size on every window resize; restore
+    // the zoomed logical size right afterwards.
+    Connections {
+        target: root.Overlay.overlay
+
+        function onWidthChanged() {
+            root.syncOverlayZoom()
+        }
+
+        function onHeightChanged() {
+            root.syncOverlayZoom()
+        }
+    }
+
     Connections {
         target: cppManual
 
@@ -251,61 +246,150 @@ ApplicationWindow {
         }
     }
 
-    SplitView {
-        anchors.fill: parent
+    // Global UI zoom, as in the main window: the tool bar and the pages are laid
+    // out at the logical size window / zoom and scaled back up to the window size,
+    // so the page reflows and its images fit the new width. Popups follow through
+    // syncOverlayZoom().
+    Item {
+        id: zoomLayer
 
-        ListView {
-            id: pageList
+        // The window has no header or footer, so the zoom layer covers the whole
+        // window, exactly like the popup overlay.
+        width: root.width / root.uiZoomFactor
+        height: root.height / root.uiZoomFactor
+        scale: root.uiZoomFactor
+        transformOrigin: Item.TopLeft
 
-            objectName: "helpPages"
+        onWidthChanged: root.syncOverlayZoom()
+        onHeightChanged: root.syncOverlayZoom()
+        onScaleChanged: root.syncOverlayZoom()
 
-            SplitView.preferredWidth: 220
-            SplitView.minimumWidth: 140
-            clip: true
-            model: cppManual.pages
-            Accessible.name: qsTr("Pages of the manual")
+        // The tool bar has the ground of the menu band of the main window.
+        ToolBar {
+            id: toolBar
 
-            delegate: ItemDelegate {
-                required property var modelData
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
 
-                width: ListView.view.width
-                text: modelData.title
-                highlighted: modelData.id === root.pageId
-                onClicked: root.openPage(modelData.id, "", false)
+            background: Rectangle {
+                color: Base.BsTheme.menuBandColor
+            }
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: 2
+
+                ToolButton {
+                    objectName: "helpBack"
+                    display: AbstractButton.IconOnly
+                    icon.source: "qrc:/images/svg/arrow_back.svg"
+                    icon.width: 24
+                    icon.height: 24
+                    icon.color: enabled ? Base.BsTheme.accent : Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.35)
+                    enabled: root.backStack.length > 0
+                    Accessible.name: qsTr("Back")
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Back")
+                    onClicked: root.goBack()
+                }
+
+                ToolButton {
+                    objectName: "helpForward"
+                    display: AbstractButton.IconOnly
+                    icon.source: "qrc:/images/svg/arrow_forward.svg"
+                    icon.width: 24
+                    icon.height: 24
+                    icon.color: enabled ? Base.BsTheme.accent : Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.35)
+                    enabled: root.forwardStack.length > 0
+                    Accessible.name: qsTr("Forward")
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Forward")
+                    onClicked: root.goForward()
+                }
+
+                Item { Layout.fillWidth: true }
+
+                TextField {
+                    id: findField
+
+                    objectName: "helpFind"
+
+                    Layout.preferredWidth: 220
+                    placeholderText: qsTr("Find in page")
+                    Accessible.name: qsTr("Find in page")
+                    onTextEdited: root.findText(0)
+                    onAccepted: root.findText(root.matchIndex + 1)
+                }
+
+                Label {
+                    Layout.rightMargin: 8
+                    text: findField.text.length === 0 ? ""
+                          : root.matchCount === 0 ? qsTr("No matches")
+                          : qsTr("%1 of %2").arg(root.matchIndex + 1).arg(root.matchCount)
+                }
             }
         }
 
-        Flickable {
-            id: pageFlick
+        SplitView {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: toolBar.bottom
+            anchors.bottom: parent.bottom
 
-            SplitView.fillWidth: true
-            contentWidth: width
-            contentHeight: pageText.implicitHeight
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
+            ListView {
+                id: pageList
 
-            ScrollBar.vertical: ScrollBar {}
+                objectName: "helpPages"
 
-            TextArea.flickable: TextArea {
-                id: pageText
+                SplitView.preferredWidth: 220
+                SplitView.minimumWidth: 140
+                clip: true
+                model: cppManual.pages
+                Accessible.name: qsTr("Pages of the manual")
 
-                // Images are fitted to the width the page has, so the page is
-                // laid out again when the window gets its size or is resized.
-                onWidthChanged: relayout.restart()
+                delegate: ItemDelegate {
+                    required property var modelData
 
-                objectName: "helpText"
+                    width: ListView.view.width
+                    text: modelData.title
+                    highlighted: modelData.id === root.pageId
+                    onClicked: root.openPage(modelData.id, "", false)
+                }
+            }
 
-                readOnly: true
-                selectByMouse: true
-                wrapMode: TextEdit.Wrap
-                textFormat: TextEdit.MarkdownText
-                baseUrl: cppManual.baseUrl
-                leftPadding: 24
-                rightPadding: 24
-                topPadding: 16
-                bottomPadding: 24
-                Accessible.name: qsTr("Page of the manual")
-                onLinkActivated: (link) => root.followLink(link)
+            Flickable {
+                id: pageFlick
+
+                SplitView.fillWidth: true
+                contentWidth: width
+                contentHeight: pageText.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                ScrollBar.vertical: ScrollBar {}
+
+                TextArea.flickable: TextArea {
+                    id: pageText
+
+                    // Images are fitted to the width the page has, so the page is
+                    // laid out again when the window gets its size or is resized.
+                    onWidthChanged: relayout.restart()
+
+                    objectName: "helpText"
+
+                    readOnly: true
+                    selectByMouse: true
+                    wrapMode: TextEdit.Wrap
+                    textFormat: TextEdit.MarkdownText
+                    baseUrl: cppManual.baseUrl
+                    leftPadding: 24
+                    rightPadding: 24
+                    topPadding: 16
+                    bottomPadding: 24
+                    Accessible.name: qsTr("Page of the manual")
+                    onLinkActivated: (link) => root.followLink(link)
+                }
             }
         }
     }
